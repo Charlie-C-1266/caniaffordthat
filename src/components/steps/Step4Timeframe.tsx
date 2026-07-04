@@ -10,7 +10,7 @@ import type { SaveFlavor } from '../../state/types'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
-interface Step3TimeframeProps {
+interface Step4TimeframeProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
 }
@@ -118,8 +118,8 @@ function GoalDateInput({ accentColor }: { accentColor: string }) {
   )
 }
 
-/** Step 3 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
-export function Step3Timeframe({ panelRef, wrapperRef }: Step3TimeframeProps) {
+/** Step 4 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
+export function Step4Timeframe({ panelRef, wrapperRef }: Step4TimeframeProps) {
   const { state, setField } = useCalculator()
   const accent = accentColorFor(state.mode)
   const isSave = state.mode === 'save'
@@ -129,8 +129,8 @@ export function Step3Timeframe({ panelRef, wrapperRef }: Step3TimeframeProps) {
   const setFlavor = (flavor: SaveFlavor) => setField('saveFlavor', flavor)
 
   return (
-    <StepPanel index={3} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
-      <RevealTile revealed={Boolean(state.revealed[3])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <StepPanel index={4} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
+      <RevealTile revealed={Boolean(state.revealed[4])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding="48px 48px">
           {isSave ? (
             <>

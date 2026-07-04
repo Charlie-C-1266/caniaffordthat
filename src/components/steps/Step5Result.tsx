@@ -10,7 +10,7 @@ import type { ChartBar } from '../../lib/derive'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
-interface Step4ResultProps {
+interface Step5ResultProps {
   panelRef: DivRefCallback
   scrollToIndex: (index: number) => void
 }
@@ -96,8 +96,8 @@ function ChartCard({ bars, endLabel, hasOverflow, months }: { bars: ChartBar[]; 
   )
 }
 
-/** Step 4 — the verdict, headline result, chart, breakdown, and share/edit actions. */
-export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
+/** Step 5 — the verdict, headline result, chart, breakdown, and share/edit actions. */
+export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
   const { state } = useCalculator()
   const [copied, setCopied] = useState(false)
   const accent = accentColorFor(state.mode)
@@ -116,12 +116,12 @@ export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
 
   return (
     <StepPanel
-      index={4}
+      index={5}
       isFinal
       panelRef={panelRef}
       panelStyle={{ background: accent, padding: '56px 40px 40px' }}
     >
-      <RevealTile revealed={Boolean(state.revealed[4])} style={{ width: '100%', maxWidth: 680 }}>
+      <RevealTile revealed={Boolean(state.revealed[5])} style={{ width: '100%', maxWidth: 680 }}>
         {result ? (
           <div>
             <div
@@ -257,7 +257,7 @@ export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
               <button
                 type="button"
                 onClick={() => {
-                  scrollToIndex(0)
+                  scrollToIndex(1) // back to mode-select, not the welcome screen
                 }}
                 style={{
                   flex: 1,

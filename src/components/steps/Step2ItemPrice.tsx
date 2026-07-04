@@ -12,30 +12,30 @@ import { accentColorFor, modeLabelFor } from '../../lib/mode'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
-interface Step1ItemPriceProps {
+interface Step2ItemPriceProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
 }
 
-/** Step 1 — what they're buying, and its price. Auto-advances once a valid price is entered. */
-export function Step1ItemPrice({ panelRef, wrapperRef, scrollToIndex }: Step1ItemPriceProps) {
+/** Step 2 — what they're buying, and its price. Auto-advances once a valid price is entered. */
+export function Step2ItemPrice({ panelRef, wrapperRef, scrollToIndex }: Step2ItemPriceProps) {
   const { state, setField } = useCalculator()
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const accent = accentColorFor(state.mode)
 
   const handlePriceChange = (value: string) => {
     setField('itemPrice', value)
-    if (num(value) > 0) scheduleAdvance(1, 2)
+    if (num(value) > 0) scheduleAdvance(2, 3)
   }
 
   const handlePriceKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(2)
+    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(3)
   }
 
   return (
-    <StepPanel index={1} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
-      <RevealTile revealed={Boolean(state.revealed[1])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <StepPanel index={2} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
+      <RevealTile revealed={Boolean(state.revealed[2])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding="52px 48px">
           <Eyebrow color={accent}>{modeLabelFor(state.mode)}</Eyebrow>
           <h1
