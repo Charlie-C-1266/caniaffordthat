@@ -1,0 +1,30 @@
+@import './styles/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-dark-1);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}

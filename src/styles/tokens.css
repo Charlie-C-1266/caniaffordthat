@@ -1,0 +1,93 @@
+/*
+ * Design tokens transcribed from the design handoff
+ * (design/design_handoff_scrolly_affordability_calculator/README.md).
+ * Values here are the literal spec — do not "round" or reinterpret them.
+ */
+:root {
+  /* Colors — backgrounds */
+  --bg-dark-1: #14121f;
+  --bg-dark-2: #1b1830;
+
+  /* Colors — text */
+  --text-primary: #f5f3ff;
+  --text-secondary: rgba(245, 243, 255, 0.65);
+  --text-secondary-dim: rgba(245, 243, 255, 0.5);
+  --text-tertiary: rgba(245, 243, 255, 0.4);
+  --text-tertiary-dim: rgba(245, 243, 255, 0.35);
+
+  /* Colors — accents (mode-dependent) */
+  --accent-save: #2ed573;
+  --accent-finance: #7c5cfc;
+  --accent-save-bg: rgba(46, 213, 115, 0.16);
+  --accent-finance-bg: rgba(124, 92, 252, 0.16);
+
+  /* Colors — verdict */
+  --verdict-affordable: #2ed573;
+  --verdict-not-affordable: #ff5c5c;
+
+  /* Colors — surfaces */
+  --tile-bg: rgba(255, 255, 255, 0.04);
+  --tile-bg-neutral: rgba(255, 255, 255, 0.03);
+  --tile-border: rgba(245, 243, 255, 0.14);
+  --tile-border-neutral: rgba(245, 243, 255, 0.12);
+  --input-underline: rgba(245, 243, 255, 0.18);
+
+  /* Colors — result step (bright accent background, dark text/glass) */
+  --result-glass-bg: rgba(20, 18, 31, 0.12);
+  --result-glass-blur: 6px;
+  --result-text-primary: #14121f;
+  --result-text-secondary: rgba(20, 18, 31, 0.7);
+  --result-text-secondary-dim: rgba(20, 18, 31, 0.55);
+  --result-bar-current: #14121f;
+  --result-bar-past: rgba(20, 18, 31, 0.28);
+
+  /* Typography */
+  --font-ui: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --fs-helper: 13px;
+  --fs-helper-sm: 11.5px;
+  --fs-rail-label: 11px;
+  --fs-label: 12px;
+  --fs-label-sm: 12.5px;
+  --fs-body: 14.5px;
+  --fs-body-lg: 17px;
+  --fs-input-sm: 19px;
+  --fs-input-md: 24px;
+  --fs-price: 50px;
+  --fs-price-md: 36px;
+  --fs-prefix-lg: 40px;
+  --fs-prefix-md: 28px;
+  --fs-prefix-sm: 15px;
+  --fs-h1-sm: 34px;
+  --fs-h1-budget: 36px;
+  --fs-h1-md: 38px;
+  --fs-h1-lg: 52px;
+  --fs-result-headline: 42px;
+
+  --fw-emphasis: 600;
+  --fw-heading: 700;
+  --fw-heading-bold: 800;
+
+  /* Spacing / shape */
+  --radius-tile: 28px;
+  --radius-tile-sm: 20px;
+  --radius-glass: 16px;
+  --radius-glass-sm: 14px;
+  --radius-button: 12px;
+  --border-width-card: 2px;
+  --border-width-underline: 2px;
+  --border-width-underline-thick: 3px;
+  --border-width-dot: 1.5px;
+  --dot-size-inactive: 7px;
+  --dot-size-active: 10px;
+  --shadow-tile: 0 30px 80px rgba(0, 0, 0, 0.35);
+
+  /* Motion */
+  --duration-reveal: 2s;
+  --ease-reveal-transform: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-reveal-opacity: ease;
+  --duration-hover: 0.15s;
+  --debounce-advance: 700ms;
+  --delay-mode-select: 250ms;
+}

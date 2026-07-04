@@ -1,0 +1,20 @@
+# Can I Afford It — Docker Compose orchestration.
+#
+# Run `docker compose up -d --build` from the project root. This is a static,
+# client-only site (no backend, no database) — the container just builds the
+# Vite app and serves it via nginx.
+#
+# Host port 4321 was picked deliberately: 8080 is used by PiLedger, and 4500 /
+# 4566 are used by floci / floci-ui on this machine. Change the left half of
+# the port mapping below (e.g. "9000:80") if 4321 is ever taken too.
+
+services:
+  caniaffordthat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: caniaffordthat:latest
+    container_name: caniaffordthat
+    restart: unless-stopped
+    ports:
+      - "4321:80"
