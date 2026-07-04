@@ -14,6 +14,8 @@ interface StepPanelProps {
   /** Scroll target for this step (steps 0-3 only; the final step scrolls to its panel instead). */
   wrapperRef?: DivRefCallback
   panelStyle?: CSSProperties
+  /** Test-only hook for e2e assertions (e.g. checking the result panel's background color) — never used for styling or behavior. */
+  panelTestId?: string
 }
 
 const DEFAULT_WRAPPER_HEIGHT_VH = 160
@@ -43,10 +45,12 @@ export function StepPanel({
   panelRef,
   wrapperRef,
   panelStyle,
+  panelTestId,
 }: StepPanelProps) {
   const panel = (
     <div
       ref={panelRef}
+      data-testid={panelTestId}
       style={{
         ...basePanelStyle,
         position: isFinal ? undefined : 'sticky',

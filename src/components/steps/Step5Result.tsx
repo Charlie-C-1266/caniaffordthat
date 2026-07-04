@@ -127,6 +127,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
       isFinal
       panelRef={panelRef}
       panelStyle={{ background: panelBackground, padding: '56px 40px 40px' }}
+      panelTestId="result-panel"
     >
       <RevealTile revealed={Boolean(state.revealed[5])} style={{ width: '100%', maxWidth: 680 }}>
         {result ? (
