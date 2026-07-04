@@ -55,7 +55,7 @@ export function Step0Intro({ panelRef, wrapperRef }: Step0IntroProps) {
           >
             Work out whether it's
             <br />
-            actually within reach.
+            within reach.
           </h1>
           <p style={{ margin: '0 0 0', fontSize: 'var(--fs-body)', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
             Answer a few quick questions about what you're buying, what you
