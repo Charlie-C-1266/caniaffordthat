@@ -8,7 +8,7 @@ import type { Mode } from '../../state/types'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
-interface Step0ModeSelectProps {
+interface Step1ModeSelectProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -56,20 +56,20 @@ function ModeCard({ title, body, active, accentColor, activeBg, onClick }: ModeC
   )
 }
 
-/** Step 0 — the user picks which question they want answered. */
-export function Step0ModeSelect({ panelRef, wrapperRef, scrollToIndex }: Step0ModeSelectProps) {
+/** Step 1 — the user picks which question they want answered. */
+export function Step1ModeSelect({ panelRef, wrapperRef, scrollToIndex }: Step1ModeSelectProps) {
   const { state, setField } = useCalculator()
 
   const selectMode = (mode: Mode) => {
     setField('mode', mode)
-    setTimeout(() => scrollToIndex(1), MODE_SELECT_DELAY_MS)
+    setTimeout(() => scrollToIndex(2), MODE_SELECT_DELAY_MS)
   }
 
   return (
-    <StepPanel index={0} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
-      <RevealTile revealed={Boolean(state.revealed[0])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <StepPanel index={1} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
+      <RevealTile revealed={Boolean(state.revealed[1])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={760} padding="52px 48px">
-          <Eyebrow>Can I Afford That?</Eyebrow>
+          <Eyebrow>Get started</Eyebrow>
           <h1
             style={{
               fontSize: 'var(--fs-h1-lg)',

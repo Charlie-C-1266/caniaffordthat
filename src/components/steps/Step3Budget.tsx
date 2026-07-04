@@ -11,7 +11,7 @@ import { accentColorFor } from '../../lib/mode'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
-interface Step2BudgetProps {
+interface Step3BudgetProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -66,30 +66,30 @@ function BudgetField({ label, value, onChange }: BudgetFieldProps) {
   )
 }
 
-/** Step 2 — take-home pay (required) plus six optional monthly outgoings. */
-export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2BudgetProps) {
+/** Step 3 — take-home pay (required) plus six optional monthly outgoings. */
+export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3BudgetProps) {
   const { state, setField } = useCalculator()
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const accent = accentColorFor(state.mode)
 
   const handleTakeHomeChange = (value: string) => {
     setField('takeHome', value)
-    if (num(value) > 0) scheduleAdvance(2, 3)
+    if (num(value) > 0) scheduleAdvance(3, 4)
   }
 
   const handleTakeHomeKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(3)
+    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(4)
   }
 
   return (
     <StepPanel
-      index={2}
+      index={3}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
       wrapperHeightVh={170}
       panelStyle={{ background: 'var(--bg-dark-1)' }}
     >
-      <RevealTile revealed={Boolean(state.revealed[2])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <RevealTile revealed={Boolean(state.revealed[3])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={680} padding="48px 48px">
           <Eyebrow color={accent} marginBottom={16}>
             Your budget
