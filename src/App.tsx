@@ -9,6 +9,7 @@ import { Step3Budget } from './components/steps/Step3Budget'
 import { Step4Timeframe } from './components/steps/Step4Timeframe'
 import { Step5Result } from './components/steps/Step5Result'
 import { Footer } from './components/Footer'
+import { AlphaBadge } from './components/AlphaBadge'
 import { STEP_LABELS } from './lib/constants'
 import { accentColorFor } from './lib/mode'
 
@@ -47,6 +48,7 @@ function BrandMark({ accentColor }: { accentColor: string }) {
     <div style={{ position: 'fixed', top: 22, left: 26, zIndex: 60, display: 'flex', alignItems: 'center', gap: 9 }}>
       <div style={{ width: 20, height: 20, borderRadius: 5, background: accentColor }} />
       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Can I Afford That?</div>
+      <AlphaBadge />
     </div>
   )
 }

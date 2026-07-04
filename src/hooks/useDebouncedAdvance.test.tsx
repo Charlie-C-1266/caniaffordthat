@@ -28,7 +28,7 @@ describe('useDebouncedAdvance', () => {
     vi.useRealTimers()
   })
 
-  it('fires scrollToIndex after the default 700ms delay', () => {
+  it('fires scrollToIndex after the default 1500ms delay', () => {
     const scrollToIndex = vi.fn()
     const { result } = renderHook(() => useHarness(scrollToIndex), { wrapper })
 
@@ -41,7 +41,7 @@ describe('useDebouncedAdvance', () => {
     expect(scrollToIndex).not.toHaveBeenCalled()
 
     act(() => {
-      vi.advanceTimersByTime(700)
+      vi.advanceTimersByTime(1500)
     })
     expect(scrollToIndex).toHaveBeenCalledTimes(1)
     expect(scrollToIndex).toHaveBeenCalledWith(2)
@@ -58,18 +58,18 @@ describe('useDebouncedAdvance', () => {
       result.current.schedule(1, 2)
     })
     act(() => {
-      vi.advanceTimersByTime(400)
+      vi.advanceTimersByTime(800)
     })
     act(() => {
-      result.current.schedule(1, 2) // simulates another keystroke — should reset the 700ms window
+      result.current.schedule(1, 2) // simulates another keystroke — should reset the 1500ms window
     })
     act(() => {
-      vi.advanceTimersByTime(400)
+      vi.advanceTimersByTime(800)
     })
-    expect(scrollToIndex).not.toHaveBeenCalled() // only 400ms elapsed since the reset
+    expect(scrollToIndex).not.toHaveBeenCalled() // only 800ms elapsed since the reset
 
     act(() => {
-      vi.advanceTimersByTime(300)
+      vi.advanceTimersByTime(700)
     })
     expect(scrollToIndex).toHaveBeenCalledTimes(1)
   })
@@ -107,7 +107,7 @@ describe('useDebouncedAdvance', () => {
       result.current.revealStep(3) // user manually scrolled away from step 1 before the timer fired
     })
     act(() => {
-      vi.advanceTimersByTime(700)
+      vi.advanceTimersByTime(1500)
     })
     expect(scrollToIndex).not.toHaveBeenCalled()
   })
@@ -125,7 +125,7 @@ describe('useDebouncedAdvance', () => {
     unmount()
 
     act(() => {
-      vi.advanceTimersByTime(700)
+      vi.advanceTimersByTime(1500)
     })
     expect(scrollToIndex).not.toHaveBeenCalled()
   })

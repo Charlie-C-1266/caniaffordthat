@@ -8,6 +8,8 @@ import {
   addMonths,
   isoFromMonths,
   monthsFromIso,
+  monthYearFromMonths,
+  monthsFromMonthYear,
 } from './calculations'
 
 describe('num', () => {
@@ -145,5 +147,29 @@ describe('date helpers (anchored to the real current date)', () => {
   it('monthsFromIso clamps to a minimum of 1 for the current or a past month', () => {
     expect(monthsFromIso('2026-07')).toBe(1)
     expect(monthsFromIso('2025-01')).toBe(1)
+  })
+
+  it('monthYearFromMonths(0) resolves to the current MM-YYYY', () => {
+    expect(monthYearFromMonths(0)).toBe('07-2026')
+  })
+
+  it('monthYearFromMonths and monthsFromMonthYear round-trip for future months', () => {
+    for (const n of [1, 6, 13, 24]) {
+      expect(monthsFromMonthYear(monthYearFromMonths(n))).toBe(n)
+    }
+  })
+
+  it('monthsFromMonthYear does not clamp — unlike monthsFromIso, it can return 0 or negative', () => {
+    expect(monthsFromMonthYear('07-2026')).toBe(0)
+    expect(monthsFromMonthYear('01-2025')).toBeLessThan(0)
+  })
+
+  it('monthsFromMonthYear returns null for anything that is not a fully valid MM-YYYY date', () => {
+    expect(monthsFromMonthYear('')).toBeNull()
+    expect(monthsFromMonthYear('08-202')).toBeNull()
+    expect(monthsFromMonthYear('13-2026')).toBeNull()
+    expect(monthsFromMonthYear('00-2026')).toBeNull()
+    expect(monthsFromMonthYear('08')).toBeNull()
+    expect(monthsFromMonthYear('not a date')).toBeNull()
   })
 })

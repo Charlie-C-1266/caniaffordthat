@@ -154,7 +154,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     isFeasible,
     fits,
     isAffordable,
-    verdictText: isAffordable ? 'This is affordable' : 'Not quite affordable yet',
+    verdictText: isAffordable ? "Yes — it's within reach." : "No — that's a stretch.",
     verdictSub,
     verdictIcon: isAffordable ? '✓' : '✕',
     verdictIconBg: isAffordable ? 'var(--verdict-affordable)' : 'var(--verdict-not-affordable)',

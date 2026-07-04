@@ -33,6 +33,14 @@ export function Step2ItemPrice({ panelRef, wrapperRef, scrollToIndex }: Step2Ite
     if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(3)
   }
 
+  // Editing the item name after the price is already valid counts as "still
+  // filling this step in" too — otherwise the pending auto-advance from the
+  // price field keeps counting down while the user is mid-keystroke here.
+  const handleItemNameChange = (value: string) => {
+    setField('itemName', value)
+    if (num(state.itemPrice) > 0) scheduleAdvance(2, 3)
+  }
+
   return (
     <StepPanel index={2} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
       <RevealTile revealed={Boolean(state.revealed[2])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
@@ -54,7 +62,7 @@ export function Step2ItemPrice({ panelRef, wrapperRef, scrollToIndex }: Step2Ite
           <div style={{ marginBottom: 32 }}>
             <UnderlineInput
               value={state.itemName}
-              onChange={(value) => setField('itemName', value)}
+              onChange={handleItemNameChange}
               placeholder="e.g. New sofa"
               fontSize="var(--fs-input-md)"
               accentColor={accent}

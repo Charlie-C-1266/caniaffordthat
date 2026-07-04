@@ -5,9 +5,9 @@ import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { MoneyInput } from '../MoneyInput'
 import { useCalculator } from '../../state/calculatorContext'
-import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num } from '../../lib/calculations'
 import { accentColorFor } from '../../lib/mode'
+import type { CalculatorState } from '../../state/types'
 
 type DivRefCallback = (el: HTMLDivElement | null) => void
 
@@ -19,7 +19,7 @@ interface Step3BudgetProps {
 
 type BudgetFieldKey = 'housing' | 'utilities' | 'groceries' | 'transport' | 'debts' | 'savings'
 
-const OPTIONAL_FIELDS: { key: BudgetFieldKey; label: string }[] = [
+const OUTGOING_FIELDS: { key: BudgetFieldKey; label: string }[] = [
   { key: 'housing', label: 'Housing (rent/mortgage)' },
   { key: 'utilities', label: 'Utilities & bills' },
   { key: 'groceries', label: 'Groceries & everyday spend' },
@@ -28,13 +28,20 @@ const OPTIONAL_FIELDS: { key: BudgetFieldKey; label: string }[] = [
   { key: 'savings', label: 'Already saved toward this' },
 ]
 
+// Outgoing fields default to '0' (see defaults.ts) — this mainly guards
+// against someone clearing a field back to blank to reconsider it.
+function isBudgetComplete(fields: Pick<CalculatorState, 'takeHome' | BudgetFieldKey>): boolean {
+  return num(fields.takeHome) > 0 && OUTGOING_FIELDS.every(({ key }) => fields[key] !== '')
+}
+
 interface BudgetFieldProps {
   label: string
   value: string
   onChange: (value: string) => void
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
 }
 
-function BudgetField({ label, value, onChange }: BudgetFieldProps) {
+function BudgetField({ label, value, onChange, onKeyDown }: BudgetFieldProps) {
   return (
     <div>
       <label
@@ -51,6 +58,7 @@ function BudgetField({ label, value, onChange }: BudgetFieldProps) {
       <MoneyInput
         value={value}
         onChange={onChange}
+        onKeyDown={onKeyDown}
         accentColor="var(--text-primary)"
         idleColor="var(--input-underline)"
         fontSize="var(--fs-body-lg)"
@@ -66,19 +74,19 @@ function BudgetField({ label, value, onChange }: BudgetFieldProps) {
   )
 }
 
-/** Step 3 — take-home pay (required) plus six optional monthly outgoings. */
+/**
+ * Step 3 — take-home pay plus six monthly outgoings, pre-filled at £0.
+ * No pause-based auto-advance here (unlike steps 2 and 3's price/take-home
+ * fields) — with seven fields on screen, a debounce firing mid-check-through
+ * yanks people away before they've actually looked at the values. Enter (from
+ * any field) or a manual scroll are the only ways forward.
+ */
 export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3BudgetProps) {
   const { state, setField } = useCalculator()
-  const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const accent = accentColorFor(state.mode)
 
-  const handleTakeHomeChange = (value: string) => {
-    setField('takeHome', value)
-    if (num(value) > 0) scheduleAdvance(3, 4)
-  }
-
-  const handleTakeHomeKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(4)
+  const handleEnterAdvance = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && isBudgetComplete(state)) scrollToIndex(4)
   }
 
   return (
@@ -122,8 +130,8 @@ export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3Budget
             </label>
             <MoneyInput
               value={state.takeHome}
-              onChange={handleTakeHomeChange}
-              onKeyDown={handleTakeHomeKeyDown}
+              onChange={(value) => setField('takeHome', value)}
+              onKeyDown={handleEnterAdvance}
               accentColor={accent}
               fontSize="var(--fs-price-md)"
               prefixFontSize="var(--fs-prefix-md)"
@@ -143,16 +151,22 @@ export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3Budget
               marginBottom: 14,
             }}
           >
-            Monthly outgoings (optional, but more detail = a better number)
+            Monthly outgoings (defaulted to £0 — adjust what applies to you)
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
-            {OPTIONAL_FIELDS.map(({ key, label }) => (
-              <BudgetField key={key} label={label} value={state[key]} onChange={(value) => setField(key, value)} />
+            {OUTGOING_FIELDS.map(({ key, label }) => (
+              <BudgetField
+                key={key}
+                label={label}
+                value={state[key]}
+                onChange={(value) => setField(key, value)}
+                onKeyDown={handleEnterAdvance}
+              />
             ))}
           </div>
 
           <div style={{ marginTop: 22, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
-            Only take-home is required — press Enter or pause to continue ↓
+            Adjust anything that applies, then press Enter or scroll to continue ↓
           </div>
         </Tile>
       </RevealTile>
