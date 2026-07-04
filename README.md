@@ -30,3 +30,22 @@ PiLedger on 8080 and floci on 4500/4566 on this machine).
 Zero-config on Vercel or Netlify — it's a pure static build with no backend:
 build command `npm run build`, publish directory `dist`. Both platforms
 auto-detect Vite, so importing the GitHub repo directly should just work.
+
+Live on Vercel, connected directly to this GitHub repo — every push and PR
+gets its own preview deployment automatically (Vercel's native Git
+integration, no GitHub Actions involved in the deploy itself).
+
+## Workflow
+
+Changes land via PR, not direct pushes to `main`:
+
+```bash
+git checkout -b feature/short-description   # or bugfix/short-description
+# ...make changes...
+git push -u origin feature/short-description
+```
+
+Open a PR into `main`. That gives you two things automatically: a Vercel
+preview URL on the PR (via Vercel's Git integration) and a CI run
+(`.github/workflows/ci.yml` — typecheck, lint, test, build) that has to pass
+before merging.
