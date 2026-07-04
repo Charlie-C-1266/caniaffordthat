@@ -1,8 +1,35 @@
 import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance, addMonths } from './calculations'
 import type { CalculatorState } from '../state/types'
 
+// 5 years is MoneyHelper's (the UK's government-backed money guidance
+// service) rule of thumb for the boundary between "keep it in cash savings"
+// and "consider investing instead" — see moneyhelper.org.uk/en/savings/how-to-save/should-i-save-or-invest.
+// A plan that takes longer than this to reach the goal is arguably no longer
+// a simple cash-savings plan for a specific purchase, which is what this
+// mode assumes.
 const AFFORDABILITY_MONTHS_CAP = 60
 const CHART_MONTHS_CAP = 24
+
+// No UK body publishes a rule of thumb framed exactly as "% of leftover cash
+// after essentials" (our "spare cash"), so these are derived from two UK
+// ones that are, both converted the same way: Halifax's 50/30/20 split (50%
+// needs, 30% wants, 20% savings/future) puts spare cash at roughly 50% of
+// take-home pay, so a share-of-income figure X% becomes a share-of-spare-cash
+// figure of X / 0.5:
+//   - 0.4 (comfortable cutoff) = 20% of income / 50% = the 50/30/20 split's
+//     own "savings/future" bucket. A commitment at or under this could be
+//     absorbed there alone, without touching the "wants" bucket at all.
+//   - 0.6 (tight cutoff) = 30% of income / 50% = MoneyHelper's own named
+//     "30% rule" for rent affordability (a ceiling for a single major line
+//     item — moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford).
+//     Above this, the commitment alone already exceeds what MoneyHelper
+//     considers the ceiling for one major item, independent of anything
+//     else in the budget.
+// Below the first threshold is "comfortable", between the two is a "good
+// chunk", above the second is "tight". See the in-app "Our sources" button
+// for the actual linked pages.
+const SPARE_CASH_COMFORTABLE_RATIO = 0.4
+const SPARE_CASH_TIGHT_RATIO = 0.6
 
 export interface ChartBar {
   heightPct: number
@@ -139,9 +166,14 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
         : `Saving ${fmt(contribution)}/month gets you there by ${addMonths(months)}.`
   } else {
     isAffordable = fits
-    verdictSub = fits
-      ? `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
-      : `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
+    const spareCashRatio = spareCash > 0 ? contribution / spareCash : Infinity
+    verdictSub = !fits
+      ? `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
+      : spareCashRatio <= SPARE_CASH_COMFORTABLE_RATIO
+        ? `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
+        : spareCashRatio <= SPARE_CASH_TIGHT_RATIO
+          ? `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
+          : `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
   }
 
   return {

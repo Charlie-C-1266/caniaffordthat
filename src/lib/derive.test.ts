@@ -88,6 +88,29 @@ describe('deriveResult', () => {
       expect(result?.isAffordable).toBe(false)
       expect(result?.verdictSub).toMatch(/more than your spare cash/)
     })
+
+    it('tiers the "fits" copy by how much of spare cash the contribution uses', () => {
+      // £100 contribution / £2000 spare cash = 5% -> comfortable
+      const comfortable = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }),
+      )
+      expect(comfortable?.verdictSub).toMatch(/comfortably/)
+
+      // £500 / £1000 = 50% -> a "good chunk", not comfortable, not tight
+      const moderate = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '6000', takeHome: '1000', goalMonths: 12 }),
+      )
+      expect(moderate?.isAffordable).toBe(true)
+      expect(moderate?.verdictSub).toMatch(/good chunk/)
+      expect(moderate?.verdictSub).not.toMatch(/comfortably|tight/)
+
+      // £900 / £1000 = 90% -> tight
+      const tight = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '10800', takeHome: '1000', goalMonths: 12 }),
+      )
+      expect(tight?.isAffordable).toBe(true)
+      expect(tight?.verdictSub).toMatch(/tight/)
+    })
   })
 
   describe('paying monthly (finance)', () => {

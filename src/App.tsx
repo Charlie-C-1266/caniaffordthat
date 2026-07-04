@@ -10,6 +10,7 @@ import { Step4Timeframe } from './components/steps/Step4Timeframe'
 import { Step5Result } from './components/steps/Step5Result'
 import { Footer } from './components/Footer'
 import { AlphaBadge } from './components/AlphaBadge'
+import { SourcesButton } from './components/SourcesButton'
 import { STEP_LABELS } from './lib/constants'
 import { accentColorFor } from './lib/mode'
 
@@ -23,10 +24,6 @@ function StartOverButton({ onClick }: { onClick: () => void }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: 'fixed',
-        top: 20,
-        right: 26,
-        zIndex: 60,
         background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
         border: '1px solid rgba(255,255,255,0.12)',
         color: 'var(--text-primary)',
@@ -40,6 +37,16 @@ function StartOverButton({ onClick }: { onClick: () => void }) {
     >
       Start over
     </button>
+  )
+}
+
+/** Fixed top-right button row — both share this single positioning context rather than guessing pixel offsets against each other. */
+function TopRightControls({ onReset }: { onReset: () => void }) {
+  return (
+    <div style={{ position: 'fixed', top: 20, right: 26, zIndex: 60, display: 'flex', gap: 10, alignItems: 'center' }}>
+      <SourcesButton />
+      <StartOverButton onClick={onReset} />
+    </div>
   )
 }
 
@@ -70,7 +77,7 @@ function App() {
   return (
     <>
       <BrandMark accentColor={accent} />
-      <StartOverButton onClick={handleReset} />
+      <TopRightControls onReset={handleReset} />
       <ProgressRail activeIndex={state.activeIndex} labels={STEP_LABELS} accentColor={accent} onSelect={scrollToIndex} />
 
       <Step0Intro panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} />
