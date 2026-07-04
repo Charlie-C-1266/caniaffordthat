@@ -12,21 +12,23 @@ const CHART_MONTHS_CAP = 24
 
 // No UK body publishes a rule of thumb framed exactly as "% of leftover cash
 // after essentials" (our "spare cash"), but these two thresholds triangulate
-// from ones that do exist, converting via the widely-cited 50/30/20 split
-// (50% needs, 30% wants, 20% savings/future) — i.e. spare cash roughly
-// corresponds to that 30%+20% discretionary half of take-home pay, not the
-// whole income:
+// from ones that do, converting via the widely-cited 50/30/20 split (50%
+// needs, 30% wants, 20% savings/future — see Halifax's explainer) — i.e.
+// spare cash roughly corresponds to that 30%+20% discretionary half of
+// take-home pay, not the whole income:
 //   - 0.4 (comfortable cutoff): works out to ~12-20% of total income for a
-//     single commitment, matching car-buying affordability rules of thumb
-//     (the 20/4/10 and 20/3/8 rules put a single major discretionary
-//     commitment at ~10-20% of income).
+//     single commitment, close to MoneyHelper's own "30% rule" for rent
+//     affordability (moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford)
+//     — a single major line item well under 30% of income reads as
+//     comfortable by that standard too.
 //   - 0.75 (tight cutoff): works out to ~30-37% of total income, around
-//     where the mortgage industry's 28/36 rule (one line item at 28% of
-//     gross income, all commitments at 36%) starts calling things
-//     stretched, and near the 40-50%-of-income range UK debt charities
-//     commonly flag as a sign of over-indebtedness.
+//     where MoneyHelper's mortgage-spend guidance (typically 28-35% of
+//     income — moneyhelper.org.uk/en/blog/buy-or-rent-a-home/how-much-should-i-spend-on-a-mortgage)
+//     and the same rent affordability rule both start to describe a
+//     commitment as stretching the budget.
 // Below the first threshold is "comfortable", between the two is a "good
-// chunk", above the second is "tight".
+// chunk", above the second is "tight". See the in-app "Our sources" button
+// for the actual linked pages.
 const SPARE_CASH_COMFORTABLE_RATIO = 0.4
 const SPARE_CASH_TIGHT_RATIO = 0.75
 
