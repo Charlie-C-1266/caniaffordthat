@@ -1,11 +1,32 @@
 import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance, addMonths } from './calculations'
 import type { CalculatorState } from '../state/types'
 
+// 5 years is MoneyHelper's (the UK's government-backed money guidance
+// service) rule of thumb for the boundary between "keep it in cash savings"
+// and "consider investing instead" — see moneyhelper.org.uk/en/savings/how-to-save/should-i-save-or-invest.
+// A plan that takes longer than this to reach the goal is arguably no longer
+// a simple cash-savings plan for a specific purchase, which is what this
+// mode assumes.
 const AFFORDABILITY_MONTHS_CAP = 60
 const CHART_MONTHS_CAP = 24
-// Above this share of spare cash, a fitting contribution stops reading as
-// "comfortable"; above this one, it's "tight". Below the first threshold is
-// comfortable, between the two is a "fair chunk", above the second is tight.
+
+// No UK body publishes a rule of thumb framed exactly as "% of leftover cash
+// after essentials" (our "spare cash"), but these two thresholds triangulate
+// from ones that do exist, converting via the widely-cited 50/30/20 split
+// (50% needs, 30% wants, 20% savings/future) — i.e. spare cash roughly
+// corresponds to that 30%+20% discretionary half of take-home pay, not the
+// whole income:
+//   - 0.4 (comfortable cutoff): works out to ~12-20% of total income for a
+//     single commitment, matching car-buying affordability rules of thumb
+//     (the 20/4/10 and 20/3/8 rules put a single major discretionary
+//     commitment at ~10-20% of income).
+//   - 0.75 (tight cutoff): works out to ~30-37% of total income, around
+//     where the mortgage industry's 28/36 rule (one line item at 28% of
+//     gross income, all commitments at 36%) starts calling things
+//     stretched, and near the 40-50%-of-income range UK debt charities
+//     commonly flag as a sign of over-indebtedness.
+// Below the first threshold is "comfortable", between the two is a "good
+// chunk", above the second is "tight".
 const SPARE_CASH_COMFORTABLE_RATIO = 0.4
 const SPARE_CASH_TIGHT_RATIO = 0.75
 
