@@ -6,8 +6,7 @@ import { MonthYearInput } from '../MonthYearInput'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
 import type { SaveFlavor } from '../../state/types'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step4TimeframeProps {
   panelRef: DivRefCallback

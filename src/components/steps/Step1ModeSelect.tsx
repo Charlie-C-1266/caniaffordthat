@@ -5,8 +5,7 @@ import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { useCalculator } from '../../state/calculatorContext'
 import type { Mode } from '../../state/types'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step1ModeSelectProps {
   panelRef: DivRefCallback

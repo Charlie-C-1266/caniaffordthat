@@ -8,8 +8,7 @@ import { useCalculator } from '../../state/calculatorContext'
 import { num } from '../../lib/calculations'
 import { accentColorFor } from '../../lib/mode'
 import type { CalculatorState } from '../../state/types'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step3BudgetProps {
   panelRef: DivRefCallback
