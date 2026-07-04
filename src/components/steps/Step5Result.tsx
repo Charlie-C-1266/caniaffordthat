@@ -7,8 +7,7 @@ import { fmt, num } from '../../lib/calculations'
 import { copyToClipboard } from '../../lib/clipboard'
 import { accentColorFor } from '../../lib/mode'
 import type { ChartBar } from '../../lib/derive'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step5ResultProps {
   panelRef: DivRefCallback

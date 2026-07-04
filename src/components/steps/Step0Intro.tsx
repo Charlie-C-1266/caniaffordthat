@@ -2,8 +2,7 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { useCalculator } from '../../state/calculatorContext'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step0IntroProps {
   panelRef: DivRefCallback

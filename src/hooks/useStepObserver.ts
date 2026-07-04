@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useCalculator } from '../state/calculatorContext'
+import type { DivRefCallback } from '../lib/refs'
 
 // Centers the intersection "trigger zone" on the middle 40% of the viewport,
 // so whichever step's panel occupies that band is treated as active.
 const OBSERVER_ROOT_MARGIN = '-30% 0px -30% 0px'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
 
 /**
  * Wires the scrollytelling reveal/progress mechanics described in the design

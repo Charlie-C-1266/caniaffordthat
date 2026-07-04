@@ -9,8 +9,7 @@ import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num } from '../../lib/calculations'
 import { accentColorFor, modeLabelFor } from '../../lib/mode'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../../lib/refs'
 
 interface Step2ItemPriceProps {
   panelRef: DivRefCallback

@@ -1,6 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-
-type DivRefCallback = (el: HTMLDivElement | null) => void
+import type { DivRefCallback } from '../lib/refs'
 
 interface StepPanelProps {
   children: ReactNode
