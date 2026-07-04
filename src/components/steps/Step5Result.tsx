@@ -102,6 +102,14 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
   const [copied, setCopied] = useState(false)
   const accent = accentColorFor(state.mode)
   const result = deriveResult(state)
+  // The background communicates the verdict once there is one — green for
+  // affordable, red for not — falling back to the mode's own accent while
+  // there's nothing to verdict on yet (price/take-home still unfilled).
+  const panelBackground = result
+    ? result.isAffordable
+      ? 'var(--verdict-affordable)'
+      : 'var(--verdict-not-affordable)'
+    : accent
 
   const copyLink = async () => {
     const params = new URLSearchParams()
@@ -119,7 +127,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
       index={5}
       isFinal
       panelRef={panelRef}
-      panelStyle={{ background: accent, padding: '56px 40px 40px' }}
+      panelStyle={{ background: panelBackground, padding: '56px 40px 40px' }}
     >
       <RevealTile revealed={Boolean(state.revealed[5])} style={{ width: '100%', maxWidth: 680 }}>
         {result ? (
@@ -265,7 +273,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
                   border: 'none',
                   borderRadius: 'var(--radius-button)',
                   background: 'var(--result-text-primary)',
-                  color: accent,
+                  color: panelBackground,
                   fontSize: 'var(--fs-body)',
                   fontWeight: 700,
                   cursor: 'pointer',

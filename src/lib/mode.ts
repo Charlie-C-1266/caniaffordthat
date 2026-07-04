@@ -1,6 +1,12 @@
 import type { Mode } from '../state/types'
 
-/** The accent color for the active mode — green for saving, violet for financing. */
+// Both branches currently resolve to the same token value (see tokens.css) —
+// green/red are reserved for the result screen's verdict, so the two modes
+// deliberately no longer have visually distinct accents. Kept branching on
+// `mode` rather than collapsed to a constant so a future per-mode accent is
+// a tokens.css change, not a call-site one.
+
+/** The accent color for the active mode. */
 export function accentColorFor(mode: Mode): string {
   return mode === 'save' ? 'var(--accent-save)' : 'var(--accent-finance)'
 }

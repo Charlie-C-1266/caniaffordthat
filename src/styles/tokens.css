@@ -15,10 +15,13 @@
   --text-tertiary: rgba(245, 243, 255, 0.4);
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
 
-  /* Colors — accents (mode-dependent) */
-  --accent-save: #2ed573;
+  /* Colors — accent. Both modes share this now — green/red are reserved
+     for the result screen's affordable/not-affordable verdict, so "saving
+     up" no longer gets its own green (that used to be the exact same green
+     as "affordable", which muddied the verdict's visual impact there). */
+  --accent-save: #7c5cfc;
   --accent-finance: #7c5cfc;
-  --accent-save-bg: rgba(46, 213, 115, 0.16);
+  --accent-save-bg: rgba(124, 92, 252, 0.16);
   --accent-finance-bg: rgba(124, 92, 252, 0.16);
 
   /* Colors — verdict */
