@@ -3,6 +3,11 @@ import type { CalculatorState } from '../state/types'
 
 const AFFORDABILITY_MONTHS_CAP = 60
 const CHART_MONTHS_CAP = 24
+// Above this share of spare cash, a fitting contribution stops reading as
+// "comfortable"; above this one, it's "tight". Below the first threshold is
+// comfortable, between the two is a "fair chunk", above the second is tight.
+const SPARE_CASH_COMFORTABLE_RATIO = 0.4
+const SPARE_CASH_TIGHT_RATIO = 0.75
 
 export interface ChartBar {
   heightPct: number
@@ -139,9 +144,14 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
         : `Saving ${fmt(contribution)}/month gets you there by ${addMonths(months)}.`
   } else {
     isAffordable = fits
-    verdictSub = fits
-      ? `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
-      : `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
+    const spareCashRatio = spareCash > 0 ? contribution / spareCash : Infinity
+    verdictSub = !fits
+      ? `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
+      : spareCashRatio <= SPARE_CASH_COMFORTABLE_RATIO
+        ? `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
+        : spareCashRatio <= SPARE_CASH_TIGHT_RATIO
+          ? `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
+          : `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
   }
 
   return {
