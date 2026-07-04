@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
+import { MonthYearInput } from '../MonthYearInput'
 import { useCalculator } from '../../state/calculatorContext'
-import { isoFromMonths, monthsFromIso } from '../../lib/calculations'
 import { accentColorFor } from '../../lib/mode'
 import type { SaveFlavor } from '../../state/types'
 
@@ -78,7 +77,6 @@ function ToggleButton({ label, active, accentColor, onClick }: ToggleButtonProps
 
 function GoalDateInput({ accentColor }: { accentColor: string }) {
   const { state, setField } = useCalculator()
-  const [focused, setFocused] = useState(false)
 
   return (
     <div>
@@ -91,28 +89,13 @@ function GoalDateInput({ accentColor }: { accentColor: string }) {
           marginBottom: 8,
         }}
       >
-        Goal date
+        Goal date (MM-YYYY)
       </label>
-      <input
-        type="month"
-        value={isoFromMonths(state.goalMonths)}
-        min={isoFromMonths(1)}
-        onChange={(e) => setField('goalMonths', monthsFromIso(e.target.value))}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          padding: '12px 14px',
-          fontSize: 16,
-          fontWeight: 600,
-          border: `var(--border-width-card) solid ${focused ? accentColor : 'var(--input-underline)'}`,
-          borderRadius: 10,
-          background: 'rgba(255,255,255,0.04)',
-          color: 'var(--text-primary)',
-          fontFamily: 'inherit',
-          outline: 'none',
-        }}
+      <MonthYearInput
+        months={state.goalMonths}
+        minMonths={1}
+        accentColor={accentColor}
+        onChange={(months) => setField('goalMonths', months)}
       />
     </div>
   )

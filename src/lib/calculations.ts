@@ -82,3 +82,27 @@ export function monthsFromIso(iso: string): number {
   const now = startOfCurrentMonth()
   return Math.max(1, (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1)))
 }
+
+// "MM-YYYY" for `n` months from now, e.g. "08-2026" — used by the goal-date
+// field instead of a native <input type="month">, which clamps/snaps back to
+// a fallback value the moment the field is cleared or made temporarily
+// invalid while typing.
+export function monthYearFromMonths(n: number): string {
+  const d = startOfCurrentMonth()
+  d.setMonth(d.getMonth() + n)
+  return `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+}
+
+// Parses "MM-YYYY" into months from now. Returns null (not a clamped
+// fallback) for anything that isn't a fully valid month/year, so callers can
+// tell "still being typed" apart from "a real date" and decide what to do —
+// unlike `monthsFromIso`, this never silently coerces bad input into NaN.
+export function monthsFromMonthYear(value: string): number | null {
+  const match = /^(\d{1,2})-(\d{4})$/.exec(value.trim())
+  if (!match) return null
+  const month = Number(match[1])
+  const year = Number(match[2])
+  if (month < 1 || month > 12) return null
+  const now = startOfCurrentMonth()
+  return (year - now.getFullYear()) * 12 + (month - (now.getMonth() + 1))
+}
