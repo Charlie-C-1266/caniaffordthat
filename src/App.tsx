@@ -7,6 +7,7 @@ import { Step1ItemPrice } from './components/steps/Step1ItemPrice'
 import { Step2Budget } from './components/steps/Step2Budget'
 import { Step3Timeframe } from './components/steps/Step3Timeframe'
 import { Step4Result } from './components/steps/Step4Result'
+import { Footer } from './components/Footer'
 import { STEP_LABELS } from './lib/constants'
 import { accentColorFor } from './lib/mode'
 
@@ -74,6 +75,7 @@ function App() {
       <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
       <Step3Timeframe panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
       <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
+      <Footer />
     </>
   )
 }
