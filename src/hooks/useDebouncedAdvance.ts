@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useCalculator } from '../state/calculatorContext'
 
-const DEFAULT_DEBOUNCE_MS = 700
+const DEFAULT_DEBOUNCE_MS = 1500
 
 /**
  * Schedules an auto-advance scroll from `fromIndex` to `toIndex`, debounced

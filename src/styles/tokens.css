@@ -88,6 +88,6 @@
   --ease-reveal-transform: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-reveal-opacity: ease;
   --duration-hover: 0.15s;
-  --debounce-advance: 700ms;
+  --debounce-advance: 1500ms;
   --delay-mode-select: 250ms;
 }

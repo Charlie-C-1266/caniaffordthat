@@ -34,7 +34,7 @@ describe('deriveResult', () => {
       expect(result?.isFeasible).toBe(true)
       expect(result?.isAffordable).toBe(true)
       expect(result?.months).toBe(4)
-      expect(result?.verdictText).toBe('This is affordable')
+      expect(result?.verdictText).toBe("Yes — it's within reach.")
     })
 
     it('is not affordable when the contribution is 0 (rate rounds down to nothing)', () => {
@@ -51,7 +51,7 @@ describe('deriveResult', () => {
       // spareCash = max(0, 0.5 - 0.5) = 0 -> contribution = 0 -> Infinity months
       expect(result?.isFeasible).toBe(false)
       expect(result?.isAffordable).toBe(false)
-      expect(result?.verdictText).toBe('Not quite affordable yet')
+      expect(result?.verdictText).toBe("No — that's a stretch.")
       expect(result?.verdictSub).toMatch(/increase how much you save/i)
     })
 
