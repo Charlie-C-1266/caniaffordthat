@@ -15,16 +15,23 @@
   --text-tertiary: rgba(245, 243, 255, 0.4);
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
 
-  /* Colors — accent. Both modes share this now — green/red are reserved
-     for the result screen's affordable/not-affordable verdict, so "saving
-     up" no longer gets its own green (that used to be the exact same green
-     as "affordable", which muddied the verdict's visual impact there). */
-  --accent-save: #7c5cfc;
+  /* Colors — accent (v2 goal-based re-theme, see design/adr/0003). Green is
+     the primary/brand + "saving up" accent; violet is "paying monthly". The
+     result screen now paints its background the active mode's accent, so the
+     verdict (affordable/not) is carried by the small pill icon, not the whole
+     screen — green/red are no longer the page background. */
+  --accent-save: #2ed573;
   --accent-finance: #7c5cfc;
-  --accent-save-bg: rgba(124, 92, 252, 0.16);
+  --accent-save-bg: rgba(46, 213, 115, 0.16);
   --accent-finance-bg: rgba(124, 92, 252, 0.16);
+  /* Dark text that sits on a filled accent (buttons, selected toggles). */
+  --on-accent-save: #07230f;
+  --on-accent-finance: #0e0d16;
+  --accent-save-gradient: linear-gradient(135deg, #2ed573, #16bd6b);
+  /* Green -> cyan gradient used for the emphasised hero word. */
+  --brand-text-gradient: linear-gradient(120deg, #2ed573, #5ee0ff);
 
-  /* Colors — verdict */
+  /* Colors — verdict (the result pill only) */
   --verdict-affordable: #2ed573;
   --verdict-not-affordable: #ff5c5c;
 

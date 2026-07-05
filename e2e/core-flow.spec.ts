@@ -1,27 +1,51 @@
 import { test, expect } from '@playwright/test'
-import { goToTimeframe, goToResult } from './helpers'
+import { goToPlan, goToResult } from './helpers'
 
 test.describe('core flow', () => {
-  test('intro screen loads with the expected headline and helper text', async ({ page }) => {
+  test('landing is the goal carousel with its value-prop pill', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: /within reach/i })).toBeVisible()
-    await expect(page.getByText('Scroll to begin')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()
+    await expect(page.getByText('Free · no sign-up · takes 2 minutes')).toBeVisible()
+    // The carousel opens focused on Vehicle, ready to choose.
+    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
   })
 
-  test('mode-select shows both cards, and picking one advances to item+price', async ({ page }) => {
+  test('goal picker shows goals, and choosing one advances to tailored details', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('button', { name: 'Saving up' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Paying monthly' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Saving up' }).click()
-    await expect(page.getByPlaceholder('e.g. New sofa')).toBeVisible()
+    await page.getByRole('button', { name: 'Go to Big purchase' }).click()
+    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+
+    await expect(page.getByPlaceholder('e.g. Wedding, new kitchen, sofa')).toBeVisible()
+  })
+
+  test('Mortgage is shown as coming soon and cannot be chosen', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Go to Mortgage' }).click()
+    await expect(page.getByRole('button', { name: 'Coming soon', exact: true })).toBeDisabled()
+  })
+
+  test('the carousel wraps: going back from the first goal lands on the last', async ({ page }) => {
+    await page.goto('/')
+    // Opens focused on Vehicle (the Choose button names the focused goal).
+    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
+
+    // Left from the first goal wraps to the last (Mortgage, "Coming soon").
+    await page.getByRole('button', { name: 'Previous goal' }).click()
+    await expect(page.getByRole('button', { name: 'Coming soon', exact: true })).toBeVisible()
+
+    // Right from the last wraps back to the first.
+    await page.getByRole('button', { name: 'Next goal' }).click()
+    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
   })
 
   test('entering a price and pressing Enter advances to the budget step', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Saving up' }).click()
+    await page.getByRole('button', { name: 'Go to Big purchase' }).click()
+    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
 
-    await page.getByPlaceholder('e.g. New sofa').fill('New sofa')
+    await page.getByPlaceholder('e.g. Wedding, new kitchen, sofa').fill('New sofa')
     const priceInput = page.locator('input[type="number"]').nth(0)
     await priceInput.fill('1200')
     await priceInput.press('Enter')
@@ -30,10 +54,11 @@ test.describe('core flow', () => {
     await expect(page.getByText('Housing (rent/mortgage)')).toBeVisible()
   })
 
-  test('budget fields default to £0 and take-home + Enter advances to timeframe', async ({ page }) => {
+  test('budget fields default to £0 and take-home + Enter advances to the plan step', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: 'Saving up' }).click()
-    await page.getByPlaceholder('e.g. New sofa').fill('New sofa')
+    await page.getByRole('button', { name: 'Go to Big purchase' }).click()
+    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+    await page.getByPlaceholder('e.g. Wedding, new kitchen, sofa').fill('New sofa')
     const priceInput = page.locator('input[type="number"]').nth(0)
     await priceInput.fill('1200')
     await priceInput.press('Enter')
@@ -48,8 +73,14 @@ test.describe('core flow', () => {
     await expect(page.getByText('How do you want')).toBeVisible()
   })
 
+  test('the share-of-spare-cash slider shows the £/month it represents', async ({ page }) => {
+    await goToPlan(page, { itemPrice: '1200', takeHome: '2000' })
+    // Default 25% of £2,000 spare cash (no outgoings) = £500/mo, shown live.
+    await expect(page.getByText('25% · £500/mo')).toBeVisible()
+  })
+
   test('full flow reaches a result with the expected verdict and breakdown', async ({ page }) => {
-    await goToTimeframe(page, { itemName: 'New sofa', itemPrice: '1200', takeHome: '2000' })
+    await goToPlan(page, { itemName: 'New sofa', itemPrice: '1200', takeHome: '2000' })
     // Switch to goal-date flavor (default goalMonths=12, 0% growth) for a
     // deterministic £1,200/12 = £100/mo, rather than duration mode's
     // months-to-save headline, whose expected date shifts with "now".

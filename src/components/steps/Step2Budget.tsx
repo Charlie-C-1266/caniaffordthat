@@ -6,11 +6,11 @@ import { Eyebrow } from '../Eyebrow'
 import { MoneyInput } from '../MoneyInput'
 import { useCalculator } from '../../state/calculatorContext'
 import { num } from '../../lib/calculations'
+import { goalById } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
-import type { CalculatorState } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step3BudgetProps {
+interface Step2BudgetProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -24,14 +24,7 @@ const OUTGOING_FIELDS: { key: BudgetFieldKey; label: string }[] = [
   { key: 'groceries', label: 'Groceries & everyday spend' },
   { key: 'transport', label: 'Transport' },
   { key: 'debts', label: 'Debt repayments' },
-  { key: 'savings', label: 'Already saved toward this' },
 ]
-
-// Outgoing fields default to '0' (see defaults.ts) — this mainly guards
-// against someone clearing a field back to blank to reconsider it.
-function isBudgetComplete(fields: Pick<CalculatorState, 'takeHome' | BudgetFieldKey>): boolean {
-  return num(fields.takeHome) > 0 && OUTGOING_FIELDS.every(({ key }) => fields[key] !== '')
-}
 
 interface BudgetFieldProps {
   label: string
@@ -74,32 +67,53 @@ function BudgetField({ label, value, onChange, onKeyDown }: BudgetFieldProps) {
 }
 
 /**
- * Step 3 — take-home pay plus six monthly outgoings, pre-filled at £0.
- * No pause-based auto-advance here (unlike steps 2 and 3's price/take-home
- * fields) — with seven fields on screen, a debounce firing mid-check-through
- * yanks people away before they've actually looked at the values. Enter (from
- * any field) or a manual scroll are the only ways forward.
+ * Step 3 — take-home pay plus monthly outgoings. Which fields show depends on
+ * the goal (see design/adr/0004-0005): the emergency fund already captured its
+ * essentials in Details (so here it only needs take-home + what's set aside),
+ * and the car captured its deposit in Details (so its "already saved" field is
+ * hidden here). No pause-based auto-advance — with several fields on screen a
+ * debounce firing mid-check-through yanks people away before they've looked.
  */
-export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3BudgetProps) {
+export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2BudgetProps) {
   const { state, setField } = useCalculator()
+  const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
 
+  const isEmergency = goal?.emergency === true
+  // The car's savings is its Details deposit; don't ask for it twice.
+  const showSavings = !goal?.deposit
+  const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved toward this'
+  // Emergency essentials live in Details; other goals collect outgoings here.
+  const outgoings = isEmergency ? [] : OUTGOING_FIELDS
+  const visibleKeys: BudgetFieldKey[] = [...outgoings.map((f) => f.key), ...(showSavings ? (['savings'] as const) : [])]
+
+  const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
+
   const handleEnterAdvance = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && isBudgetComplete(state)) scrollToIndex(4)
+    if (event.key === 'Enter' && isComplete) scrollToIndex(3)
   }
+
+  const savingsField = showSavings && (
+    <BudgetField
+      label={savingsLabel}
+      value={state.savings}
+      onChange={(value) => setField('savings', value)}
+      onKeyDown={handleEnterAdvance}
+    />
+  )
 
   return (
     <StepPanel
-      index={3}
+      index={2}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
       wrapperHeightVh={170}
       panelStyle={{ background: 'var(--bg-dark-1)' }}
     >
-      <RevealTile revealed={Boolean(state.revealed[3])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <RevealTile revealed={Boolean(state.revealed[2])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={680} padding="48px 48px">
           <Eyebrow color={accent} marginBottom={16}>
-            Your budget
+            Step 2 — Your budget
           </Eyebrow>
           <h1
             style={{
@@ -110,9 +124,7 @@ export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3Budget
               margin: '0 0 30px',
             }}
           >
-            What's coming in,
-            <br />
-            and going out?
+            {isEmergency ? "What's coming in?" : "What's coming in, and going out?"}
           </h1>
 
           <div style={{ marginBottom: 24 }}>
@@ -140,29 +152,36 @@ export function Step3Budget({ panelRef, wrapperRef, scrollToIndex }: Step3Budget
             />
           </div>
 
-          <div
-            style={{
-              fontSize: 'var(--fs-label)',
-              fontWeight: 700,
-              color: 'var(--text-tertiary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              marginBottom: 14,
-            }}
-          >
-            Monthly outgoings (defaulted to £0 — adjust what applies to you)
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
-            {OUTGOING_FIELDS.map(({ key, label }) => (
-              <BudgetField
-                key={key}
-                label={label}
-                value={state[key]}
-                onChange={(value) => setField(key, value)}
-                onKeyDown={handleEnterAdvance}
-              />
-            ))}
-          </div>
+          {isEmergency ? (
+            savingsField && <div style={{ maxWidth: 320 }}>{savingsField}</div>
+          ) : (
+            <>
+              <div
+                style={{
+                  fontSize: 'var(--fs-label)',
+                  fontWeight: 700,
+                  color: 'var(--text-tertiary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  marginBottom: 14,
+                }}
+              >
+                Monthly outgoings (defaulted to £0 — adjust what applies to you)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
+                {outgoings.map(({ key, label }) => (
+                  <BudgetField
+                    key={key}
+                    label={label}
+                    value={state[key]}
+                    onChange={(value) => setField(key, value)}
+                    onKeyDown={handleEnterAdvance}
+                  />
+                ))}
+                {savingsField}
+              </div>
+            </>
+          )}
 
           <div style={{ marginTop: 22, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
             Adjust anything that applies, then press Enter or scroll to continue ↓

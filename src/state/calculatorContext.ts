@@ -5,6 +5,8 @@ export interface CalculatorContextValue {
   state: CalculatorState
   /** Patches a single field, leaving the rest of the state untouched. */
   setField: <K extends keyof CalculatorState>(key: K, value: CalculatorState[K]) => void
+  /** Patches several fields in one update — used when selecting a goal seeds mode, term, etc. at once. */
+  setFields: (patch: Partial<CalculatorState>) => void
   /**
    * Marks a step as the active/centered one and, once revealed, keeps it
    * revealed even if the user scrolls away — mirrors the IntersectionObserver

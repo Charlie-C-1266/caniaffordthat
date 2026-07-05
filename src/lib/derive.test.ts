@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { deriveResult } from './derive'
+import { deriveResult, spareCashOf } from './derive'
 import { DEFAULT_STATE } from '../state/defaults'
 import type { CalculatorState } from '../state/types'
 
 function makeState(overrides: Partial<CalculatorState>): CalculatorState {
   return { ...DEFAULT_STATE, ...overrides }
 }
+
+describe('spareCashOf', () => {
+  it('is take-home minus the five outgoings, floored at 0', () => {
+    expect(spareCashOf(makeState({ takeHome: '2000' }))).toBe(2000) // outgoings default to '0'
+    expect(spareCashOf(makeState({ takeHome: '2000', housing: '500', groceries: '300' }))).toBe(1200)
+    expect(spareCashOf(makeState({ takeHome: '500', housing: '900' }))).toBe(0) // never negative
+  })
+})
 
 describe('deriveResult', () => {
   beforeEach(() => {
@@ -130,6 +138,58 @@ describe('deriveResult', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '12000', takeHome: '500', term: 12 }))
       expect(result?.fits).toBe(false)
       expect(result?.isAffordable).toBe(false)
+    })
+  })
+
+  describe('emergency fund', () => {
+    it('derives the target from cover months x essential spend, ignoring itemPrice', () => {
+      // Essentials = 500 + 100 + 200 + 100 + 100 = 1000; 6 months cover -> 6000 target.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'duration',
+          itemPrice: '',
+          takeHome: '3000',
+          housing: '500',
+          utilities: '100',
+          groceries: '200',
+          transport: '100',
+          debts: '100',
+          coverMonths: 6,
+          rate: 100,
+        }),
+      )
+      expect(result).not.toBeNull()
+      expect(result?.grossTarget).toBe(6000)
+      // spareCash = 3000 - 1000 = 2000; 100% rate -> 2000/mo; 6000/2000 = 3 months.
+      expect(result?.spareCash).toBe(2000)
+      expect(result?.months).toBe(3)
+      expect(result?.isAffordable).toBe(true)
+    })
+
+    it('subtracts money already set aside from the target', () => {
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'duration',
+          takeHome: '3000',
+          housing: '1000',
+          coverMonths: 6,
+          savings: '2000',
+        }),
+      )
+      // grossTarget = 6 x 1000 = 6000; target = 6000 - 2000 = 4000.
+      expect(result?.grossTarget).toBe(6000)
+      expect(result?.target).toBe(4000)
+    })
+
+    it('returns null when essentials are all zero, since there is no target to derive', () => {
+      const result = deriveResult(
+        makeState({ goalId: 'emergency', mode: 'save', itemPrice: '', takeHome: '3000', coverMonths: 6 }),
+      )
+      expect(result).toBeNull()
     })
   })
 

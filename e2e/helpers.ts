@@ -1,22 +1,36 @@
 import type { Page } from '@playwright/test'
 
 /**
- * Advances from the intro screen through mode-select, item+price, and budget,
- * landing on the timeframe step — the shared setup every other test starts
+ * Advances from the goal-picker landing through the tailored Details and budget,
+ * landing on the plan/timeframe step — the shared setup every other test starts
  * from. Uses Enter-to-advance (deterministic, no timer waits) rather than the
- * debounce-based auto-advance, which is already covered by
- * useDebouncedAdvance's own unit tests.
+ * debounce-based auto-advance, which is already covered by useDebouncedAdvance's
+ * own unit tests.
+ *
+ * Defaults to the "Big purchase" goal, whose name placeholder is "e.g. Wedding, new kitchen, sofa"
+ * and which supports both save and finance, so a single helper covers both modes.
  */
-export async function goToTimeframe(
+export async function goToPlan(
   page: Page,
-  options: { mode?: 'Saving up' | 'Paying monthly'; itemName?: string; itemPrice?: string; takeHome?: string } = {},
+  options: {
+    mode?: 'save' | 'monthly'
+    goal?: string
+    itemName?: string
+    itemPrice?: string
+    takeHome?: string
+  } = {},
 ) {
-  const { mode = 'Saving up', itemName = 'New sofa', itemPrice = '1200', takeHome = '2000' } = options
+  const { mode = 'save', goal = 'Big purchase', itemName = 'New sofa', itemPrice = '1200', takeHome = '2000' } = options
 
   await page.goto('/')
-  await page.getByRole('button', { name: mode }).click()
 
-  await page.getByPlaceholder('e.g. New sofa').fill(itemName)
+  // Focus the goal in the carousel (via its dot) then choose it.
+  await page.getByRole('button', { name: `Go to ${goal}` }).click()
+  await page.getByRole('button', { name: `Choose ${goal}`, exact: true }).click()
+
+  if (mode === 'monthly') await page.getByRole('button', { name: 'Pay monthly' }).click()
+
+  await page.getByPlaceholder('e.g. Wedding, new kitchen, sofa').fill(itemName)
   const priceInput = page.locator('input[type="number"]').nth(0)
   await priceInput.fill(itemPrice)
   await priceInput.press('Enter')
@@ -30,7 +44,7 @@ export async function goToTimeframe(
   await page.getByText(/Scroll for your result/).waitFor()
 }
 
-/** From the timeframe step, jumps straight to the result via the progress rail. */
+/** From the plan step, jumps straight to the result via the progress rail. */
 export async function goToResult(page: Page) {
   await page.getByRole('button', { name: 'Result', exact: true }).click()
   await page.getByText('Copy result link').waitFor()

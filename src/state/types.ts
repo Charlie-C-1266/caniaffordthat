@@ -1,8 +1,19 @@
 export type Mode = 'save' | 'monthly'
 export type SaveFlavor = 'duration' | 'goal'
 
+/**
+ * The goals shown in the picker carousel. Kept here (rather than in
+ * `lib/goals.ts`) so both `types.ts` and `goals.ts` can reference it without an
+ * import cycle — `goals.ts` needs `Mode`/`SaveFlavor` from here.
+ */
+export type GoalId = 'car' | 'holiday' | 'emergency' | 'luxury' | 'big' | 'mortgage'
+
 export interface CalculatorState {
-  /** Which question the user is answering: saving up, or paying monthly. */
+  /** Which goal the user picked in the carousel, or `null` before they've chosen one. */
+  goalId: GoalId | null
+  /** The card currently focused in the picker carousel. Starts on the first selectable goal (Mortgage, the only "Soon" goal, sits last). */
+  carouselIndex: number
+  /** Which question the user is answering: saving up, or paying monthly. Seeded from the goal, then user-switchable. */
   mode: Mode
   /** Only relevant when `mode === 'save'`: fixed-duration vs. goal-date planning. */
   saveFlavor: SaveFlavor
@@ -21,6 +32,8 @@ export interface CalculatorState {
   debts: string
   /** Amount already saved toward this item — reduces the target, not a monthly outgoing. */
   savings: string
+  /** Emergency fund only: months of essential spending to hold as a cushion (1-12). Drives the derived target; ignored by other goals. */
+  coverMonths: number
   /** % of spare cash to save per month (1-100). Duration flavor only. */
   rate: number
   /** APR %, used as either savings interest or finance interest depending on `mode`. */

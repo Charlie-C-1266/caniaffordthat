@@ -5,36 +5,19 @@ import { useCalculator } from '../../state/calculatorContext'
 import { deriveResult } from '../../lib/derive'
 import { fmt, num } from '../../lib/calculations'
 import { copyToClipboard } from '../../lib/clipboard'
+import { buildShareParams } from '../../lib/urlState'
+import { goalById } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
+import { Icon } from '../Icon'
 import type { ChartBar } from '../../lib/derive'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step5ResultProps {
+interface Step4ResultProps {
   panelRef: DivRefCallback
   scrollToIndex: (index: number) => void
 }
 
 const COPIED_LABEL_DURATION_MS = 2000
-
-// Query-param keys serialized for "Copy result link" — every field that
-// affects the result, so reloading the link reproduces it exactly.
-const SHARE_KEYS = [
-  'mode',
-  'saveFlavor',
-  'itemName',
-  'itemPrice',
-  'takeHome',
-  'housing',
-  'utilities',
-  'groceries',
-  'transport',
-  'debts',
-  'savings',
-  'rate',
-  'growth',
-  'goalMonths',
-  'term',
-] as const
 
 function BreakdownRow({ label, value }: { label: string; value: string }) {
   return (
@@ -95,15 +78,17 @@ function ChartCard({ bars, endLabel, hasOverflow, months }: { bars: ChartBar[]; 
   )
 }
 
-/** Step 5 — the verdict, headline result, chart, breakdown, and share/edit actions. */
-export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
+/** Step 4 — the verdict, headline result, chart, breakdown, and share/edit actions. */
+export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
   const { state } = useCalculator()
   const [copied, setCopied] = useState(false)
   const accent = accentColorFor(state.mode)
+  const goal = goalById(state.goalId)
   const result = deriveResult(state)
-  // The background communicates the verdict once there is one — green for
-  // affordable, red for not — falling back to the mode's own accent while
-  // there's nothing to verdict on yet (price/take-home still unfilled).
+  // The result screen background communicates the verdict itself — solid green
+  // when affordable, red when not (see design/adr/0007, which reverted the
+  // brief experiment in adr/0003 of tinting it the mode accent). Falls back to
+  // the mode's accent while there's nothing to verdict on yet (inputs unfilled).
   const panelBackground = result
     ? result.isAffordable
       ? 'var(--verdict-affordable)'
@@ -111,8 +96,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
     : accent
 
   const copyLink = async () => {
-    const params = new URLSearchParams()
-    for (const key of SHARE_KEYS) params.set(key, String(state[key]))
+    const params = buildShareParams(state)
     const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`
     const succeeded = await copyToClipboard(url)
     if (succeeded) {
@@ -123,13 +107,13 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
 
   return (
     <StepPanel
-      index={5}
+      index={4}
       isFinal
       panelRef={panelRef}
       panelStyle={{ background: panelBackground, padding: '56px 40px 40px' }}
       panelTestId="result-panel"
     >
-      <RevealTile revealed={Boolean(state.revealed[5])} style={{ width: '100%', maxWidth: 680 }}>
+      <RevealTile revealed={Boolean(state.revealed[4])} style={{ width: '100%', maxWidth: 680 }}>
         {result ? (
           <div>
             <div
@@ -158,7 +142,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
                   flexShrink: 0,
                 }}
               >
-                {result.verdictIcon}
+                <Icon name={result.isAffordable ? 'check' : 'x'} size={16} color="var(--result-text-primary)" strokeWidth={3} />
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2 }}>
@@ -224,12 +208,19 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
                 fontWeight: 600,
               }}
             >
-              <BreakdownRow label="ITEM" value={`${state.itemName || 'Your item'} — ${fmt(num(state.itemPrice))}`} />
+              <BreakdownRow
+                label="GOAL"
+                value={
+                  goal?.emergency
+                    ? `${goal.name} — ${fmt(result.grossTarget)} (${state.coverMonths} mo)`
+                    : `${state.itemName || goal?.name || 'Your goal'} — ${fmt(result.grossTarget)}`
+                }
+              />
               <BreakdownRow label="SPARE CASH" value={fmt(result.spareCash)} />
               <BreakdownRow label={result.contributionRowLabel} value={fmt(result.contribution)} />
               {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}
               {result.totalCost !== undefined && <BreakdownRow label="TOTAL COST" value={fmt(result.totalCost)} />}
-              <BreakdownRow label="ALREADY SAVED" value={fmt(num(state.savings))} />
+              <BreakdownRow label={goal?.emergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED'} value={fmt(num(state.savings))} />
               <div
                 style={{
                   display: 'flex',
@@ -265,7 +256,7 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
               <button
                 type="button"
                 onClick={() => {
-                  scrollToIndex(1) // back to mode-select, not the welcome screen
+                  scrollToIndex(0) // back to the goal-picker landing
                 }}
                 style={{
                   flex: 1,
@@ -280,13 +271,15 @@ export function Step5Result({ panelRef, scrollToIndex }: Step5ResultProps) {
                   fontFamily: 'inherit',
                 }}
               >
-                Edit my answers
+                Pick another goal
               </button>
             </div>
           </div>
         ) : (
           <div style={{ fontSize: 15, color: 'rgba(20,18,31,0.65)', fontWeight: 600 }}>
-            Scroll back up and fill in a price and take-home pay to see your result.
+            {goal?.emergency
+              ? 'Scroll back up and add your take-home pay and monthly essentials to see your result.'
+              : 'Scroll back up and fill in a price and take-home pay to see your result.'}
           </div>
         )}
       </RevealTile>

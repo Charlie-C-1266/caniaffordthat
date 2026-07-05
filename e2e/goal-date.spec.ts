@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goToTimeframe } from './helpers'
+import { goToPlan } from './helpers'
 
 // Regression coverage for the bug where the native <input type="month">
 // couldn't be cleared — typing into it reverted to a fallback value instead
@@ -7,7 +7,7 @@ import { goToTimeframe } from './helpers'
 // text field); these tests pin down that fix.
 test.describe('goal-date field', () => {
   test('shows a default MM-YYYY value and can be fully cleared and retyped', async ({ page }) => {
-    await goToTimeframe(page)
+    await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()
 
     const goalDateInput = page.getByPlaceholder('MM-YYYY')
@@ -21,7 +21,7 @@ test.describe('goal-date field', () => {
   })
 
   test('reverts to the last valid value on blur if left invalid or empty', async ({ page }) => {
-    await goToTimeframe(page)
+    await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()
 
     const goalDateInput = page.getByPlaceholder('MM-YYYY')
@@ -34,7 +34,7 @@ test.describe('goal-date field', () => {
   })
 
   test('ignores a goal date earlier than the minimum (next month)', async ({ page }) => {
-    await goToTimeframe(page)
+    await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()
 
     const goalDateInput = page.getByPlaceholder('MM-YYYY')
