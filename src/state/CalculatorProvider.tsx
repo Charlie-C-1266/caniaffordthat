@@ -19,6 +19,10 @@ export function CalculatorProvider({ children }: CalculatorProviderProps) {
     setState((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  const setFields = useCallback<CalculatorContextValue['setFields']>((patch) => {
+    setState((prev) => ({ ...prev, ...patch }))
+  }, [])
+
   const revealStep = useCallback<CalculatorContextValue['revealStep']>((index) => {
     setState((prev) => ({
       ...prev,
@@ -30,7 +34,7 @@ export function CalculatorProvider({ children }: CalculatorProviderProps) {
   const reset = useCallback<CalculatorContextValue['reset']>(() => setState(DEFAULT_STATE), [])
 
   return (
-    <CalculatorContext.Provider value={{ state, setField, revealStep, reset }}>
+    <CalculatorContext.Provider value={{ state, setField, setFields, revealStep, reset }}>
       {children}
     </CalculatorContext.Provider>
   )

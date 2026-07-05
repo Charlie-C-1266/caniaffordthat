@@ -14,6 +14,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
+    // Emulate reduced motion so the goal carousel's auto-rotate is disabled
+    // during tests — that keeps the focused goal deterministic rather than
+    // racing a timer. Manual navigation (dots, prev/next) is unaffected.
+    reducedMotion: 'reduce',
   },
   webServer: {
     command: `npm run dev -- --port ${PORT} --strictPort`,

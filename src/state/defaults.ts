@@ -1,3 +1,4 @@
+import { INITIAL_CAROUSEL_INDEX } from '../lib/goals'
 import type { CalculatorState } from './types'
 
 // Matches the prototype's initial state (class Component's `state` block),
@@ -5,6 +6,10 @@ import type { CalculatorState } from './types'
 // visibly present and editable rather than blank, so a quick user can accept
 // the defaults and move on while a thorough one can see and adjust each one.
 export const DEFAULT_STATE: CalculatorState = {
+  // No goal chosen yet; the carousel focuses the first selectable goal, and
+  // `mode` holds a harmless default (never surfaced before a goal is picked).
+  goalId: null,
+  carouselIndex: INITIAL_CAROUSEL_INDEX,
   mode: 'save',
   saveFlavor: 'duration',
   itemName: '',
@@ -16,6 +21,7 @@ export const DEFAULT_STATE: CalculatorState = {
   transport: '0',
   debts: '0',
   savings: '0',
+  coverMonths: 6,
   rate: 25,
   growth: 0,
   goalMonths: 12,

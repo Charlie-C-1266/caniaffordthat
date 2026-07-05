@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { useCalculator } from './state/calculatorContext'
 import { useStepObserver } from './hooks/useStepObserver'
 import { ProgressRail } from './components/ProgressRail'
-import { Step0Intro } from './components/steps/Step0Intro'
-import { Step1ModeSelect } from './components/steps/Step1ModeSelect'
-import { Step2ItemPrice } from './components/steps/Step2ItemPrice'
-import { Step3Budget } from './components/steps/Step3Budget'
-import { Step4Timeframe } from './components/steps/Step4Timeframe'
-import { Step5Result } from './components/steps/Step5Result'
+import { Step0GoalPicker } from './components/steps/Step0GoalPicker'
+import { Step1Details } from './components/steps/Step1Details'
+import { Step2Budget } from './components/steps/Step2Budget'
+import { Step3Plan } from './components/steps/Step3Plan'
+import { Step4Result } from './components/steps/Step4Result'
 import { Footer } from './components/Footer'
 import { AlphaBadge } from './components/AlphaBadge'
 import { SourcesButton } from './components/SourcesButton'
@@ -80,12 +79,11 @@ function App() {
       <TopRightControls onReset={handleReset} />
       <ProgressRail activeIndex={state.activeIndex} labels={STEP_LABELS} accentColor={accent} onSelect={scrollToIndex} />
 
-      <Step0Intro panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} />
-      <Step1ModeSelect panelRef={registerPanel(1)} wrapperRef={registerWrapper(1)} scrollToIndex={scrollToIndex} />
-      <Step2ItemPrice panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
-      <Step3Budget panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} scrollToIndex={scrollToIndex} />
-      <Step4Timeframe panelRef={registerPanel(4)} wrapperRef={registerWrapper(4)} />
-      <Step5Result panelRef={registerPanel(5)} scrollToIndex={scrollToIndex} />
+      <Step0GoalPicker panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} scrollToIndex={scrollToIndex} />
+      <Step1Details panelRef={registerPanel(1)} wrapperRef={registerWrapper(1)} scrollToIndex={scrollToIndex} />
+      <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
+      <Step3Plan panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
+      <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
       <Footer />
     </>
   )

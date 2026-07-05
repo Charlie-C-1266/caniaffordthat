@@ -3,45 +3,17 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { MonthYearInput } from '../MonthYearInput'
+import { SliderField } from '../SliderField'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
+import { spareCashOf } from '../../lib/derive'
+import { fmt } from '../../lib/calculations'
 import type { SaveFlavor } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step4TimeframeProps {
+interface Step3PlanProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
-}
-
-interface SliderFieldProps {
-  label: string
-  valueLabel: string
-  min: number
-  max: number
-  step: number
-  value: number
-  accentColor: string
-  onChange: (value: number) => void
-}
-
-function SliderField({ label, valueLabel, min, max, step, value, accentColor, onChange }: SliderFieldProps) {
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-body)', marginBottom: 10 }}>
-        <span style={{ color: 'var(--text-secondary-dim)' }}>{label}</span>
-        <span style={{ fontWeight: 700 }}>{valueLabel}</span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: '100%', accentColor }}
-      />
-    </div>
-  )
 }
 
 interface ToggleButtonProps {
@@ -100,8 +72,8 @@ function GoalDateInput({ accentColor }: { accentColor: string }) {
   )
 }
 
-/** Step 4 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
-export function Step4Timeframe({ panelRef, wrapperRef }: Step4TimeframeProps) {
+/** Step 3 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
+export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
   const { state, setField } = useCalculator()
   const accent = accentColorFor(state.mode)
   const isSave = state.mode === 'save'
@@ -110,13 +82,19 @@ export function Step4Timeframe({ panelRef, wrapperRef }: Step4TimeframeProps) {
 
   const setFlavor = (flavor: SaveFlavor) => setField('saveFlavor', flavor)
 
+  // What the "share of spare cash" slider works out to in £/month, shown live so
+  // the percentage isn't abstract. Only meaningful once a budget's been entered.
+  const spareCash = spareCashOf(state)
+  const rateAmount = Math.round((spareCash * state.rate) / 100)
+  const rateValueLabel = spareCash > 0 ? `${state.rate}% · ${fmt(rateAmount)}/mo` : `${state.rate}%`
+
   return (
-    <StepPanel index={4} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
-      <RevealTile revealed={Boolean(state.revealed[4])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <StepPanel index={3} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
+      <RevealTile revealed={Boolean(state.revealed[3])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding="48px 48px">
           {isSave ? (
             <>
-              <Eyebrow color={accent}>Timeframe</Eyebrow>
+              <Eyebrow color={accent}>Step 3 — Timeframe</Eyebrow>
               <h1
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
@@ -148,7 +126,7 @@ export function Step4Timeframe({ panelRef, wrapperRef }: Step4TimeframeProps) {
                 <div style={{ marginBottom: 22 }}>
                   <SliderField
                     label="Share of spare cash you'll save"
-                    valueLabel={`${state.rate}%`}
+                    valueLabel={rateValueLabel}
                     min={1}
                     max={100}
                     step={1}
@@ -176,7 +154,7 @@ export function Step4Timeframe({ panelRef, wrapperRef }: Step4TimeframeProps) {
             </>
           ) : (
             <>
-              <Eyebrow color={accent}>Finance details</Eyebrow>
+              <Eyebrow color={accent}>Step 3 — Finance details</Eyebrow>
               <h1
                 style={{
                   fontSize: 'var(--fs-h1-sm)',

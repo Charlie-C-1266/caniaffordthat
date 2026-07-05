@@ -1,4 +1,5 @@
 import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance, addMonths } from './calculations'
+import { goalById } from './goals'
 import type { CalculatorState } from '../state/types'
 
 // 5 years is MoneyHelper's (the UK's government-backed money guidance
@@ -36,8 +37,22 @@ export interface ChartBar {
   color: string
 }
 
+/** Sum of the five monthly outgoing fields (housing…debts). Also the emergency fund's "essential spend". */
+export function monthlyOutgoingsOf(state: CalculatorState): number {
+  return (
+    num(state.housing) + num(state.utilities) + num(state.groceries) + num(state.transport) + num(state.debts)
+  )
+}
+
+/** Monthly spare cash: take-home minus outgoings, floored at 0. */
+export function spareCashOf(state: CalculatorState): number {
+  return Math.max(0, num(state.takeHome) - monthlyOutgoingsOf(state))
+}
+
 export interface DerivedResult {
   spareCash: number
+  /** The full goal amount before subtracting anything already saved (item price, or the emergency fund's derived target). */
+  grossTarget: number
   target: number
   months: number
   contribution: number
@@ -63,29 +78,30 @@ export interface DerivedResult {
 /**
  * Computes the full affordability result for the current state, porting the
  * design prototype's `renderVals()` calculation block verbatim (down to the
- * exact verdict thresholds and copy). Returns `null` when the two required
- * fields — item price and take-home pay — aren't filled in yet; callers
+ * exact verdict thresholds and copy). Returns `null` when the required fields
+ * aren't filled in yet — take-home pay plus either an item price or (for the
+ * price-less emergency fund) enough outgoings to derive a target; callers
  * should show the "fill these in first" fallback in that case.
  */
 export function deriveResult(state: CalculatorState): DerivedResult | null {
-  const isFinance = state.mode === 'monthly'
-  const isDuration = state.mode === 'save' && state.saveFlavor === 'duration'
-  const isGoal = state.mode === 'save' && state.saveFlavor === 'goal'
+  // The emergency fund has no price: its target is a multiple of essential
+  // monthly spending, and it's always a saving goal (see design/adr/0004).
+  const isEmergency = goalById(state.goalId)?.emergency === true
+  const isFinance = !isEmergency && state.mode === 'monthly'
+  const isDuration = isEmergency || (state.mode === 'save' && state.saveFlavor === 'duration')
+  const isGoal = !isEmergency && state.mode === 'save' && state.saveFlavor === 'goal'
 
-  const itemPrice = num(state.itemPrice)
-  const takeHome = num(state.takeHome)
-  if (!(itemPrice > 0 && takeHome > 0)) return null
-
-  const housing = num(state.housing)
-  const utilities = num(state.utilities)
-  const groceries = num(state.groceries)
-  const transport = num(state.transport)
-  const debts = num(state.debts)
   const savings = num(state.savings)
+  const essentialSpend = monthlyOutgoingsOf(state)
 
-  const monthlyCosts = housing + utilities + groceries + transport + debts
-  const spareCash = Math.max(0, takeHome - monthlyCosts)
-  const target = Math.max(0, itemPrice - savings)
+  const takeHome = num(state.takeHome)
+  const grossTarget = isEmergency ? state.coverMonths * essentialSpend : num(state.itemPrice)
+  // Gate on a meaningful target plus take-home: item price for standard goals,
+  // or coverMonths x essentials for the emergency fund.
+  if (!(takeHome > 0 && grossTarget > 0)) return null
+
+  const spareCash = spareCashOf(state)
+  const target = Math.max(0, grossTarget - savings)
 
   let months = 0
   let contribution = 0
@@ -145,10 +161,10 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     if (isDuration) {
       headline =
         months === 0 ? 'You can afford it now' : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
-      subheadline = `Saving ${fmt(contribution)}/month, you'll reach ${fmt(itemPrice)} by then.`
+      subheadline = `Saving ${fmt(contribution)}/month, you'll reach ${fmt(grossTarget)} by then.`
     } else if (isGoal) {
       headline = `${fmt(contribution)}/mo`
-      subheadline = `To have ${fmt(itemPrice)} by ${addMonths(months)}, you'd need to save this much each month.`
+      subheadline = `To have ${fmt(grossTarget)} by ${addMonths(months)}, you'd need to save this much each month.`
     } else {
       headline = `${fmt(contribution)}/mo`
       subheadline = `Financing ${fmt(target)} at ${state.growth}% APR over ${months} months.`
@@ -178,6 +194,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
 
   return {
     spareCash,
+    grossTarget,
     target,
     months,
     contribution,
