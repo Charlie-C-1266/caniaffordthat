@@ -1,13 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  GOALS,
-  INITIAL_CAROUSEL_INDEX,
-  TEASER_GOALS,
-  circularOffset,
-  goalById,
-  seedFromGoal,
-  wrapIndex,
-} from './goals'
+import { GOALS, INITIAL_CAROUSEL_INDEX, circularOffset, goalById, seedFromGoal, wrapIndex } from './goals'
 
 describe('GOALS config', () => {
   it('lists the six goals with the coming-soon Mortgage last', () => {
@@ -50,14 +42,6 @@ describe('INITIAL_CAROUSEL_INDEX', () => {
     expect(INITIAL_CAROUSEL_INDEX).toBe(1)
     expect(GOALS[INITIAL_CAROUSEL_INDEX].id).toBe('holiday')
     expect(GOALS[INITIAL_CAROUSEL_INDEX].soon).toBeFalsy()
-  })
-})
-
-describe('TEASER_GOALS', () => {
-  it('is the selectable goals (all but the coming-soon Vehicle and Mortgage)', () => {
-    expect(TEASER_GOALS).toHaveLength(4)
-    expect(TEASER_GOALS.every((g) => !g.soon)).toBe(true)
-    expect(TEASER_GOALS[0].id).toBe('holiday')
   })
 })
 

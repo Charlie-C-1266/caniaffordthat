@@ -139,9 +139,6 @@ export const GOALS: readonly Goal[] = [
 /** Carousel index the picker focuses first — the first selectable (non-"Soon") goal. */
 export const INITIAL_CAROUSEL_INDEX = GOALS.findIndex((g) => !g.soon)
 
-/** The first six selectable goals — the set shown as teaser chips on the hero. */
-export const TEASER_GOALS = GOALS.filter((g) => !g.soon).slice(0, 6)
-
 /** Looks up a goal by id, or `null` for an unknown/absent id. */
 export function goalById(id: GoalId | null): Goal | null {
   if (id === null) return null
