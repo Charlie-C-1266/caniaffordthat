@@ -67,6 +67,15 @@ describe('hydrateStateFromUrl', () => {
     expect(state.term).toBe(DEFAULT_STATE.term)
   })
 
+  it('clamps out-of-range numbers to the UI bounds rather than trusting the query string', () => {
+    const state = hydrateStateFromUrl('?itemPrice=500&rate=250&growth=-4&goalMonths=0&term=999&coverMonths=50')
+    expect(state.rate).toBe(100)
+    expect(state.growth).toBe(0)
+    expect(state.goalMonths).toBe(1)
+    expect(state.term).toBe(60)
+    expect(state.coverMonths).toBe(12)
+  })
+
   it('leaves fields missing from the query string at their defaults', () => {
     const state = hydrateStateFromUrl('?itemPrice=500')
     expect(state.itemPrice).toBe('500')

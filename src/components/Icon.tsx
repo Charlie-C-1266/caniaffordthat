@@ -6,8 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Gem,
-  Hammer,
-  Heart,
   HelpCircle,
   House,
   Plane,
@@ -21,12 +19,10 @@ import {
 // the goal config (see lib/goals.ts) and referenced by UI chrome. Kept as one
 // small registry so components pass a name string rather than importing icon
 // components individually.
-const ICONS: Record<string, LucideIcon> = {
+const ICONS = {
   house: House,
   car: Car,
   plane: Plane,
-  heart: Heart,
-  hammer: Hammer,
   gem: Gem,
   umbrella: Umbrella,
   'shopping-bag': ShoppingBag,
@@ -37,10 +33,13 @@ const ICONS: Record<string, LucideIcon> = {
   check: Check,
   'help-circle': HelpCircle,
   x: X,
-}
+} satisfies Record<string, LucideIcon>
+
+/** A registered icon name — a compile error (not a silently blank icon) if a caller or the goal config typos one. */
+export type IconName = keyof typeof ICONS
 
 interface IconProps {
-  name: string
+  name: IconName
   size?: number
   color?: string
   strokeWidth?: number
@@ -49,6 +48,5 @@ interface IconProps {
 /** Renders a named Lucide line icon with the design's default stroke weight. */
 export function Icon({ name, size = 24, color = 'currentColor', strokeWidth = 1.8 }: IconProps) {
   const Glyph = ICONS[name]
-  if (!Glyph) return null
   return <Glyph size={size} color={color} strokeWidth={strokeWidth} aria-hidden="true" />
 }

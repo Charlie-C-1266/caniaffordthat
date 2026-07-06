@@ -1,5 +1,6 @@
 import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance, addMonths } from './calculations'
 import { goalById } from './goals'
+import { OUTGOING_FIELD_KEYS } from './budget'
 import type { CalculatorState } from '../state/types'
 
 // 5 years is MoneyHelper's (the UK's government-backed money guidance
@@ -9,7 +10,9 @@ import type { CalculatorState } from '../state/types'
 // a simple cash-savings plan for a specific purchase, which is what this
 // mode assumes.
 const AFFORDABILITY_MONTHS_CAP = 60
-const CHART_MONTHS_CAP = 24
+
+/** Longest span the result chart draws month-by-month bars for; longer plans are truncated and flagged via `hasOverflowMonths`. Exported so the result screen's "chart capped at N months" caption can't drift from the actual cap. */
+export const CHART_MONTHS_CAP = 24
 
 // No UK body publishes a rule of thumb framed exactly as "% of leftover cash
 // after essentials" (our "spare cash"), so these are derived from two UK
@@ -38,9 +41,7 @@ export interface ChartBar {
 
 /** Sum of the five monthly outgoing fields (housing…debts). Also the emergency fund's "essential spend". */
 export function monthlyOutgoingsOf(state: CalculatorState): number {
-  return (
-    num(state.housing) + num(state.utilities) + num(state.groceries) + num(state.transport) + num(state.debts)
-  )
+  return OUTGOING_FIELD_KEYS.reduce((sum, key) => sum + num(state[key]), 0)
 }
 
 /** Monthly spare cash: take-home minus outgoings, floored at 0. */
@@ -62,8 +63,6 @@ export interface DerivedResult {
   isAffordable: boolean
   verdictText: string
   verdictSub: string
-  verdictIcon: string
-  verdictIconBg: string
   resultEyebrow: string
   headline: string
   subheadline: string
@@ -188,8 +187,6 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     isAffordable,
     verdictText,
     verdictSub,
-    verdictIcon: isAffordable ? '✓' : '✕',
-    verdictIconBg: isAffordable ? 'var(--verdict-affordable)' : 'var(--verdict-not-affordable)',
     resultEyebrow,
     headline,
     subheadline,

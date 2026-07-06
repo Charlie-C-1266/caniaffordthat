@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
-import { Icon } from '../Icon'
+import { Icon, type IconName } from '../Icon'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -169,7 +169,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
 }
 
 interface RoundButtonProps {
-  icon: string
+  icon: IconName
   label: string
   onClick: () => void
 }

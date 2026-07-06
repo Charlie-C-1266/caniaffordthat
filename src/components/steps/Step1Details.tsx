@@ -3,14 +3,19 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
+import { FieldLabel } from '../FieldLabel'
 import { Icon } from '../Icon'
 import { InfoHint } from '../InfoHint'
+import { LabeledMoneyField } from '../LabeledMoneyField'
+import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
+import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
+import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
 import type { Mode } from '../../state/types'
@@ -22,7 +27,11 @@ interface Step1DetailsProps {
   scrollToIndex: (index: number) => void
 }
 
-const EMERGENCY_FIELDS = ['housing', 'utilities', 'groceries', 'transport', 'debts'] as const
+/** Each pay mode's segment carries its own accent so the pill lights up green for saving and violet for finance. */
+const MODE_OPTIONS: readonly SegmentedOption<Mode>[] = [
+  { value: 'save', label: 'Save up for it', activeBackground: accentColorFor('save'), activeColor: 'var(--on-accent-save)' },
+  { value: 'monthly', label: 'Pay monthly', activeBackground: accentColorFor('monthly'), activeColor: 'var(--on-accent-finance)' },
+]
 
 interface ModeToggleProps {
   mode: Mode
@@ -31,55 +40,12 @@ interface ModeToggleProps {
 
 /** The "How do you plan to pay?" segmented control shown for every goal except the emergency fund. */
 function ModeToggle({ mode, onChange }: ModeToggleProps) {
-  const options: { value: Mode; label: string }[] = [
-    { value: 'save', label: 'Save up for it' },
-    { value: 'monthly', label: 'Pay monthly' },
-  ]
   return (
     <div style={{ marginBottom: 30 }}>
       <div style={{ fontSize: 'var(--fs-helper)', fontWeight: 600, color: 'var(--text-secondary-dim)', marginBottom: 10 }}>
         How do you plan to pay?
       </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: 5,
-          padding: 5,
-          borderRadius: 14,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(245,243,255,0.08)',
-        }}
-      >
-        {options.map(({ value, label }) => {
-          const active = mode === value
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onChange(value)}
-              style={{
-                flex: 1,
-                padding: '11px 14px',
-                borderRadius: 10,
-                border: 'none',
-                fontSize: 14,
-                fontWeight: 700,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                background: active ? accentColorFor(value) : 'transparent',
-                color: active
-                  ? value === 'save'
-                    ? 'var(--on-accent-save)'
-                    : 'var(--on-accent-finance)'
-                  : 'var(--text-secondary)',
-                transition: 'background 0.2s ease, color 0.2s ease',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={onChange} />
     </div>
   )
 }
@@ -107,7 +73,7 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
     if (num(state.itemPrice) > 0) scheduleAdvance(1, 2)
   }
 
-  const essentials = EMERGENCY_FIELDS.reduce((sum, key) => sum + num(state[key]), 0)
+  const essentials = monthlyOutgoingsOf(state)
   const emergencyTarget = state.coverMonths * essentials
 
   // MoneyHelper recommends 3-6 months of essential outgoings, aiming for at
@@ -194,10 +160,10 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                     Your monthly essentials (defaulted to £0 — adjust what applies)
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px', marginBottom: 20 }}>
-                    {EMERGENCY_FIELDS.map((key) => (
-                      <EssentialField
+                    {OUTGOING_FIELD_KEYS.map((key) => (
+                      <LabeledMoneyField
                         key={key}
-                        label={ESSENTIAL_LABELS[key]}
+                        label={OUTGOING_FIELD_LABELS[key]}
                         value={state[key]}
                         onChange={(value) => setField(key, value)}
                       />
@@ -235,17 +201,9 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                 <>
                   {goal.showName && (
                     <div style={{ marginBottom: 30 }}>
-                      <label
-                        style={{
-                          display: 'block',
-                          fontSize: 'var(--fs-helper)',
-                          fontWeight: 600,
-                          color: 'var(--text-secondary-dim)',
-                          marginBottom: 8,
-                        }}
-                      >
+                      <FieldLabel>
                         Goal title <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>· optional</span>
-                      </label>
+                      </FieldLabel>
                       <UnderlineInput
                         value={state.itemName}
                         onChange={handleNameChange}
@@ -271,31 +229,12 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                   />
                   {goal.deposit && (
                     <div style={{ marginTop: 30 }}>
-                      <label
-                        style={{
-                          display: 'block',
-                          fontSize: 'var(--fs-helper)',
-                          fontWeight: 600,
-                          color: 'var(--text-secondary-dim)',
-                          marginBottom: 8,
-                        }}
-                      >
-                        {goal.depositLabel}
-                      </label>
-                      <MoneyInput
+                      <LabeledMoneyField
+                        variant="single"
+                        label={goal.depositLabel}
                         value={state.savings}
                         onChange={(value) => setField('savings', value)}
                         onKeyDown={handlePriceKeyDown}
-                        accentColor="var(--text-primary)"
-                        idleColor="var(--input-underline)"
-                        fontSize="var(--fs-body-lg)"
-                        fontWeight={700}
-                        fontFamily="inherit"
-                        borderWidth="var(--border-width-underline)"
-                        prefixFontSize="var(--fs-prefix-sm)"
-                        prefixTop={4}
-                        paddingBottom={7}
-                        paddingLeft={18}
                       />
                     </div>
                   )}
@@ -309,48 +248,5 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
         </Tile>
       </RevealTile>
     </StepPanel>
-  )
-}
-
-const ESSENTIAL_LABELS: Record<(typeof EMERGENCY_FIELDS)[number], string> = {
-  housing: 'Housing (rent/mortgage)',
-  utilities: 'Utilities & bills',
-  groceries: 'Groceries & everyday',
-  transport: 'Transport',
-  debts: 'Debt repayments',
-}
-
-function EssentialField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    // minWidth:0 lets the 1fr grid tracks shrink below the number input's
-    // intrinsic width — without it the two columns refuse to narrow and the
-    // whole tile overflows the viewport on small screens.
-    <div style={{ minWidth: 0 }}>
-      <label
-        style={{
-          display: 'block',
-          fontSize: 'var(--fs-label-sm)',
-          fontWeight: 600,
-          color: 'var(--text-secondary-dim)',
-          marginBottom: 7,
-        }}
-      >
-        {label}
-      </label>
-      <MoneyInput
-        value={value}
-        onChange={onChange}
-        accentColor="var(--text-primary)"
-        idleColor="var(--input-underline)"
-        fontSize="var(--fs-body-lg)"
-        fontWeight={700}
-        fontFamily="inherit"
-        borderWidth="var(--border-width-underline)"
-        prefixFontSize="var(--fs-prefix-sm)"
-        prefixTop={6}
-        paddingBottom={7}
-        paddingLeft={15}
-      />
-    </div>
   )
 }
