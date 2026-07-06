@@ -10,6 +10,19 @@ test.describe('core flow', () => {
     await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
   })
 
+  test('before a goal is chosen, only the carousel + placeholder exist — no budget/plan/result', async ({ page }) => {
+    await page.goto('/')
+
+    // The Step 1 placeholder is present as a nudge back to the carousel...
+    await expect(page.getByText('Scroll back up and pick a goal to get started')).toBeVisible()
+    // ...but the later steps aren't rendered, so they can't be scrolled into.
+    await expect(page.getByText("What's coming in")).toHaveCount(0)
+    await expect(page.getByText('Copy result link')).toHaveCount(0)
+    // The progress rail is trimmed to the two reachable steps.
+    await expect(page.getByRole('button', { name: 'Budget', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Result', exact: true })).toHaveCount(0)
+  })
+
   test('goal picker shows goals, and choosing one advances to tailored details', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()

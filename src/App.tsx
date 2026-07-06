@@ -63,6 +63,10 @@ function App() {
   const { state, reset } = useCalculator()
   const { registerPanel, registerWrapper, scrollToIndex } = useStepObserver()
   const accent = accentColorFor(state.mode)
+  // Until a goal is picked, the flow is just the carousel and the Step 1
+  // "pick a goal" placeholder — the Budget/Plan/Result steps have nothing to
+  // work from, so they aren't rendered (and can't be scrolled into).
+  const hasGoal = state.goalId !== null
 
   const handleReset = () => {
     reset()
@@ -77,14 +81,23 @@ function App() {
     <>
       <BrandMark accentColor={accent} />
       <TopRightControls onReset={handleReset} />
-      <ProgressRail activeIndex={state.activeIndex} labels={STEP_LABELS} accentColor={accent} onSelect={scrollToIndex} />
+      <ProgressRail
+        activeIndex={state.activeIndex}
+        labels={hasGoal ? STEP_LABELS : STEP_LABELS.slice(0, 2)}
+        accentColor={accent}
+        onSelect={scrollToIndex}
+      />
 
       <main>
         <Step0GoalPicker panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} scrollToIndex={scrollToIndex} />
         <Step1Details panelRef={registerPanel(1)} wrapperRef={registerWrapper(1)} scrollToIndex={scrollToIndex} />
-        <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
-        <Step3Plan panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
-        <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
+        {hasGoal && (
+          <>
+            <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
+            <Step3Plan panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
+            <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
+          </>
+        )}
       </main>
       <Footer />
     </>
