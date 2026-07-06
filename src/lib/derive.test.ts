@@ -228,6 +228,53 @@ describe('deriveResult', () => {
       expect(result?.verdictSub).toMatch(/1-month cushion/)
       expect(result?.verdictSub).toMatch(/£1,000/)
     })
+
+    it('honours a goal date: sizes the monthly saving to hit the cushion by then', () => {
+      // grossTarget = 3 x 1000 = 3000; goal date 6 months out, 0% interest ->
+      // £500/mo needed. spareCash = 3000 - 1000 = 2000, so it fits.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '3000',
+          housing: '1000',
+          coverMonths: 3,
+          goalMonths: 6,
+          growth: 0,
+        }),
+      )
+      expect(result?.months).toBe(6)
+      expect(result?.contribution).toBe(500)
+      expect(result?.resultEyebrow).toBe('Monthly saving needed')
+      expect(result?.headline).toBe('£500/mo')
+      expect(result?.isAffordable).toBe(true)
+      expect(result?.verdictText).toBe('Yes — you can build this.')
+      expect(result?.subheadline).toMatch(/easy-access/)
+    })
+
+    it('flags a goal date that needs more per month than the spare cash allows', () => {
+      // grossTarget 3000 over 2 months -> £1,500/mo needed, but spare cash is
+      // only 3000 - 1000 = 2000... still fits. Push essentials up so it doesn't:
+      // spareCash = 1600 - 1000 = 600; 3000 over 2 months -> £1,500/mo.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '1600',
+          housing: '1000',
+          coverMonths: 3,
+          goalMonths: 2,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(1500)
+      expect(result?.fits).toBe(false)
+      expect(result?.isAffordable).toBe(false)
+      expect(result?.verdictText).toBe('Not by that date.')
+      expect(result?.verdictSub).toMatch(/more than your spare cash/)
+    })
   })
 
   describe('chart bars', () => {

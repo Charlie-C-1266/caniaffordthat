@@ -32,4 +32,29 @@ test.describe('emergency fund', () => {
     await expect(page.getByText(/Emergency fund — £3,000/)).toBeVisible()
     await expect(page.getByText('Time to build your fund')).toBeVisible()
   })
+
+  test('honours the "I have a goal date" plan flavor and reframes the result', async ({ page }) => {
+    await page.goto('/')
+
+    await page.getByRole('button', { name: 'Go to Emergency fund' }).click()
+    await page.getByRole('button', { name: 'Get started with Emergency fund', exact: true }).click()
+
+    await page.locator('input[type="number"]').nth(0).fill('1000') // housing -> £3,000 target
+
+    await page.getByRole('button', { name: 'Budget', exact: true }).click()
+    await page.getByText('Take-home pay / month').locator('xpath=following-sibling::div//input').fill('3000')
+
+    // Plan step: switch from the default duration flavor to a fixed goal date.
+    // Before the fix this toggle had no effect on the emergency result.
+    await page.getByRole('button', { name: 'Plan', exact: true }).click()
+    await page.getByRole('button', { name: 'I have a goal date' }).click()
+    await page.getByPlaceholder('MM-YYYY').fill('12-2030')
+
+    await page.getByRole('button', { name: 'Result', exact: true }).click()
+    // The result now reframes as the monthly saving needed to hit the cushion by
+    // the chosen date, rather than "Time to build your fund".
+    await expect(page.getByText('Monthly saving needed')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /£[\d,]+\/mo/ })).toBeVisible()
+    await expect(page.getByText(/reaches your cushion by December 2030/)).toBeVisible()
+  })
 })

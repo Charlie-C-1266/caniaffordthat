@@ -88,8 +88,10 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   // monthly spending, and it's always a saving goal (see design/adr/0004).
   const isEmergency = goalById(state.goalId)?.emergency === true
   const isFinance = !isEmergency && state.mode === 'monthly'
-  const isDuration = isEmergency || (state.mode === 'save' && state.saveFlavor === 'duration')
-  const isGoal = !isEmergency && state.mode === 'save' && state.saveFlavor === 'goal'
+  // The emergency fund is save-only but honours the same duration/goal-date
+  // toggle as other saving goals, so its plan flavor follows saveFlavor too.
+  const isDuration = state.mode === 'save' && state.saveFlavor === 'duration'
+  const isGoal = state.mode === 'save' && state.saveFlavor === 'goal'
 
   const savings = num(state.savings)
   const essentialSpend = monthlyOutgoingsOf(state)
@@ -159,14 +161,16 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   let subheadline = ''
   if (isFeasible) {
     if (isEmergency) {
-      headline =
-        months === 0
-          ? "You're already covered"
-          : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
-      subheadline =
-        months === 0
-          ? `You've already set aside your ${state.coverMonths}-month cushion. Keep it in an easy-access savings account.`
-          : `Saving ${fmt(contribution)}/month, you'll have your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by then — best kept in an easy-access savings account.`
+      if (target === 0) {
+        headline = "You're already covered"
+        subheadline = `You've already set aside your ${state.coverMonths}-month cushion (${fmt(grossTarget)}). Keep it in an easy-access savings account.`
+      } else if (isGoal) {
+        headline = `${fmt(contribution)}/mo`
+        subheadline = `To reach your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by ${addMonths(months)}, save this much each month — best kept in an easy-access savings account.`
+      } else {
+        headline = `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
+        subheadline = `Saving ${fmt(contribution)}/month, you'll have your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by then — best kept in an easy-access savings account.`
+      }
     } else if (isDuration) {
       headline =
         months === 0 ? 'You can afford it now' : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
@@ -182,7 +186,14 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
 
   let isAffordable: boolean
   let verdictSub: string
-  if (isEmergency) {
+  if (isEmergency && isGoal) {
+    // Goal-date path: the date is fixed, so affordability is whether the
+    // required monthly saving fits the user's spare cash.
+    isAffordable = fits
+    verdictSub = fits
+      ? `${fmt(contribution)}/month reaches your cushion by ${addMonths(months)}, within your ${fmt(spareCash)} spare cash.`
+      : `${fmt(contribution)}/month to hit ${addMonths(months)} is ${fmt(contribution - spareCash)} more than your spare cash — a later date needs less each month.`
+  } else if (isEmergency) {
     isAffordable = isFeasible && months <= AFFORDABILITY_MONTHS_CAP
     verdictSub = !isFeasible
       ? `Set aside whatever you can each month — even ${fmt(essentialSpend)} (a 1-month cushion) is a solid first milestone.`
@@ -222,7 +233,9 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     verdictText: isEmergency
       ? isAffordable
         ? "Yes — you can build this."
-        : 'This one will take time.'
+        : isGoal
+          ? 'Not by that date.'
+          : 'This one will take time.'
       : isAffordable
         ? "Yes — it's within reach."
         : "No — that's a stretch.",
@@ -230,7 +243,9 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     verdictIcon: isAffordable ? '✓' : '✕',
     verdictIconBg: isAffordable ? 'var(--verdict-affordable)' : 'var(--verdict-not-affordable)',
     resultEyebrow: isEmergency
-      ? 'Time to build your fund'
+      ? isGoal
+        ? 'Monthly saving needed'
+        : 'Time to build your fund'
       : isDuration
         ? 'Time to save up'
         : isGoal
