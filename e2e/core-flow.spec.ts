@@ -7,7 +7,7 @@ test.describe('core flow', () => {
     await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()
     await expect(page.getByText('Free · no sign-up · takes 2 minutes')).toBeVisible()
     // The carousel opens focused on Vehicle, ready to choose.
-    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
   })
 
   test('goal picker shows goals, and choosing one advances to tailored details', async ({ page }) => {
@@ -15,7 +15,7 @@ test.describe('core flow', () => {
     await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Go to Big purchase' }).click()
-    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+    await page.getByRole('button', { name: 'Get started with Big purchase', exact: true }).click()
 
     await expect(page.getByPlaceholder('e.g. Wedding, new kitchen, sofa')).toBeVisible()
   })
@@ -28,8 +28,8 @@ test.describe('core flow', () => {
 
   test('the carousel wraps: going back from the first goal lands on the last', async ({ page }) => {
     await page.goto('/')
-    // Opens focused on Vehicle (the Choose button names the focused goal).
-    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
+    // Opens focused on Vehicle (the CTA's aria-label names the focused goal).
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
 
     // Left from the first goal wraps to the last (Mortgage, "Coming soon").
     await page.getByRole('button', { name: 'Previous goal' }).click()
@@ -37,13 +37,13 @@ test.describe('core flow', () => {
 
     // Right from the last wraps back to the first.
     await page.getByRole('button', { name: 'Next goal' }).click()
-    await expect(page.getByRole('button', { name: 'Choose Vehicle', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
   })
 
   test('entering a price and pressing Enter advances to the budget step', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Go to Big purchase' }).click()
-    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+    await page.getByRole('button', { name: 'Get started with Big purchase', exact: true }).click()
 
     await page.getByPlaceholder('e.g. Wedding, new kitchen, sofa').fill('New sofa')
     const priceInput = page.locator('input[type="number"]').nth(0)
@@ -57,7 +57,7 @@ test.describe('core flow', () => {
   test('budget fields default to £0 and take-home + Enter advances to the plan step', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Go to Big purchase' }).click()
-    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+    await page.getByRole('button', { name: 'Get started with Big purchase', exact: true }).click()
     await page.getByPlaceholder('e.g. Wedding, new kitchen, sofa').fill('New sofa')
     const priceInput = page.locator('input[type="number"]').nth(0)
     await priceInput.fill('1200')

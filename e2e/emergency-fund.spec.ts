@@ -8,7 +8,7 @@ test.describe('emergency fund', () => {
     await page.goto('/')
 
     await page.getByRole('button', { name: 'Go to Emergency fund' }).click()
-    await page.getByRole('button', { name: 'Choose Emergency fund', exact: true }).click()
+    await page.getByRole('button', { name: 'Get started with Emergency fund', exact: true }).click()
 
     // No mode toggle for the save-only emergency fund.
     await expect(page.getByRole('button', { name: 'Pay monthly' })).toHaveCount(0)

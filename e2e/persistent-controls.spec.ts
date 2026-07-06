@@ -12,7 +12,7 @@ test.describe('persistent controls', () => {
     // Re-pick the goal and confirm the price is actually back to blank, not
     // just visually scrolled to the top.
     await page.getByRole('button', { name: 'Go to Big purchase' }).click()
-    await page.getByRole('button', { name: 'Choose Big purchase', exact: true }).click()
+    await page.getByRole('button', { name: 'Get started with Big purchase', exact: true }).click()
     await expect(page.locator('input[type="number"]').nth(0)).toHaveValue('')
   })
 

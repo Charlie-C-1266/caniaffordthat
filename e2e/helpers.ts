@@ -24,9 +24,9 @@ export async function goToPlan(
 
   await page.goto('/')
 
-  // Focus the goal in the carousel (via its dot) then choose it.
+  // Focus the goal in the carousel (via its dot) then start with it.
   await page.getByRole('button', { name: `Go to ${goal}` }).click()
-  await page.getByRole('button', { name: `Choose ${goal}`, exact: true }).click()
+  await page.getByRole('button', { name: `Get started with ${goal}`, exact: true }).click()
 
   if (mode === 'monthly') await page.getByRole('button', { name: 'Pay monthly' }).click()
 
