@@ -112,7 +112,9 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   let interestPaid: number | undefined
 
   if (isDuration) {
-    contribution = spareCash * (state.rate / 100)
+    // The monthly saving is either a share of spare cash or a fixed amount the
+    // user typed — both feed the same "how long to reach the target" maths.
+    contribution = state.rateMode === 'amount' ? num(state.monthlyAmount) : spareCash * (state.rate / 100)
     months = monthsToSave(target, contribution, state.growth)
     isFeasible = months !== Infinity
   } else if (isGoal) {

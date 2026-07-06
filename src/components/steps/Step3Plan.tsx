@@ -3,12 +3,13 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { MonthYearInput } from '../MonthYearInput'
+import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
 import { spareCashOf } from '../../lib/derive'
-import { fmt } from '../../lib/calculations'
-import type { SaveFlavor } from '../../state/types'
+import { fmt, num } from '../../lib/calculations'
+import type { RateMode, SaveFlavor } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
 interface Step3PlanProps {
@@ -72,6 +73,130 @@ function GoalDateInput({ accentColor }: { accentColor: string }) {
   )
 }
 
+/**
+ * The "how long will it take?" input: the user sets their monthly saving either
+ * as a share of spare cash (a slider) or as a fixed £ amount they type. Both
+ * resolve to the same monthly contribution in `deriveResult`.
+ */
+function DurationInput({ accentColor }: { accentColor: string }) {
+  const { state, setField, setFields } = useCalculator()
+
+  const spareCash = spareCashOf(state)
+  const rateAmount = Math.round((spareCash * state.rate) / 100)
+  const rateValueLabel = spareCash > 0 ? `${state.rate}% · ${fmt(rateAmount)}/mo` : `${state.rate}%`
+
+  const amount = num(state.monthlyAmount)
+  const amountCaption =
+    spareCash > 0 && amount > 0
+      ? amount > spareCash
+        ? `That's more than your ${fmt(spareCash)} spare cash a month.`
+        : `${Math.round((amount / spareCash) * 100)}% of your ${fmt(spareCash)} spare cash.`
+      : ''
+
+  // Switching to "fixed amount" seeds the field with the current % equivalent
+  // (once), so the handoff between the two inputs feels continuous.
+  const chooseMode = (mode: RateMode) => {
+    if (mode === 'amount' && num(state.monthlyAmount) === 0 && rateAmount > 0) {
+      setFields({ rateMode: mode, monthlyAmount: String(rateAmount) })
+    } else {
+      setField('rateMode', mode)
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 5,
+          padding: 4,
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(245,243,255,0.08)',
+          marginBottom: 18,
+          width: 'fit-content',
+        }}
+      >
+        {(
+          [
+            ['percent', '% of spare cash'],
+            ['amount', 'Fixed amount'],
+          ] as const
+        ).map(([mode, label]) => {
+          const active = state.rateMode === mode
+          return (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => chooseMode(mode)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                background: active ? accentColor : 'transparent',
+                color: active ? 'var(--on-accent-save)' : 'var(--text-secondary)',
+                transition: 'background 0.2s ease, color 0.2s ease',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {state.rateMode === 'amount' ? (
+        <div>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 'var(--fs-helper)',
+              fontWeight: 600,
+              color: 'var(--text-secondary-dim)',
+              marginBottom: 8,
+            }}
+          >
+            Monthly saving
+          </label>
+          <MoneyInput
+            value={state.monthlyAmount}
+            onChange={(value) => setField('monthlyAmount', value)}
+            accentColor={accentColor}
+            idleColor="var(--input-underline)"
+            fontSize="var(--fs-body-lg)"
+            fontWeight={700}
+            fontFamily="inherit"
+            borderWidth="var(--border-width-underline)"
+            prefixFontSize="var(--fs-prefix-sm)"
+            prefixTop={4}
+            paddingBottom={7}
+            paddingLeft={18}
+          />
+          {amountCaption && (
+            <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+              {amountCaption}
+            </div>
+          )}
+        </div>
+      ) : (
+        <SliderField
+          label="Share of spare cash you'll save"
+          valueLabel={rateValueLabel}
+          min={1}
+          max={100}
+          step={1}
+          value={state.rate}
+          accentColor={accentColor}
+          onChange={(value) => setField('rate', value)}
+        />
+      )}
+    </div>
+  )
+}
+
 /** Step 3 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
 export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
   const { state, setField } = useCalculator()
@@ -81,12 +206,6 @@ export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
   const isGoal = isSave && state.saveFlavor === 'goal'
 
   const setFlavor = (flavor: SaveFlavor) => setField('saveFlavor', flavor)
-
-  // What the "share of spare cash" slider works out to in £/month, shown live so
-  // the percentage isn't abstract. Only meaningful once a budget's been entered.
-  const spareCash = spareCashOf(state)
-  const rateAmount = Math.round((spareCash * state.rate) / 100)
-  const rateValueLabel = spareCash > 0 ? `${state.rate}% · ${fmt(rateAmount)}/mo` : `${state.rate}%`
 
   return (
     <StepPanel index={3} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
@@ -122,20 +241,7 @@ export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
                   onClick={() => setFlavor('goal')}
                 />
               </div>
-              {isDuration && (
-                <div style={{ marginBottom: 22 }}>
-                  <SliderField
-                    label="Share of spare cash you'll save"
-                    valueLabel={rateValueLabel}
-                    min={1}
-                    max={100}
-                    step={1}
-                    value={state.rate}
-                    accentColor={accent}
-                    onChange={(value) => setField('rate', value)}
-                  />
-                </div>
-              )}
+              {isDuration && <DurationInput accentColor={accent} />}
               {isGoal && (
                 <div style={{ marginBottom: 22 }}>
                   <GoalDateInput accentColor={accent} />
