@@ -155,67 +155,23 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     chartEndLabel = months <= CHART_MONTHS_CAP ? addMonths(months) : `${addMonths(CHART_MONTHS_CAP)}+`
   }
 
-  let headline = ''
-  let subheadline = ''
-  if (isFeasible) {
-    if (isEmergency) {
-      if (target === 0) {
-        headline = "You're already covered"
-        subheadline = `You've already set aside your ${state.coverMonths}-month cushion (${fmt(grossTarget)}). Keep it in an easy-access savings account.`
-      } else if (isGoal) {
-        headline = `${fmt(contribution)}/mo`
-        subheadline = `To reach your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by ${addMonths(months)}, save this much each month — best kept in an easy-access savings account.`
-      } else {
-        headline = `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
-        subheadline = `Saving ${fmt(contribution)}/month, you'll have your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by then — best kept in an easy-access savings account.`
-      }
-    } else if (isDuration) {
-      headline =
-        months === 0 ? 'You can afford it now' : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
-      subheadline = `Saving ${fmt(contribution)}/month, you'll reach ${fmt(grossTarget)} by then.`
-    } else if (isGoal) {
-      headline = `${fmt(contribution)}/mo`
-      subheadline = `To have ${fmt(grossTarget)} by ${addMonths(months)}, you'd need to save this much each month.`
-    } else {
-      headline = `${fmt(contribution)}/mo`
-      subheadline = `Financing ${fmt(target)} at ${state.growth}% APR over ${months} months.`
-    }
-  }
-
-  let isAffordable: boolean
-  let verdictSub: string
-  if (isEmergency && isGoal) {
-    // Goal-date path: the date is fixed, so affordability is whether the
-    // required monthly saving fits the user's spare cash.
-    isAffordable = fits
-    verdictSub = fits
-      ? `${fmt(contribution)}/month reaches your cushion by ${addMonths(months)}, within your ${fmt(spareCash)} spare cash.`
-      : `${fmt(contribution)}/month to hit ${addMonths(months)} is ${fmt(contribution - spareCash)} more than your spare cash — a later date needs less each month.`
-  } else if (isEmergency) {
-    isAffordable = isFeasible && months <= AFFORDABILITY_MONTHS_CAP
-    verdictSub = !isFeasible
-      ? `Set aside whatever you can each month — even ${fmt(essentialSpend)} (a 1-month cushion) is a solid first milestone.`
-      : months > AFFORDABILITY_MONTHS_CAP
-        ? `The full ${state.coverMonths}-month fund is a way off — start with a 1-month cushion of ${fmt(essentialSpend)} as your first milestone.`
-        : `Saving ${fmt(contribution)}/month, you'll have your cushion by ${addMonths(months)}.`
-  } else if (isDuration) {
-    isAffordable = isFeasible && months <= AFFORDABILITY_MONTHS_CAP
-    verdictSub = !isFeasible
-      ? 'Increase how much you save each month, or lower the price.'
-      : months > AFFORDABILITY_MONTHS_CAP
-        ? `That's over ${Math.round(AFFORDABILITY_MONTHS_CAP / 12)} years — try saving a bigger share each month.`
-        : `Saving ${fmt(contribution)}/month gets you there by ${addMonths(months)}.`
-  } else {
-    isAffordable = fits
-    const spareCashRatio = spareCash > 0 ? contribution / spareCash : Infinity
-    verdictSub = !fits
-      ? `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
-      : spareCashRatio <= SPARE_CASH_COMFORTABLE_RATIO
-        ? `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
-        : spareCashRatio <= SPARE_CASH_TIGHT_RATIO
-          ? `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
-          : `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
-  }
+  // All the presentation copy for the result is built per "kind" (emergency /
+  // duration / goal-date / finance), so each mode's headline, sub-copy, and
+  // verdict live together rather than spread across three parallel branches.
+  const kind: ResultKind = isEmergency ? 'emergency' : isFinance ? 'finance' : isGoal ? 'goal' : 'duration'
+  const { isAffordable, headline, subheadline, verdictText, verdictSub, resultEyebrow } = resultCopy(kind, {
+    months,
+    contribution,
+    target,
+    grossTarget,
+    spareCash,
+    essentialSpend,
+    isFeasible,
+    fits,
+    isGoal,
+    coverMonths: state.coverMonths,
+    growth: state.growth,
+  })
 
   return {
     spareCash,
@@ -228,27 +184,11 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     isFeasible,
     fits,
     isAffordable,
-    verdictText: isEmergency
-      ? isAffordable
-        ? "Yes — you can build this."
-        : isGoal
-          ? 'Not by that date.'
-          : 'This one will take time.'
-      : isAffordable
-        ? "Yes — it's within reach."
-        : "No — that's a stretch.",
+    verdictText,
     verdictSub,
     verdictIcon: isAffordable ? '✓' : '✕',
     verdictIconBg: isAffordable ? 'var(--verdict-affordable)' : 'var(--verdict-not-affordable)',
-    resultEyebrow: isEmergency
-      ? isGoal
-        ? 'Monthly saving needed'
-        : 'Time to build your fund'
-      : isDuration
-        ? 'Time to save up'
-        : isGoal
-          ? 'Monthly saving needed'
-          : 'Monthly payment plan',
+    resultEyebrow,
     headline,
     subheadline,
     contributionRowLabel: isFinance ? 'MONTHLY PAYMENT' : 'MONTHLY SAVING',
@@ -256,5 +196,147 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     chartBars,
     hasOverflowMonths,
     chartEndLabel,
+  }
+}
+
+/** Which result presentation a plan gets. Adding a new bespoke flow (e.g. car finance) means adding a kind and a builder, not threading another branch through five parallel ternaries. */
+type ResultKind = 'emergency' | 'duration' | 'goal' | 'finance'
+
+/** The verdict + copy fields `deriveResult` shows, all decided together per kind. */
+interface ResultCopy {
+  isAffordable: boolean
+  headline: string
+  subheadline: string
+  verdictText: string
+  verdictSub: string
+  resultEyebrow: string
+}
+
+/** The computed numbers each copy builder reads (a slice of the in-progress result). */
+interface CopyContext {
+  months: number
+  contribution: number
+  target: number
+  grossTarget: number
+  spareCash: number
+  essentialSpend: number
+  isFeasible: boolean
+  fits: boolean
+  /** Emergency fund only: goal-date sub-mode vs the open-ended "how long" one. */
+  isGoal: boolean
+  coverMonths: number
+  growth: number
+}
+
+const monthsLabel = (n: number) => `${n} month${n === 1 ? '' : 's'}`
+
+/** Standard "Yes / No" verdict shared by every non-emergency kind. */
+const withinReachVerdict = (isAffordable: boolean) => (isAffordable ? "Yes — it's within reach." : "No — that's a stretch.")
+
+/** Sub-copy for the "fixed monthly amount" kinds (goal-date and finance): does the required payment fit the spare cash, and how comfortably. */
+function fitsVerdictSub(c: CopyContext): string {
+  const ratio = c.spareCash > 0 ? c.contribution / c.spareCash : Infinity
+  if (!c.fits) return `${fmt(c.contribution)}/month is ${fmt(c.contribution - c.spareCash)} more than your spare cash.`
+  if (ratio <= SPARE_CASH_COMFORTABLE_RATIO) return `${fmt(c.contribution)}/month fits comfortably within your ${fmt(c.spareCash)} spare cash.`
+  if (ratio <= SPARE_CASH_TIGHT_RATIO) return `${fmt(c.contribution)}/month fits, but takes up a good chunk of your ${fmt(c.spareCash)} spare cash.`
+  return `${fmt(c.contribution)}/month fits, but it's tight — that's most of your ${fmt(c.spareCash)} spare cash.`
+}
+
+function resultCopy(kind: ResultKind, c: CopyContext): ResultCopy {
+  switch (kind) {
+    case 'emergency':
+      return emergencyCopy(c)
+    case 'goal':
+      return goalCopy(c)
+    case 'finance':
+      return financeCopy(c)
+    case 'duration':
+      return durationCopy(c)
+  }
+}
+
+/** Emergency fund: build a cushion of essential spending, kept in easy-access savings. */
+function emergencyCopy(c: CopyContext): ResultCopy {
+  let headline = ''
+  let subheadline = ''
+  if (c.isFeasible) {
+    if (c.target === 0) {
+      headline = "You're already covered"
+      subheadline = `You've already set aside your ${c.coverMonths}-month cushion (${fmt(c.grossTarget)}). Keep it in an easy-access savings account.`
+    } else if (c.isGoal) {
+      headline = `${fmt(c.contribution)}/mo`
+      subheadline = `To reach your ${c.coverMonths}-month cushion (${fmt(c.grossTarget)}) by ${addMonths(c.months)}, save this much each month — best kept in an easy-access savings account.`
+    } else {
+      headline = `${monthsLabel(c.months)} — ${addMonths(c.months)}`
+      subheadline = `Saving ${fmt(c.contribution)}/month, you'll have your ${c.coverMonths}-month cushion (${fmt(c.grossTarget)}) by then — best kept in an easy-access savings account.`
+    }
+  }
+
+  let isAffordable: boolean
+  let verdictSub: string
+  if (c.isGoal) {
+    // Goal-date path: the date is fixed, so affordability is whether the
+    // required monthly saving fits the user's spare cash.
+    isAffordable = c.fits
+    verdictSub = c.fits
+      ? `${fmt(c.contribution)}/month reaches your cushion by ${addMonths(c.months)}, within your ${fmt(c.spareCash)} spare cash.`
+      : `${fmt(c.contribution)}/month to hit ${addMonths(c.months)} is ${fmt(c.contribution - c.spareCash)} more than your spare cash — a later date needs less each month.`
+  } else {
+    isAffordable = c.isFeasible && c.months <= AFFORDABILITY_MONTHS_CAP
+    verdictSub = !c.isFeasible
+      ? `Set aside whatever you can each month — even ${fmt(c.essentialSpend)} (a 1-month cushion) is a solid first milestone.`
+      : c.months > AFFORDABILITY_MONTHS_CAP
+        ? `The full ${c.coverMonths}-month fund is a way off — start with a 1-month cushion of ${fmt(c.essentialSpend)} as your first milestone.`
+        : `Saving ${fmt(c.contribution)}/month, you'll have your cushion by ${addMonths(c.months)}.`
+  }
+
+  return {
+    isAffordable,
+    headline,
+    subheadline,
+    verdictSub,
+    verdictText: isAffordable ? 'Yes — you can build this.' : c.isGoal ? 'Not by that date.' : 'This one will take time.',
+    resultEyebrow: c.isGoal ? 'Monthly saving needed' : 'Time to build your fund',
+  }
+}
+
+/** Saving up, "how long will it take?" — the share-of-spare-cash flow. */
+function durationCopy(c: CopyContext): ResultCopy {
+  const isAffordable = c.isFeasible && c.months <= AFFORDABILITY_MONTHS_CAP
+  return {
+    isAffordable,
+    headline: !c.isFeasible ? '' : c.months === 0 ? 'You can afford it now' : `${monthsLabel(c.months)} — ${addMonths(c.months)}`,
+    subheadline: c.isFeasible ? `Saving ${fmt(c.contribution)}/month, you'll reach ${fmt(c.grossTarget)} by then.` : '',
+    verdictSub: !c.isFeasible
+      ? 'Increase how much you save each month, or lower the price.'
+      : c.months > AFFORDABILITY_MONTHS_CAP
+        ? `That's over ${Math.round(AFFORDABILITY_MONTHS_CAP / 12)} years — try saving a bigger share each month.`
+        : `Saving ${fmt(c.contribution)}/month gets you there by ${addMonths(c.months)}.`,
+    verdictText: withinReachVerdict(isAffordable),
+    resultEyebrow: 'Time to save up',
+  }
+}
+
+/** Saving up to a fixed date — the required monthly saving to hit the goal by then. */
+function goalCopy(c: CopyContext): ResultCopy {
+  return {
+    isAffordable: c.fits,
+    headline: `${fmt(c.contribution)}/mo`,
+    subheadline: `To have ${fmt(c.grossTarget)} by ${addMonths(c.months)}, you'd need to save this much each month.`,
+    verdictSub: fitsVerdictSub(c),
+    verdictText: withinReachVerdict(c.fits),
+    resultEyebrow: 'Monthly saving needed',
+  }
+}
+
+/** Paying monthly — financing the amount over a term at an APR. */
+function financeCopy(c: CopyContext): ResultCopy {
+  return {
+    isAffordable: c.fits,
+    headline: `${fmt(c.contribution)}/mo`,
+    subheadline: `Financing ${fmt(c.target)} at ${c.growth}% APR over ${c.months} months.`,
+    verdictSub: fitsVerdictSub(c),
+    verdictText: withinReachVerdict(c.fits),
+    resultEyebrow: 'Monthly payment plan',
   }
 }
