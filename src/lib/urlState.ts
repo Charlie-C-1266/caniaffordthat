@@ -73,10 +73,13 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   const state: CalculatorState = { ...DEFAULT_STATE }
 
   const goalId = params.get('goalId')
-  if (isGoalId(goalId)) {
-    state.goalId = goalId
+  const goal = isGoalId(goalId) ? GOALS.find((g) => g.id === goalId) : undefined
+  // A "Soon" goal (e.g. an old link to a since-disabled calculator) must not
+  // reopen its flow — ignore it so hydration falls back to the goal picker.
+  if (goal && !goal.soon) {
+    state.goalId = goal.id
     // Focus the carousel on the shared goal so "Pick another goal" starts there.
-    state.carouselIndex = GOALS.findIndex((g) => g.id === goalId)
+    state.carouselIndex = GOALS.indexOf(goal)
   }
 
   const mode = params.get('mode')
