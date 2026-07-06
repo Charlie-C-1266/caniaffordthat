@@ -28,46 +28,109 @@ function BreakdownRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function ChartCard({ bars, endLabel, hasOverflow, months }: { bars: ChartBar[]; endLabel: string; hasOverflow: boolean; months: number }) {
+const CHART_BAR_AREA_HEIGHT = 74
+
+interface ChartCardProps {
+  bars: ChartBar[]
+  endLabel: string
+  hasOverflow: boolean
+  months: number
+  /** The value the bars climb to (100% = the goal line): amount left to save, or amount financed. */
+  target: number
+  /** What the vertical axis measures, e.g. "Savings balance" or "Balance repaid". */
+  title: string
+}
+
+/**
+ * A small month-by-month bar chart of progress toward the goal. The y-axis is
+ * money (£0 up to the target, marked by the dashed goal line at the top); the
+ * x-axis is time (now → the finish date). Each bar is one month's projected
+ * balance, so the axis labels are what make the heights readable.
+ */
+function ChartCard({ bars, endLabel, hasOverflow, months, target, title }: ChartCardProps) {
+  const axisLabelStyle = {
+    fontSize: 'var(--fs-rail-label)',
+    color: 'var(--result-text-secondary-dim)',
+    fontWeight: 700,
+  } as const
   return (
     <div
       style={{
         background: 'var(--result-glass-bg)',
         backdropFilter: 'blur(var(--result-glass-blur))',
         borderRadius: 'var(--radius-glass-sm)',
-        padding: '12px 12px 10px',
+        padding: '12px 14px 10px',
         marginBottom: 10,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 56 }}>
-        {bars.map((bar, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-            <div
-              style={{
-                width: '100%',
-                borderRadius: '2px 2px 0 0',
-                background: bar.color,
-                height: `${bar.heightPct}%`,
-                minHeight: 3,
-              }}
-            />
-          </div>
-        ))}
-      </div>
       <div
-        className="mono"
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: 9,
-          fontSize: 'var(--fs-rail-label)',
-          color: 'var(--result-text-secondary-dim)',
+          fontSize: 'var(--fs-label)',
+          fontWeight: 800,
+          letterSpacing: '0.04em',
           textTransform: 'uppercase',
-          fontWeight: 700,
+          color: 'var(--result-text-secondary-dim)',
+          marginBottom: 10,
         }}
       >
-        <span>Now</span>
-        <span>{endLabel}</span>
+        {title}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {/* Money y-axis: the top marks the goal, the bottom is £0. */}
+        <div
+          className="mono"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            height: CHART_BAR_AREA_HEIGHT,
+            textAlign: 'right',
+            ...axisLabelStyle,
+          }}
+        >
+          <span style={{ color: 'var(--result-text-primary)' }}>{fmt(target)}</span>
+          <span>£0</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          {/* Dashed line at the top = the goal; solid line at the base = £0. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 3,
+              height: CHART_BAR_AREA_HEIGHT,
+              borderTop: '1px dashed rgba(20,18,31,0.28)',
+              borderBottom: '1px solid rgba(20,18,31,0.28)',
+            }}
+          >
+            {bars.map((bar, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    borderRadius: '2px 2px 0 0',
+                    background: bar.color,
+                    height: `${bar.heightPct}%`,
+                    minHeight: 3,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div
+            className="mono"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: 7,
+              textTransform: 'uppercase',
+              ...axisLabelStyle,
+            }}
+          >
+            <span>Now</span>
+            <span>{endLabel}</span>
+          </div>
+        </div>
       </div>
       {hasOverflow && (
         <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--result-text-secondary-dim)', fontWeight: 600 }}>
@@ -184,12 +247,14 @@ export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
               {result.subheadline}
             </p>
 
-            {result.isFeasible && (
+            {result.isFeasible && result.target > 0 && (
               <ChartCard
                 bars={result.chartBars}
                 endLabel={result.chartEndLabel}
                 hasOverflow={result.hasOverflowMonths}
                 months={result.months}
+                target={result.target}
+                title={state.mode === 'monthly' ? 'Balance repaid over time' : 'Savings balance over time'}
               />
             )}
 

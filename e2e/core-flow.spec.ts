@@ -91,5 +91,10 @@ test.describe('core flow', () => {
     await expect(page.getByText(/Yes — it's within reach/)).toBeVisible()
     await expect(page.getByRole('heading', { name: '£100/mo' })).toBeVisible()
     await expect(page.getByText(/New sofa — £1,200/)).toBeVisible()
+
+    // The projection chart is labelled: a title and a time x-axis that starts
+    // at "now" (the money y-axis and end date are asserted via the breakdown).
+    await expect(page.getByText('Savings balance over time')).toBeVisible()
+    await expect(page.getByText('Now', { exact: true })).toBeVisible()
   })
 })
