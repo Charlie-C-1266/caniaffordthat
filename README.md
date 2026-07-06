@@ -22,8 +22,8 @@ npm run dev
 docker compose up -d --build
 ```
 
-Serves on **http://localhost:4321** (port chosen to avoid clashing with
-floci on 4500/4566 on this machine).
+Serves on **http://localhost:4321**. Change the left half of the port mapping
+in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken.
 
 ## Deployment
 

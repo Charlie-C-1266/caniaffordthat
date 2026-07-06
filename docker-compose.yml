@@ -4,9 +4,8 @@
 # client-only site (no backend, no database) — the container just builds the
 # Vite app and serves it via nginx.
 #
-# Host port 4321 was picked deliberately: 4500 / 4566 are used by floci /
-# floci-ui on this machine. Change the left half of the port mapping below
-# (e.g. "9000:80") if 4321 is ever taken too.
+# Serves on host port 4321 by default. Change the left half of the port
+# mapping below (e.g. "9000:80") if that port is already taken.
 
 services:
   caniaffordthat:
