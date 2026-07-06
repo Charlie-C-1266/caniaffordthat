@@ -1,4 +1,4 @@
-/** Legal disclaimer shown after the result step — estimates only, not financial advice; also flags alpha status. */
+/** Shown after the result step — leads with the alpha notice, then the estimates-only / not-financial-advice disclaimer and a feedback link. */
 export function Footer() {
   return (
     <footer
@@ -8,6 +8,20 @@ export function Footer() {
         background: 'var(--bg-dark-1)',
       }}
     >
+      {/* Alpha notice first and emphasised, so it's the clearest thing here. */}
+      <p
+        style={{
+          margin: '0 auto 18px',
+          maxWidth: 640,
+          fontSize: 'var(--fs-body)',
+          fontWeight: 700,
+          color: 'var(--text-secondary)',
+          lineHeight: 1.5,
+        }}
+      >
+        Heads up: Can I Afford That? is currently in <strong style={{ color: 'var(--text-primary)' }}>early alpha</strong>.
+        It's actively being built, so expect bugs, rough edges, and things changing from one visit to the next.
+      </p>
       <p
         style={{
           margin: '0 auto',
@@ -17,15 +31,11 @@ export function Footer() {
           lineHeight: 1.6,
         }}
       >
-        Can I Afford That? provides estimates for illustrative purposes only. It
-        is not financial advice, and results depend entirely on the figures you
-        enter — they don't account for tax, fees, interest rate changes, or
-        changes in your circumstances. Please speak to a qualified financial
-        adviser before making significant financial decisions.
-        <br />
-        <br />
-        This is also an early alpha, actively being built — expect bugs,
-        rough edges, and things changing from one visit to the next.
+        It provides estimates for illustrative purposes only. It is not financial
+        advice, and results depend entirely on the figures you enter — they don't
+        account for tax, fees, interest rate changes, or changes in your
+        circumstances. Please speak to a qualified financial adviser before making
+        significant financial decisions.
         <br />
         <br />
         Found a bug, or got an idea for something you'd like to see? Email{' '}
