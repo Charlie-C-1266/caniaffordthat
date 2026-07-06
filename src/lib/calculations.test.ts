@@ -10,6 +10,7 @@ import {
   monthsFromIso,
   monthYearFromMonths,
   monthsFromMonthYear,
+  formatMonthYearDraft,
 } from './calculations'
 
 describe('num', () => {
@@ -171,5 +172,32 @@ describe('date helpers (anchored to the real current date)', () => {
     expect(monthsFromMonthYear('00-2026')).toBeNull()
     expect(monthsFromMonthYear('08')).toBeNull()
     expect(monthsFromMonthYear('not a date')).toBeNull()
+  })
+})
+
+describe('formatMonthYearDraft', () => {
+  it('keeps a partial month un-hyphenated until it is two digits', () => {
+    expect(formatMonthYearDraft('')).toBe('')
+    expect(formatMonthYearDraft('0')).toBe('0')
+    expect(formatMonthYearDraft('08')).toBe('08')
+  })
+
+  it('auto-inserts the hyphen once the month is complete', () => {
+    expect(formatMonthYearDraft('083')).toBe('08-3')
+    expect(formatMonthYearDraft('082026')).toBe('08-2026')
+  })
+
+  it('strips letters, spaces, and stray separators, keeping digit order', () => {
+    expect(formatMonthYearDraft('08/2026')).toBe('08-2026')
+    expect(formatMonthYearDraft('1a2/2027xy')).toBe('12-2027')
+    expect(formatMonthYearDraft('not a date')).toBe('')
+  })
+
+  it('caps at six digits (MMYYYY), dropping any overflow', () => {
+    expect(formatMonthYearDraft('12202699')).toBe('12-2026')
+  })
+
+  it('is idempotent on an already-formatted value', () => {
+    expect(formatMonthYearDraft('08-2026')).toBe('08-2026')
   })
 })

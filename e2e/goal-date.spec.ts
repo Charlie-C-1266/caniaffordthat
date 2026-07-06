@@ -20,6 +20,18 @@ test.describe('goal-date field', () => {
     await expect(goalDateInput).toHaveValue('03-2028')
   })
 
+  test('masks typed input to the MM-YYYY shape, dropping other characters', async ({ page }) => {
+    await goToPlan(page)
+    await page.getByRole('button', { name: 'I have a goal date' }).click()
+
+    const goalDateInput = page.getByPlaceholder('MM-YYYY')
+    await goalDateInput.fill('')
+
+    // Letters and separators are rejected; digits get the hyphen auto-inserted.
+    await goalDateInput.pressSequentially('1a2/2027xyz')
+    await expect(goalDateInput).toHaveValue('12-2027')
+  })
+
   test('reverts to the last valid value on blur if left invalid or empty', async ({ page }) => {
     await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()
