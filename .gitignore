@@ -13,6 +13,9 @@ dist-ssr
 *.local
 design
 
+# Test coverage
+coverage
+
 # Playwright
 test-results
 playwright-report
