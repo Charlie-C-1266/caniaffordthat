@@ -32,6 +32,24 @@ test.describe('goal-date field', () => {
     await expect(goalDateInput).toHaveValue('12-2027')
   })
 
+  test('inserts the hyphen after the second digit and lets backspace delete past it', async ({ page }) => {
+    await goToPlan(page)
+    await page.getByRole('button', { name: 'I have a goal date' }).click()
+
+    const goalDateInput = page.getByPlaceholder('MM-YYYY')
+    await goalDateInput.fill('')
+
+    // The hyphen appears as soon as the two-digit month is entered.
+    await goalDateInput.pressSequentially('08')
+    await expect(goalDateInput).toHaveValue('08-')
+
+    // Backspace removes the auto-inserted hyphen rather than re-adding it.
+    await page.keyboard.press('Backspace')
+    await expect(goalDateInput).toHaveValue('08')
+    await page.keyboard.press('Backspace')
+    await expect(goalDateInput).toHaveValue('0')
+  })
+
   test('reverts to the last valid value on blur if left invalid or empty', async ({ page }) => {
     await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()

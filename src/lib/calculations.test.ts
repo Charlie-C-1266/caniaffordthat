@@ -176,13 +176,13 @@ describe('date helpers (anchored to the real current date)', () => {
 })
 
 describe('formatMonthYearDraft', () => {
-  it('keeps a partial month un-hyphenated until it is two digits', () => {
+  it('keeps a single-digit month un-hyphenated', () => {
     expect(formatMonthYearDraft('')).toBe('')
     expect(formatMonthYearDraft('0')).toBe('0')
-    expect(formatMonthYearDraft('08')).toBe('08')
   })
 
-  it('auto-inserts the hyphen once the month is complete', () => {
+  it('inserts the hyphen as soon as the two-digit month is complete', () => {
+    expect(formatMonthYearDraft('08')).toBe('08-')
     expect(formatMonthYearDraft('083')).toBe('08-3')
     expect(formatMonthYearDraft('082026')).toBe('08-2026')
   })

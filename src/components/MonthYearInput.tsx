@@ -35,7 +35,13 @@ export function MonthYearInput({ months, minMonths, accentColor, onChange }: Mon
   }
 
   const handleChange = (value: string) => {
-    const masked = formatMonthYearDraft(value)
+    let masked = formatMonthYearDraft(value)
+    // The mask auto-adds the hyphen after the two-digit month. When the user is
+    // deleting and has just removed that separator, don't stickily re-add it —
+    // let the backspace fall through to the month digit instead.
+    if (value.length < draft.length && masked.endsWith('-') && !value.endsWith('-')) {
+      masked = masked.slice(0, -1)
+    }
     setDraft(masked)
     commitIfValid(masked)
   }
