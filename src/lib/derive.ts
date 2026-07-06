@@ -158,7 +158,16 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   let headline = ''
   let subheadline = ''
   if (isFeasible) {
-    if (isDuration) {
+    if (isEmergency) {
+      headline =
+        months === 0
+          ? "You're already covered"
+          : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
+      subheadline =
+        months === 0
+          ? `You've already set aside your ${state.coverMonths}-month cushion. Keep it in an easy-access savings account.`
+          : `Saving ${fmt(contribution)}/month, you'll have your ${state.coverMonths}-month cushion (${fmt(grossTarget)}) by then — best kept in an easy-access savings account.`
+    } else if (isDuration) {
       headline =
         months === 0 ? 'You can afford it now' : `${months} month${months === 1 ? '' : 's'} — ${addMonths(months)}`
       subheadline = `Saving ${fmt(contribution)}/month, you'll reach ${fmt(grossTarget)} by then.`
@@ -173,7 +182,14 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
 
   let isAffordable: boolean
   let verdictSub: string
-  if (isDuration) {
+  if (isEmergency) {
+    isAffordable = isFeasible && months <= AFFORDABILITY_MONTHS_CAP
+    verdictSub = !isFeasible
+      ? `Set aside whatever you can each month — even ${fmt(essentialSpend)} (a 1-month cushion) is a solid first milestone.`
+      : months > AFFORDABILITY_MONTHS_CAP
+        ? `The full ${state.coverMonths}-month fund is a way off — start with a 1-month cushion of ${fmt(essentialSpend)} as your first milestone.`
+        : `Saving ${fmt(contribution)}/month, you'll have your cushion by ${addMonths(months)}.`
+  } else if (isDuration) {
     isAffordable = isFeasible && months <= AFFORDABILITY_MONTHS_CAP
     verdictSub = !isFeasible
       ? 'Increase how much you save each month, or lower the price.'
@@ -203,11 +219,23 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     isFeasible,
     fits,
     isAffordable,
-    verdictText: isAffordable ? "Yes — it's within reach." : "No — that's a stretch.",
+    verdictText: isEmergency
+      ? isAffordable
+        ? "Yes — you can build this."
+        : 'This one will take time.'
+      : isAffordable
+        ? "Yes — it's within reach."
+        : "No — that's a stretch.",
     verdictSub,
     verdictIcon: isAffordable ? '✓' : '✕',
     verdictIconBg: isAffordable ? 'var(--verdict-affordable)' : 'var(--verdict-not-affordable)',
-    resultEyebrow: isDuration ? 'Time to save up' : isGoal ? 'Monthly saving needed' : 'Monthly payment plan',
+    resultEyebrow: isEmergency
+      ? 'Time to build your fund'
+      : isDuration
+        ? 'Time to save up'
+        : isGoal
+          ? 'Monthly saving needed'
+          : 'Monthly payment plan',
     headline,
     subheadline,
     contributionRowLabel: isFinance ? 'MONTHLY PAYMENT' : 'MONTHLY SAVING',

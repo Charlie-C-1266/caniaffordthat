@@ -14,10 +14,12 @@ test.describe('emergency fund', () => {
     await expect(page.getByRole('button', { name: 'Pay monthly' })).toHaveCount(0)
 
     // Essentials live here in Details. Housing is the first money field on this
-    // step; £1,000 x the default 6 months cover -> a £6,000 target.
+    // step; £1,000 x the default 3 months cover -> a £3,000 target, which sits
+    // in MoneyHelper's recommended 3–6 month band.
     const housing = page.locator('input[type="number"]').nth(0)
     await housing.fill('1000')
-    await expect(page.getByText(/That's £6,000/)).toBeVisible()
+    await expect(page.getByText(/That's £3,000/)).toBeVisible()
+    await expect(page.getByText('Within the recommended 3–6 months.')).toBeVisible()
 
     // Budget step only needs take-home for the emergency fund. Target it by its
     // label — the Details essentials are earlier number inputs on the page.
@@ -27,6 +29,7 @@ test.describe('emergency fund', () => {
 
     await page.getByRole('button', { name: 'Result', exact: true }).click()
     await expect(page.getByText('Copy result link')).toBeVisible()
-    await expect(page.getByText(/Emergency fund — £6,000/)).toBeVisible()
+    await expect(page.getByText(/Emergency fund — £3,000/)).toBeVisible()
+    await expect(page.getByText('Time to build your fund')).toBeVisible()
   })
 })

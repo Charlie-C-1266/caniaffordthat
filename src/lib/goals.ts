@@ -90,7 +90,7 @@ export const GOALS: readonly Goal[] = [
     defaultMode: 'save',
     saveFlavor: 'duration',
     showName: false,
-    seeds: { mode: 'save', saveFlavor: 'duration', coverMonths: 6 },
+    seeds: { mode: 'save', saveFlavor: 'duration', coverMonths: 3 },
   },
   {
     id: 'luxury',

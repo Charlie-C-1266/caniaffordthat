@@ -15,6 +15,10 @@ const SOURCES: Source[] = [
     url: 'https://www.moneyhelper.org.uk/en/savings/how-to-save/should-i-save-or-invest',
   },
   {
+    label: 'MoneyHelper — Emergency savings: how much is enough? (3–6 months)',
+    url: 'https://www.moneyhelper.org.uk/en/savings/types-of-savings/emergency-savings-how-much-is-enough',
+  },
+  {
     label: 'MoneyHelper — Can I afford to rent? (the 30% rule)',
     url: 'https://www.moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford',
   },

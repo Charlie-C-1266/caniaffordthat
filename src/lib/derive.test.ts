@@ -191,6 +191,43 @@ describe('deriveResult', () => {
       )
       expect(result).toBeNull()
     })
+
+    it('frames the result as building a cushion kept in easy-access savings', () => {
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'duration',
+          takeHome: '3000',
+          housing: '1000',
+          coverMonths: 3,
+          rate: 100,
+        }),
+      )
+      expect(result?.resultEyebrow).toBe('Time to build your fund')
+      expect(result?.verdictText).toBe('Yes — you can build this.')
+      expect(result?.subheadline).toMatch(/cushion/)
+      expect(result?.subheadline).toMatch(/easy-access/)
+    })
+
+    it('suggests a 1-month milestone when the full fund is a long way off', () => {
+      // essentials 1000 -> 3-month target 3000; spareCash 10 -> ~300 months (over the 60-month cap).
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'duration',
+          takeHome: '1010',
+          housing: '1000',
+          coverMonths: 3,
+          rate: 100,
+        }),
+      )
+      expect(result?.isAffordable).toBe(false)
+      expect(result?.verdictText).toBe('This one will take time.')
+      expect(result?.verdictSub).toMatch(/1-month cushion/)
+      expect(result?.verdictSub).toMatch(/£1,000/)
+    })
   })
 
   describe('chart bars', () => {

@@ -21,7 +21,9 @@ export const DEFAULT_STATE: CalculatorState = {
   transport: '0',
   debts: '0',
   savings: '0',
-  coverMonths: 6,
+  // MoneyHelper's "aim for at least 3 months" of essential outgoings — the
+  // recommended starting target for an emergency fund (see design/adr/0010).
+  coverMonths: 3,
   rate: 25,
   growth: 0,
   goalMonths: 12,

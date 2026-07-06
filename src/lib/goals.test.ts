@@ -116,7 +116,7 @@ describe('seedFromGoal', () => {
     expect('goalMonths' in patch).toBe(false)
   })
 
-  it('seeds the emergency cover months', () => {
-    expect(seedFromGoal(goalById('emergency')!).coverMonths).toBe(6)
+  it('seeds the emergency cover months to the recommended 3-month starting target', () => {
+    expect(seedFromGoal(goalById('emergency')!).coverMonths).toBe(3)
   })
 })
