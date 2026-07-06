@@ -1,43 +1,49 @@
 # Can I Afford That?
 
-A single-page scrollytelling calculator that helps decide whether an item is
-affordable — either by working out how long it'll take to save up for it, or
-what the monthly payment would be if financing it.
+A single-page scrollytelling calculator that helps you decide whether something
+is affordable — either by working out how long it'd take to save up for it, or
+what the monthly payment would be if you financed it.
 
-Standalone POC, separate from PiLedger. React + Vite, GBP-only, no backend.
-See the [implementation plan](https://app.notion.com/p/39324a157886817aaf8ed3a8199f6bd3)
-for the build breakdown, and `design/` for the original design handoff this is
-built from.
+Standalone POC: React + Vite, GBP-only, and no backend — a pure static,
+client-side app. This repository contains the full source, tests, and Docker
+setup for running it yourself.
 
-## Development
+## Running it locally
+
+With Node installed:
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Docker
+Then open the URL Vite prints (defaults to <http://localhost:5173>).
+
+Or with Docker:
 
 ```bash
 docker compose up -d --build
 ```
 
-Serves on **http://localhost:4321** (port chosen to avoid clashing with
-PiLedger on 8080 and floci on 4500/4566 on this machine).
+This serves on <http://localhost:4321>. Change the left half of the port mapping
+in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken.
 
-## Deployment
+To produce a static build you can serve from any static host:
 
-Zero-config on Vercel or Netlify — it's a pure static build with no backend:
-build command `npm run build`, publish directory `dist`. Both platforms
-auto-detect Vite, so importing the GitHub repo directly should just work.
+```bash
+npm run build   # outputs to dist/
+```
 
-Live on Vercel, connected directly to this GitHub repo — every push and PR
-gets its own preview deployment automatically (Vercel's native Git
-integration, no GitHub Actions involved in the deploy itself).
+## Found a bug?
 
-## Workflow
+Please [raise an issue](../../issues) or email **hello@caniaffordthat.co.uk** —
+whichever's easier. A note on how to reproduce it is always appreciated.
 
-Changes land via PR, not direct pushes to `main`:
+## Contributing
+
+Contributions are very welcome — feel free to raise a PR with any change you
+think would be beneficial. Changes land via PR into `main` rather than direct
+pushes:
 
 ```bash
 git checkout -b feature/short-description   # or bugfix/short-description
@@ -45,7 +51,5 @@ git checkout -b feature/short-description   # or bugfix/short-description
 git push -u origin feature/short-description
 ```
 
-Open a PR into `main`. That gives you two things automatically: a Vercel
-preview URL on the PR (via Vercel's Git integration) and a CI run
-(`.github/workflows/ci.yml` — typecheck, lint, test, build) that has to pass
-before merging.
+Then open a PR into `main`. CI (`.github/workflows/ci.yml` — typecheck, lint,
+test, build) must pass before merging.
