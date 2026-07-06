@@ -34,7 +34,6 @@ const SPARE_CASH_TIGHT_RATIO = 0.6
 
 export interface ChartBar {
   heightPct: number
-  color: string
 }
 
 /** Sum of the five monthly outgoing fields (housing…debts). Also the emergency fund's "essential spend". */
@@ -148,10 +147,9 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
         for (let m = 0; m < k; m++) bal = bal * (1 + i) + contribution
         frac = target > 0 ? Math.min(1, bal / target) : 1
       }
-      chartBars.push({
-        heightPct: Math.max(3, Math.round(frac * 100)),
-        color: k === cap ? 'var(--result-bar-current)' : 'var(--result-bar-past)',
-      })
+      // The final (current-month) bar is coloured by the view; here we only
+      // need each month's progress height toward the target.
+      chartBars.push({ heightPct: Math.max(3, Math.round(frac * 100)) })
     }
     hasOverflowMonths = months > CHART_MONTHS_CAP
     chartEndLabel = months <= CHART_MONTHS_CAP ? addMonths(months) : `${addMonths(CHART_MONTHS_CAP)}+`

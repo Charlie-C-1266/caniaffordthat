@@ -291,11 +291,11 @@ describe('deriveResult', () => {
       expect(result?.hasOverflowMonths).toBe(false)
     })
 
-    it('marks only the last bar as the "current" color', () => {
+    it('grows the bars toward 100% by the final month', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 6 }))
       const bars = result?.chartBars ?? []
-      expect(bars.slice(0, -1).every((bar) => bar.color === 'var(--result-bar-past)')).toBe(true)
-      expect(bars.at(-1)?.color).toBe('var(--result-bar-current)')
+      expect(bars.at(-1)?.heightPct).toBe(100)
+      expect(bars[0].heightPct).toBeLessThan(100)
     })
   })
 })

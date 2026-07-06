@@ -42,18 +42,6 @@
   --tile-border-neutral: rgba(245, 243, 255, 0.12);
   --input-underline: rgba(245, 243, 255, 0.18);
 
-  /* Colors — result step (bright accent background, dark text/glass).
-     The secondary/dim opacities are set for WCAG AA (>=4.5:1) against BOTH
-     verdict backgrounds — the red "not affordable" fill is the limiting case,
-     where the old 0.7/0.55 values dropped to ~3.9:1 and ~2.9:1. */
-  --result-glass-bg: rgba(20, 18, 31, 0.12);
-  --result-glass-blur: 6px;
-  --result-text-primary: #14121f;
-  --result-text-secondary: rgba(20, 18, 31, 0.85);
-  --result-text-secondary-dim: rgba(20, 18, 31, 0.8);
-  --result-bar-current: #14121f;
-  --result-bar-past: rgba(20, 18, 31, 0.28);
-
   /* Typography */
   --font-ui: 'Manrope', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
