@@ -93,6 +93,18 @@ export function monthYearFromMonths(n: number): string {
   return `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
 }
 
+// Masks free text to the "MM-YYYY" shape as it's typed: keeps only digits (at
+// most MMYYYY), and inserts the hyphen as soon as the two-digit month is
+// complete. Drops letters, stray separators, and overflow digits, so the
+// goal-date field can only ever hold MM-YYYY-shaped input — range validity is
+// a separate concern (see `monthsFromMonthYear`). Callers should suppress the
+// trailing hyphen while the user is deleting so it isn't sticky to backspace.
+export function formatMonthYearDraft(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 6)
+  if (digits.length < 2) return digits
+  return `${digits.slice(0, 2)}-${digits.slice(2)}`
+}
+
 // Parses "MM-YYYY" into months from now. Returns null (not a clamped
 // fallback) for anything that isn't a fully valid month/year, so callers can
 // tell "still being typed" apart from "a real date" and decide what to do —

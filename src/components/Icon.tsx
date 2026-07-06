@@ -8,6 +8,7 @@ import {
   Gem,
   Hammer,
   Heart,
+  HelpCircle,
   House,
   Plane,
   ShoppingBag,
@@ -34,6 +35,7 @@ const ICONS: Record<string, LucideIcon> = {
   'chevron-right': ChevronRight,
   'chevron-down': ChevronDown,
   check: Check,
+  'help-circle': HelpCircle,
   x: X,
 }
 

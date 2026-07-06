@@ -79,11 +79,11 @@ describe('buildShareParams', () => {
   it('round-trips a full state back through hydrateStateFromUrl', () => {
     const shared = {
       ...DEFAULT_STATE,
-      goalId: 'car',
-      carouselIndex: 0,
+      goalId: 'big',
+      carouselIndex: 4,
       mode: 'monthly',
       saveFlavor: 'goal',
-      itemName: 'Golf',
+      itemName: 'New kitchen',
       itemPrice: '18000',
       takeHome: '2600',
       housing: '800',
@@ -99,12 +99,12 @@ describe('buildShareParams', () => {
     const restored = hydrateStateFromUrl(`?${params.toString()}`)
 
     // Every shared field survives the round-trip; carouselIndex is re-derived
-    // from goalId (car -> index 0) rather than serialised.
-    expect(restored.goalId).toBe('car')
-    expect(restored.carouselIndex).toBe(0)
+    // from goalId (big -> index 4) rather than serialised.
+    expect(restored.goalId).toBe('big')
+    expect(restored.carouselIndex).toBe(4)
     expect(restored.mode).toBe('monthly')
     expect(restored.saveFlavor).toBe('goal')
-    expect(restored.itemName).toBe('Golf')
+    expect(restored.itemName).toBe('New kitchen')
     expect(restored.itemPrice).toBe('18000')
     expect(restored.savings).toBe('3000')
     expect(restored.growth).toBe(7.9)
@@ -115,5 +115,11 @@ describe('buildShareParams', () => {
   it('omits goalId when no goal has been chosen', () => {
     const params = buildShareParams(DEFAULT_STATE)
     expect(params.has('goalId')).toBe(false)
+  })
+
+  it('ignores a link to a "Soon" goal so its disabled flow cannot be reopened', () => {
+    // An old share link to the since-disabled Vehicle calculator.
+    const restored = hydrateStateFromUrl('?goalId=car&itemPrice=18000')
+    expect(restored.goalId).toBeNull()
   })
 })

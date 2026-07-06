@@ -28,3 +28,16 @@ body {
 .mono {
   font-family: var(--font-mono);
 }
+
+/*
+ * Keyboard focus indicator. Many controls are custom-styled buttons that
+ * otherwise show only the (inconsistent, sometimes invisible) UA ring, and a
+ * few inputs set `outline: none`. `currentColor` ties the ring to each
+ * element's own text colour, which is already picked to contrast its
+ * background — so it stays visible on both the dark steps and the bright
+ * result panel. `:focus-visible` keeps it to keyboard use, not mouse clicks.
+ */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}

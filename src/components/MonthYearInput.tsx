@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
-import { monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
+import { formatMonthYearDraft, monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
 
 interface MonthYearInputProps {
   /** Committed value, in months from now. */
@@ -11,12 +11,13 @@ interface MonthYearInputProps {
 }
 
 /**
- * A plain "MM-YYYY" text field for the goal-date input. Deliberately not a
+ * A masked "MM-YYYY" text field for the goal-date input. Deliberately not a
  * native `<input type="month">` — those round-trip an invalid/cleared value
  * back through as NaN, which snaps the displayed date to a fallback (its
  * `min` bound) the moment you try to clear the field to type a new one,
- * making it impossible to actually change. This keeps its own draft text
- * while typing and only commits once it's a fully valid, in-range date.
+ * making it impossible to actually change. Input is masked to the MM-YYYY
+ * shape (see `formatMonthYearDraft`); it keeps its own draft text while
+ * typing and only commits once it's a fully valid, in-range date.
  */
 export function MonthYearInput({ months, minMonths, accentColor, onChange }: MonthYearInputProps) {
   const [draft, setDraft] = useState(() => monthYearFromMonths(months))
@@ -34,8 +35,15 @@ export function MonthYearInput({ months, minMonths, accentColor, onChange }: Mon
   }
 
   const handleChange = (value: string) => {
-    setDraft(value)
-    commitIfValid(value)
+    let masked = formatMonthYearDraft(value)
+    // The mask auto-adds the hyphen after the two-digit month. When the user is
+    // deleting and has just removed that separator, don't stickily re-add it —
+    // let the backspace fall through to the month digit instead.
+    if (value.length < draft.length && masked.endsWith('-') && !value.endsWith('-')) {
+      masked = masked.slice(0, -1)
+    }
+    setDraft(masked)
+    commitIfValid(masked)
   }
 
   const handleBlur = () => {
@@ -54,6 +62,7 @@ export function MonthYearInput({ months, minMonths, accentColor, onChange }: Mon
       type="text"
       inputMode="numeric"
       placeholder="MM-YYYY"
+      maxLength={7}
       value={draft}
       onChange={(e) => handleChange(e.target.value)}
       onFocus={() => setFocused(true)}

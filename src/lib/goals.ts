@@ -45,16 +45,17 @@ export interface Goal {
 
 // Carousel order (see design/adr/0006). The most common goals lead; the
 // emergency fund sits early so it's encouraged; "Big purchase" is the catch-all
-// (it absorbs weddings, home projects, and anything else); Mortgage is last
-// because it's not built yet and ships disabled as "Soon". All goals ahead of
-// Mortgage are selectable, so the carousel focuses the first one, Vehicle.
+// (it absorbs weddings, home projects, and anything else). Vehicle and Mortgage
+// ship disabled as "Soon" — their calculators aren't ready yet — so the
+// carousel focuses the first selectable goal, Holiday.
 export const GOALS: readonly Goal[] = [
   {
     id: 'car',
     name: 'Vehicle',
     tag: 'Car finance',
     icon: 'car',
-    blurb: 'A new or used car — finance it, or save up for the drive-away price.',
+    blurb: 'A new or used car — finance it, or save up for the drive-away price. Coming soon.',
+    soon: true,
     allowModeToggle: true,
     defaultMode: 'monthly',
     saveFlavor: 'duration',
@@ -90,7 +91,7 @@ export const GOALS: readonly Goal[] = [
     defaultMode: 'save',
     saveFlavor: 'duration',
     showName: false,
-    seeds: { mode: 'save', saveFlavor: 'duration', coverMonths: 6 },
+    seeds: { mode: 'save', saveFlavor: 'duration', coverMonths: 3 },
   },
   {
     id: 'luxury',

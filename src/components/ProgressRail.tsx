@@ -9,8 +9,9 @@ interface ProgressRailProps {
 /**
  * Fixed, vertically-centered rail of step dots on the right edge. The active
  * dot is larger, filled with the accent color; inactive dots are hollow
- * (transparent fill, dim border) and their labels are fully transparent.
- * Clicking any dot jumps straight to that step.
+ * (transparent fill, dim border). Dots only — the step name is exposed to
+ * assistive tech via each button's aria-label rather than rendered, so the
+ * rail never overlaps the tiles. Clicking any dot jumps straight to that step.
  */
 export function ProgressRail({ activeIndex, labels, accentColor, onSelect }: ProgressRailProps) {
   return (
@@ -41,25 +42,12 @@ export function ProgressRail({ activeIndex, labels, accentColor, onSelect }: Pro
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
-              gap: 9,
               background: 'transparent',
               border: 'none',
               padding: 0,
               cursor: 'pointer',
             }}
           >
-            <span
-              aria-hidden="true"
-              style={{
-                fontSize: 'var(--fs-rail-label)',
-                fontWeight: 'var(--fw-emphasis)',
-                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                opacity: isActive ? 1 : 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {label}
-            </span>
             <span
               aria-hidden="true"
               style={{

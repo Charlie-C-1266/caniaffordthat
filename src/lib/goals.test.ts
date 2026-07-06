@@ -14,8 +14,8 @@ describe('GOALS config', () => {
     expect(GOALS).toHaveLength(6)
     expect(GOALS.at(-1)?.id).toBe('mortgage')
     expect(GOALS.at(-1)?.soon).toBe(true)
-    // Mortgage is the only "Soon" goal.
-    expect(GOALS.filter((g) => g.soon)).toHaveLength(1)
+    // Vehicle and Mortgage ship as "Soon" (their calculators aren't ready).
+    expect(GOALS.filter((g) => g.soon).map((g) => g.id)).toEqual(['car', 'mortgage'])
   })
 
   it('has unique ids', () => {
@@ -46,18 +46,18 @@ describe('GOALS config', () => {
 })
 
 describe('INITIAL_CAROUSEL_INDEX', () => {
-  it('points at the first selectable goal (Vehicle, now that Mortgage is last)', () => {
-    expect(INITIAL_CAROUSEL_INDEX).toBe(0)
-    expect(GOALS[INITIAL_CAROUSEL_INDEX].id).toBe('car')
+  it('points at the first selectable goal (Holiday, since Vehicle is now "Soon")', () => {
+    expect(INITIAL_CAROUSEL_INDEX).toBe(1)
+    expect(GOALS[INITIAL_CAROUSEL_INDEX].id).toBe('holiday')
     expect(GOALS[INITIAL_CAROUSEL_INDEX].soon).toBeFalsy()
   })
 })
 
 describe('TEASER_GOALS', () => {
-  it('is the selectable goals (all but the coming-soon Mortgage)', () => {
-    expect(TEASER_GOALS).toHaveLength(5)
+  it('is the selectable goals (all but the coming-soon Vehicle and Mortgage)', () => {
+    expect(TEASER_GOALS).toHaveLength(4)
     expect(TEASER_GOALS.every((g) => !g.soon)).toBe(true)
-    expect(TEASER_GOALS[0].id).toBe('car')
+    expect(TEASER_GOALS[0].id).toBe('holiday')
   })
 })
 
@@ -116,7 +116,7 @@ describe('seedFromGoal', () => {
     expect('goalMonths' in patch).toBe(false)
   })
 
-  it('seeds the emergency cover months', () => {
-    expect(seedFromGoal(goalById('emergency')!).coverMonths).toBe(6)
+  it('seeds the emergency cover months to the recommended 3-month starting target', () => {
+    expect(seedFromGoal(goalById('emergency')!).coverMonths).toBe(3)
   })
 })

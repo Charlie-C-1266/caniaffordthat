@@ -296,7 +296,7 @@ export function Step0GoalPicker({ panelRef, wrapperRef, scrollToIndex }: Step0Go
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 26 }}>
           <RoundButton icon="chevron-left" label="Previous goal" onClick={() => move(-1)} />
-          <ChooseButton goal={focused} onClick={() => select(focused)} />
+          <StartButton goal={focused} onClick={() => select(focused)} />
           <RoundButton icon="chevron-right" label="Next goal" onClick={() => move(1)} />
         </div>
 
@@ -328,7 +328,8 @@ export function Step0GoalPicker({ panelRef, wrapperRef, scrollToIndex }: Step0Go
   )
 }
 
-function ChooseButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
+/** The primary landing CTA. Text stays a static "Get started" so it never overflows or reads awkwardly per goal; the focused goal's name rides along in the aria-label for screen readers (clicking the focused card selects it too). */
+function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
   const disabled = Boolean(goal.soon)
 
@@ -337,6 +338,7 @@ function ChooseButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={disabled ? undefined : `Get started with ${goal.name}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -359,7 +361,7 @@ function ChooseButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
         boxShadow: disabled ? 'none' : '0 12px 30px rgba(46,213,115,0.35)',
       }}
     >
-      {disabled ? 'Coming soon' : `Choose ${goal.name}`}
+      {disabled ? 'Coming soon' : 'Get started'}
       {!disabled && <Icon name="arrow-right" size={18} />}
     </button>
   )
