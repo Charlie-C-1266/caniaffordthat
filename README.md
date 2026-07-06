@@ -5,9 +5,6 @@ affordable — either by working out how long it'll take to save up for it, or
 what the monthly payment would be if financing it.
 
 Standalone POC. React + Vite, GBP-only, no backend.
-See the [implementation plan](https://app.notion.com/p/39324a157886817aaf8ed3a8199f6bd3)
-for the build breakdown, and `design/` for the original design handoff this is
-built from.
 
 ## Development
 
