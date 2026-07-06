@@ -4,6 +4,7 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { Icon } from '../Icon'
+import { InfoHint } from '../InfoHint'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
@@ -109,16 +110,26 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
   const essentials = EMERGENCY_FIELDS.reduce((sum, key) => sum + num(state[key]), 0)
   const emergencyTarget = state.coverMonths * essentials
 
+  // MoneyHelper recommends 3-6 months of essential outgoings, aiming for at
+  // least 3 (see design/adr/0010). Tell the user where their choice sits.
+  const withinRecommendedBand = state.coverMonths >= 3 && state.coverMonths <= 6
+  const coverBandText =
+    state.coverMonths < 3
+      ? 'Aim for at least 3 months — even a 1-month cushion is a solid start.'
+      : withinRecommendedBand
+        ? 'Within the recommended 3–6 months.'
+        : 'More than the usual 3–6 months — a larger cushion, which is fine.'
+
   return (
     <StepPanel
       index={1}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
-      wrapperHeightVh={goal?.emergency ? 170 : 160}
+      wrapperHeightVh={goal?.emergency ? 150 : 160}
       panelStyle={{ background: 'var(--bg-dark-2)' }}
     >
       <RevealTile revealed={Boolean(state.revealed[1])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={640} padding="46px 44px">
+        <Tile maxWidth={640} padding={goal?.emergency ? '34px 44px' : '46px 44px'}>
           {!goal ? (
             <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>
               Scroll back up and pick a goal to get started.
@@ -145,7 +156,12 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                   <Eyebrow color={accent} marginBottom={2}>
                     Step 1 — {goal.tag}
                   </Eyebrow>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{goal.name}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {goal.emergency ? 'How big a cushion?' : goal.name}
+                    {goal.emergency && (
+                      <InfoHint text="A common rule of thumb is 3–6 months of essential spending set aside." />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -153,12 +169,6 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
 
               {goal.emergency ? (
                 <>
-                  <h1 style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 8px' }}>
-                    How big a cushion?
-                  </h1>
-                  <p style={{ margin: '0 0 26px', fontSize: 'var(--fs-body)', color: 'var(--text-secondary-dim)', lineHeight: 1.5 }}>
-                    A common rule of thumb is 3–6 months of essential spending set aside.
-                  </p>
                   <div style={{ marginBottom: 24 }}>
                     <SliderField
                       label="Months of cover"
@@ -205,9 +215,20 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                   >
                     That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(emergencyTarget)}</strong> — {state.coverMonths}{' '}
                     month{state.coverMonths === 1 ? '' : 's'} of your {fmt(essentials)} monthly essentials.
-                  </div>
-                  <div style={{ marginTop: 24, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
-                    Adjust the slider, then scroll on ↓
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 'var(--fs-label)',
+                        fontWeight: 600,
+                        color: withinRecommendedBand ? accent : 'var(--text-tertiary)',
+                      }}
+                    >
+                      {withinRecommendedBand && <Icon name="check" size={14} color={accent} strokeWidth={2.5} />}
+                      {coverBandText}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -301,7 +322,10 @@ const ESSENTIAL_LABELS: Record<(typeof EMERGENCY_FIELDS)[number], string> = {
 
 function EssentialField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <div>
+    // minWidth:0 lets the 1fr grid tracks shrink below the number input's
+    // intrinsic width — without it the two columns refuse to narrow and the
+    // whole tile overflows the viewport on small screens.
+    <div style={{ minWidth: 0 }}>
       <label
         style={{
           display: 'block',
