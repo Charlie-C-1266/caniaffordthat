@@ -223,7 +223,7 @@ export function Step4Result({ panelRef, scrollToIndex }: Step4ResultProps) {
                 fontWeight: 800,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
-                color: 'rgba(20,18,31,0.6)',
+                color: 'var(--result-text-secondary-dim)',
                 marginBottom: 8,
               }}
             >

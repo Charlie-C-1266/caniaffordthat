@@ -79,11 +79,13 @@ function App() {
       <TopRightControls onReset={handleReset} />
       <ProgressRail activeIndex={state.activeIndex} labels={STEP_LABELS} accentColor={accent} onSelect={scrollToIndex} />
 
-      <Step0GoalPicker panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} scrollToIndex={scrollToIndex} />
-      <Step1Details panelRef={registerPanel(1)} wrapperRef={registerWrapper(1)} scrollToIndex={scrollToIndex} />
-      <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
-      <Step3Plan panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
-      <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
+      <main>
+        <Step0GoalPicker panelRef={registerPanel(0)} wrapperRef={registerWrapper(0)} scrollToIndex={scrollToIndex} />
+        <Step1Details panelRef={registerPanel(1)} wrapperRef={registerWrapper(1)} scrollToIndex={scrollToIndex} />
+        <Step2Budget panelRef={registerPanel(2)} wrapperRef={registerWrapper(2)} scrollToIndex={scrollToIndex} />
+        <Step3Plan panelRef={registerPanel(3)} wrapperRef={registerWrapper(3)} />
+        <Step4Result panelRef={registerPanel(4)} scrollToIndex={scrollToIndex} />
+      </main>
       <Footer />
     </>
   )

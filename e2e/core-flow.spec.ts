@@ -77,6 +77,11 @@ test.describe('core flow', () => {
     await goToPlan(page, { itemPrice: '1200', takeHome: '2000' })
     // Default 25% of £2,000 spare cash (no outgoings) = £500/mo, shown live.
     await expect(page.getByText('25% · £500/mo')).toBeVisible()
+
+    // Accessibility: the slider is named and announces the formatted value,
+    // not just the bare number, to assistive tech.
+    const slider = page.getByRole('slider', { name: "Share of spare cash you'll save" })
+    await expect(slider).toHaveAttribute('aria-valuetext', '25% · £500/mo')
   })
 
   test('full flow reaches a result with the expected verdict and breakdown', async ({ page }) => {
