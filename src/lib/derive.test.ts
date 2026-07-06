@@ -75,6 +75,40 @@ describe('deriveResult', () => {
       expect(result?.isAffordable).toBe(false)
       expect(result?.verdictSub).toMatch(/over 5 years/i)
     })
+
+    it('uses a fixed monthly amount instead of the % rate when rateMode is "amount"', () => {
+      // £2,000 target; a typed £250/mo (ignoring the % rate entirely) -> 8 months.
+      const result = deriveResult(
+        makeState({
+          mode: 'save',
+          saveFlavor: 'duration',
+          rateMode: 'amount',
+          monthlyAmount: '250',
+          rate: 25, // should be ignored
+          itemPrice: '2000',
+          takeHome: '2000',
+        }),
+      )
+      expect(result?.contribution).toBe(250)
+      expect(result?.months).toBe(8)
+      expect(result?.isAffordable).toBe(true)
+    })
+
+    it('is not feasible when the fixed monthly amount is blank or zero', () => {
+      const result = deriveResult(
+        makeState({
+          mode: 'save',
+          saveFlavor: 'duration',
+          rateMode: 'amount',
+          monthlyAmount: '',
+          itemPrice: '2000',
+          takeHome: '2000',
+        }),
+      )
+      expect(result?.contribution).toBe(0)
+      expect(result?.isFeasible).toBe(false)
+      expect(result?.verdictSub).toMatch(/increase how much you save/i)
+    })
   })
 
   describe('saving up — goal-date flavor', () => {

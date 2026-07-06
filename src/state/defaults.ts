@@ -25,6 +25,8 @@ export const DEFAULT_STATE: CalculatorState = {
   // recommended starting target for an emergency fund (see design/adr/0010).
   coverMonths: 3,
   rate: 25,
+  rateMode: 'percent',
+  monthlyAmount: '',
   growth: 0,
   goalMonths: 12,
   term: 12,

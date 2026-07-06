@@ -1,6 +1,6 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
-import type { CalculatorState, GoalId, Mode, SaveFlavor } from '../state/types'
+import type { CalculatorState, GoalId, Mode, RateMode, SaveFlavor } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
 // (serialise, used by "Copy result link") and `hydrateStateFromUrl` (deserialise,
@@ -17,6 +17,7 @@ const STRING_FIELDS = [
   'transport',
   'debts',
   'savings',
+  'monthlyAmount',
 ] as const satisfies readonly (keyof CalculatorState)[]
 
 const NUMBER_FIELDS = [
@@ -39,6 +40,10 @@ function isSaveFlavor(value: string | null): value is SaveFlavor {
   return value === 'duration' || value === 'goal'
 }
 
+function isRateMode(value: string | null): value is RateMode {
+  return value === 'percent' || value === 'amount'
+}
+
 function isGoalId(value: string | null): value is GoalId {
   return value !== null && GOALS.some((g) => g.id === value)
 }
@@ -54,6 +59,7 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
   if (state.goalId !== null) params.set('goalId', state.goalId)
   params.set('mode', state.mode)
   params.set('saveFlavor', state.saveFlavor)
+  params.set('rateMode', state.rateMode)
   for (const field of STRING_FIELDS) params.set(field, state[field])
   for (const field of NUMBER_FIELDS) params.set(field, String(state[field]))
   return params
@@ -87,6 +93,9 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
 
   const saveFlavor = params.get('saveFlavor')
   if (isSaveFlavor(saveFlavor)) state.saveFlavor = saveFlavor
+
+  const rateMode = params.get('rateMode')
+  if (isRateMode(rateMode)) state.rateMode = rateMode
 
   for (const field of STRING_FIELDS) {
     const value = params.get(field)

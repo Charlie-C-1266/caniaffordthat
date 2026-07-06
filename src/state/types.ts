@@ -1,5 +1,7 @@
 export type Mode = 'save' | 'monthly'
 export type SaveFlavor = 'duration' | 'goal'
+/** Duration flavor: whether the monthly saving is entered as a share of spare cash (`rate`) or a fixed amount (`monthlyAmount`). */
+export type RateMode = 'percent' | 'amount'
 
 /**
  * The goals shown in the picker carousel. Kept here (rather than in
@@ -34,8 +36,12 @@ export interface CalculatorState {
   savings: string
   /** Emergency fund only: months of essential spending to hold as a cushion (1-12). Drives the derived target; ignored by other goals. */
   coverMonths: number
-  /** % of spare cash to save per month (1-100). Duration flavor only. */
+  /** % of spare cash to save per month (1-100). Duration flavor, `rateMode === 'percent'`. */
   rate: number
+  /** How the monthly saving is entered in the duration flavor: a % of spare cash, or a fixed amount. */
+  rateMode: RateMode
+  /** Fixed £/month to save. Duration flavor, `rateMode === 'amount'`. Bound to an <input>, so a string (see the note above). */
+  monthlyAmount: string
   /** APR %, used as either savings interest or finance interest depending on `mode`. */
   growth: number
   /** Months until the goal date. Goal flavor only. */

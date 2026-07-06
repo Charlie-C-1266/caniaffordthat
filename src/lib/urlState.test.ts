@@ -83,11 +83,13 @@ describe('buildShareParams', () => {
       carouselIndex: 4,
       mode: 'monthly',
       saveFlavor: 'goal',
+      rateMode: 'amount',
       itemName: 'New kitchen',
       itemPrice: '18000',
       takeHome: '2600',
       housing: '800',
       savings: '3000',
+      monthlyAmount: '450',
       rate: 30,
       growth: 7.9,
       goalMonths: 24,
@@ -104,9 +106,11 @@ describe('buildShareParams', () => {
     expect(restored.carouselIndex).toBe(4)
     expect(restored.mode).toBe('monthly')
     expect(restored.saveFlavor).toBe('goal')
+    expect(restored.rateMode).toBe('amount')
     expect(restored.itemName).toBe('New kitchen')
     expect(restored.itemPrice).toBe('18000')
     expect(restored.savings).toBe('3000')
+    expect(restored.monthlyAmount).toBe('450')
     expect(restored.growth).toBe(7.9)
     expect(restored.term).toBe(60)
     expect(restored.coverMonths).toBe(4)

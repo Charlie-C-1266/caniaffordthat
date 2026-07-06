@@ -100,6 +100,20 @@ test.describe('core flow', () => {
     await expect(slider).toHaveAttribute('aria-valuetext', '25% · £500/mo')
   })
 
+  test('the duration flow accepts a fixed monthly amount as an alternative to the % slider', async ({ page }) => {
+    await goToPlan(page, { itemPrice: '1200', takeHome: '2000' })
+
+    // Swap the % slider for a typed fixed amount, and set £300/month.
+    await page.getByRole('button', { name: 'Fixed amount' }).click()
+    const amountInput = page.getByText('Monthly saving', { exact: true }).locator('xpath=following-sibling::div//input')
+    await amountInput.fill('300')
+
+    await goToResult(page)
+    // £1,200 target at the typed £300/mo (0% growth) -> 4 months, driven by the
+    // fixed amount rather than the 25% rate.
+    await expect(page.getByText(/Saving £300\/month, you'll reach £1,200/)).toBeVisible()
+  })
+
   test('full flow reaches a result with the expected verdict and breakdown', async ({ page }) => {
     await goToPlan(page, { itemName: 'New sofa', itemPrice: '1200', takeHome: '2000' })
     // Switch to goal-date flavor (default goalMonths=12, 0% growth) for a
