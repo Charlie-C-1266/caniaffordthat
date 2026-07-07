@@ -17,11 +17,11 @@ export const LITRES_PER_GALLON = 4.54609
 /** Default pump price in pence per litre — a static, editable default in the spirit of the RAC fuel-cost tool; users should check today's price. */
 export const DEFAULT_FUEL_PENCE_PER_LITRE = 140
 
-/** Standard annual VED ("road tax") rate for cars first registered after April 2017 (2025-26 rate; editable in the costs step). */
-export const STANDARD_VED_ANNUAL = 195
+/** Standard annual VED ("road tax") rate for cars first registered after April 2017 (2026-27 rate per GOV.UK; editable in the costs step). */
+export const STANDARD_VED_ANNUAL = 200
 
-/** The "expensive car" VED supplement: cars with a list price over £40,000 pay this extra per year, in years 2-6 (2025-26 rate). */
-export const EXPENSIVE_CAR_SUPPLEMENT_ANNUAL = 425
+/** The "expensive car" VED supplement: cars with a list price over £40,000 pay this extra per year, in years 2-6 (2026-27 rate per GOV.UK). */
+export const EXPENSIVE_CAR_SUPPLEMENT_ANNUAL = 440
 
 /** List-price threshold above which the VED supplement applies. */
 export const EXPENSIVE_CAR_PRICE_THRESHOLD = 40000

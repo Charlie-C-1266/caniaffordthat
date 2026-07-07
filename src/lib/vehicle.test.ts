@@ -382,7 +382,7 @@ describe('deriveVehicleResult', () => {
         makeCarState({ vehicleMethod: 'cash', itemPrice: '45000', vehicleAge: 0, taxAnnual: '195' }),
       )!
       expect(result.supplementApplies).toBe(true)
-      expect(result.notes.join(' ')).toMatch(/£425\/year supplement/)
+      expect(result.notes.join(' ')).toContain(`£${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement`)
     })
   })
 })

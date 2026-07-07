@@ -43,7 +43,7 @@ export const DEFAULT_STATE: CalculatorState = {
   fuelPencePerLitre: '140',
   maintenanceMonthly: '60',
   insuranceAnnual: '0',
-  taxAnnual: '195',
+  taxAnnual: '200',
   activeIndex: 0,
   revealed: { 0: true },
 }

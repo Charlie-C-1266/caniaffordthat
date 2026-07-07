@@ -30,6 +30,28 @@ const SOURCES: Source[] = [
     label: 'Halifax — The 50/30/20 rule',
     url: 'https://www.halifax.co.uk/helpcentre/support-and-wellbeing/managing-your-money/50-30-20.html',
   },
+  // Vehicle flow: what the finance shapes, tax figures, fuel default and
+  // depreciation curve in lib/vehicle.ts are based on.
+  {
+    label: 'MoneyHelper — Buying a car with PCP',
+    url: 'https://www.moneyhelper.org.uk/en/everyday-money/buying-and-running-a-car/financing-buying-car-personal-contract-purchase-pcp',
+  },
+  {
+    label: 'MoneyHelper — Buying a car with hire purchase',
+    url: 'https://www.moneyhelper.org.uk/en/everyday-money/buying-and-running-a-car/buying-a-car-through-hire-purchase',
+  },
+  {
+    label: 'GOV.UK — Vehicle tax rates (incl. the over-£40k supplement)',
+    url: 'https://www.gov.uk/vehicle-tax-rate-tables',
+  },
+  {
+    label: 'RAC Fuel Watch — current pump prices',
+    url: 'https://www.rac.co.uk/drive/advice/fuel-watch/',
+  },
+  {
+    label: 'The AA — how quickly new cars lose value (depreciation)',
+    url: 'https://www.theaa.com/car-buying/depreciation',
+  },
 ]
 
 /** Small persistent button (styled to match "Start over") that opens a panel of the UK finance guidance our thresholds are based on. */

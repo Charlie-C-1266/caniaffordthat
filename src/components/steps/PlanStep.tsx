@@ -14,7 +14,9 @@ import { fmt, num } from '../../lib/calculations'
 import type { RateMode, SaveFlavor } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step3PlanProps {
+interface PlanStepProps {
+  /** Position in the active flow — drives the eyebrow number. */
+  index: number
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
 }
@@ -139,8 +141,8 @@ function DurationInput({ accentColor }: { accentColor: string }) {
   )
 }
 
-/** Step 3 — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
-export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
+/** The Plan step — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
+export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
   const { state, setField } = useCalculator()
   const accent = accentColorFor(state.mode)
   const isSave = state.mode === 'save'
@@ -150,12 +152,12 @@ export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
   const setFlavor = (flavor: SaveFlavor) => setField('saveFlavor', flavor)
 
   return (
-    <StepPanel index={3} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
-      <RevealTile revealed={Boolean(state.revealed[3])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
+      <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding="48px 48px">
           {isSave ? (
             <>
-              <Eyebrow color={accent}>Step 3 — Timeframe</Eyebrow>
+              <Eyebrow color={accent}>Step {index} — Timeframe</Eyebrow>
               <h1
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
@@ -202,7 +204,7 @@ export function Step3Plan({ panelRef, wrapperRef }: Step3PlanProps) {
             </>
           ) : (
             <>
-              <Eyebrow color={accent}>Step 3 — Finance details</Eyebrow>
+              <Eyebrow color={accent}>Step {index} — Finance details</Eyebrow>
               <h1
                 style={{
                   fontSize: 'var(--fs-h1-sm)',

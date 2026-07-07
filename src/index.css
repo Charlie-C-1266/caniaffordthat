@@ -30,6 +30,22 @@ body {
 }
 
 /*
+ * Unit-suffixed numeric fields (LabeledUnitField) render their unit where
+ * Chrome's spin buttons would sit, so they hide the spinners — arrow keys
+ * and typing still work.
+ */
+.no-spinner {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/*
  * Keyboard focus indicator. Many controls are custom-styled buttons that
  * otherwise show only the (inconsistent, sometimes invisible) UA ring, and a
  * few inputs set `outline: none`. `currentColor` ties the ring to each

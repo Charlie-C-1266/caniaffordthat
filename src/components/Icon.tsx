@@ -1,13 +1,18 @@
 import {
   ArrowRight,
+  Banknote,
+  CalendarClock,
   Car,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Fuel,
   Gem,
   HelpCircle,
   House,
+  KeyRound,
+  Landmark,
   Plane,
   ShoppingBag,
   Umbrella,
@@ -33,6 +38,12 @@ const ICONS = {
   check: Check,
   'help-circle': HelpCircle,
   x: X,
+  // Vehicle flow: the four purchase-method cards and the running-costs step.
+  banknote: Banknote,
+  'key-round': KeyRound,
+  'calendar-clock': CalendarClock,
+  landmark: Landmark,
+  fuel: Fuel,
 } satisfies Record<string, LucideIcon>
 
 /** A registered icon name — a compile error (not a silently blank icon) if a caller or the goal config typos one. */
