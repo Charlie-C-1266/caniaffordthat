@@ -22,6 +22,8 @@ export interface Goal {
   soon?: boolean
   /** Emergency fund: no price input; target = coverMonths x essential spend; save-only. */
   emergency?: boolean
+  /** Car: gets the bespoke vehicle flow (purchase method + running costs steps, vehicle result) — see lib/flow.ts and lib/vehicle.ts. */
+  vehicle?: boolean
   /** Whether the user can switch save/finance in Details. False for the save-only emergency fund. */
   allowModeToggle: boolean
   /** Mode this goal starts in (before the user switches). */
@@ -46,18 +48,20 @@ export interface Goal {
 
 // Carousel order (see design/adr/0006). The most common goals lead; the
 // emergency fund sits early so it's encouraged; "Big purchase" is the catch-all
-// (it absorbs weddings, home projects, and anything else). Vehicle and Mortgage
-// ship disabled as "Soon" — their calculators aren't ready yet — so the
-// carousel focuses the first selectable goal, Holiday.
+// (it absorbs weddings, home projects, and anything else). Mortgage still ships
+// disabled as "Soon" — its calculator isn't ready yet. Vehicle now has its own
+// flow, so the carousel opens focused on it.
 export const GOALS: readonly Goal[] = [
   {
     id: 'car',
     name: 'Vehicle',
     tag: 'Car finance',
     icon: 'car',
-    blurb: 'A new or used car — finance it, or save up for the drive-away price. Coming soon.',
-    soon: true,
-    allowModeToggle: true,
+    blurb: 'A new or used car — pay cash, or finance it with PCP, HP or a loan, plus its real running costs.',
+    vehicle: true,
+    // The vehicle flow asks "how are you paying?" in its own purchase step
+    // (cash/PCP/HP/loan), so the generic save/finance toggle would double up.
+    allowModeToggle: false,
     defaultMode: 'monthly',
     saveFlavor: 'duration',
     showName: true,
@@ -65,7 +69,9 @@ export const GOALS: readonly Goal[] = [
     priceHeadline: 'How much is the car?',
     deposit: true,
     depositLabel: 'Deposit / part-exchange',
-    seeds: { mode: 'monthly', saveFlavor: 'duration', term: 60, growth: 7.9 },
+    // 48 months is the typical PCP/HP term; 9.9% APR is a representative
+    // dealer-finance rate (both fully adjustable in the purchase step).
+    seeds: { mode: 'monthly', saveFlavor: 'duration', term: 48, growth: 9.9 },
   },
   {
     id: 'holiday',

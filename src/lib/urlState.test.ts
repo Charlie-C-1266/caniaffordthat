@@ -68,12 +68,19 @@ describe('hydrateStateFromUrl', () => {
   })
 
   it('clamps out-of-range numbers to the UI bounds rather than trusting the query string', () => {
-    const state = hydrateStateFromUrl('?itemPrice=500&rate=250&growth=-4&goalMonths=0&term=999&coverMonths=50')
+    const state = hydrateStateFromUrl('?itemPrice=500&rate=250&growth=-4&goalMonths=0&term=999&coverMonths=50&vehicleAge=99')
     expect(state.rate).toBe(100)
     expect(state.growth).toBe(0)
     expect(state.goalMonths).toBe(1)
-    expect(state.term).toBe(60)
+    expect(state.term).toBe(84) // the vehicle bank-loan slider's max
     expect(state.coverMonths).toBe(12)
+    expect(state.vehicleAge).toBe(30)
+  })
+
+  it('falls back to default enums for an invalid vehicle method or balloon mode', () => {
+    const state = hydrateStateFromUrl('?itemPrice=500&vehicleMethod=lease&balloonMode=magic')
+    expect(state.vehicleMethod).toBe(DEFAULT_STATE.vehicleMethod)
+    expect(state.balloonMode).toBe(DEFAULT_STATE.balloonMode)
   })
 
   it('leaves fields missing from the query string at their defaults', () => {
@@ -131,8 +138,50 @@ describe('buildShareParams', () => {
   })
 
   it('ignores a link to a "Soon" goal so its disabled flow cannot be reopened', () => {
-    // An old share link to the since-disabled Vehicle calculator.
-    const restored = hydrateStateFromUrl('?goalId=car&itemPrice=18000')
+    // A share link to the not-yet-built Mortgage calculator.
+    const restored = hydrateStateFromUrl('?goalId=mortgage&itemPrice=18000')
     expect(restored.goalId).toBeNull()
+  })
+
+  it('round-trips a full vehicle-flow state', () => {
+    const shared = {
+      ...DEFAULT_STATE,
+      goalId: 'car',
+      itemName: 'VW Golf',
+      itemPrice: '22000',
+      takeHome: '2600',
+      savings: '3000',
+      vehicleMethod: 'pcp',
+      balloonMode: 'known',
+      balloonAmount: '9500',
+      vehicleAge: 2,
+      vehicleMileage: '18000',
+      annualMiles: '10000',
+      mpg: '48',
+      fuelPencePerLitre: '145',
+      maintenanceMonthly: '35',
+      insuranceAnnual: '720',
+      taxAnnual: '195',
+      term: 48,
+      growth: 8.9,
+    } satisfies typeof DEFAULT_STATE
+
+    const restored = hydrateStateFromUrl(`?${buildShareParams(shared).toString()}`)
+
+    expect(restored.goalId).toBe('car')
+    expect(restored.carouselIndex).toBe(0) // car sits first in the carousel
+    expect(restored.vehicleMethod).toBe('pcp')
+    expect(restored.balloonMode).toBe('known')
+    expect(restored.balloonAmount).toBe('9500')
+    expect(restored.vehicleAge).toBe(2)
+    expect(restored.vehicleMileage).toBe('18000')
+    expect(restored.annualMiles).toBe('10000')
+    expect(restored.mpg).toBe('48')
+    expect(restored.fuelPencePerLitre).toBe('145')
+    expect(restored.maintenanceMonthly).toBe('35')
+    expect(restored.insuranceAnnual).toBe('720')
+    expect(restored.taxAnnual).toBe('195')
+    expect(restored.term).toBe(48)
+    expect(restored.growth).toBe(8.9)
   })
 })

@@ -30,6 +30,20 @@ export const DEFAULT_STATE: CalculatorState = {
   growth: 0,
   goalMonths: 12,
   term: 12,
+  // Vehicle flow defaults (see lib/vehicle.ts for where each figure comes
+  // from). PCP + "estimate the balloon" is the default so the flow produces a
+  // result without needing a finance quote in hand.
+  vehicleMethod: 'pcp',
+  balloonMode: 'estimate',
+  balloonAmount: '',
+  vehicleAge: 3,
+  vehicleMileage: '',
+  annualMiles: '8000',
+  mpg: '40',
+  fuelPencePerLitre: '140',
+  maintenanceMonthly: '60',
+  insuranceAnnual: '0',
+  taxAnnual: '195',
   activeIndex: 0,
   revealed: { 0: true },
 }
