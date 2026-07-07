@@ -20,13 +20,24 @@ const STRING_FIELDS = [
   'monthlyAmount',
 ] as const satisfies readonly (keyof CalculatorState)[]
 
-const NUMBER_FIELDS = [
-  'rate',
-  'growth',
-  'goalMonths',
-  'term',
-  'coverMonths',
-] as const satisfies readonly (keyof CalculatorState)[]
+/**
+ * The numeric planning fields that round-trip, each with the range it's
+ * clamped to on hydration. A query string is user-editable input, so an
+ * out-of-range value (`coverMonths=999`, `rate=-5`) is pulled back to the
+ * matching UI control's own bounds rather than trusted. `goalMonths` has no
+ * upper bound because the goal-date field itself accepts any future date.
+ */
+const NUMBER_FIELDS: readonly {
+  key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths'
+  min: number
+  max?: number
+}[] = [
+  { key: 'rate', min: 1, max: 100 }, // "% of spare cash" slider
+  { key: 'growth', min: 0, max: 30 }, // interest sliders (finance APR's max; the save slider stops at 20)
+  { key: 'goalMonths', min: 1 }, // goal-date floor is next month
+  { key: 'term', min: 1, max: 60 }, // finance term slider
+  { key: 'coverMonths', min: 1, max: 12 }, // emergency-cover slider
+]
 
 // `carouselIndex` is intentionally *not* shared: on load it's derived from
 // `goalId` so a link always focuses the shared goal, regardless of where the
@@ -61,7 +72,7 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
   params.set('saveFlavor', state.saveFlavor)
   params.set('rateMode', state.rateMode)
   for (const field of STRING_FIELDS) params.set(field, state[field])
-  for (const field of NUMBER_FIELDS) params.set(field, String(state[field]))
+  for (const { key } of NUMBER_FIELDS) params.set(key, String(state[key]))
   return params
 }
 
@@ -102,9 +113,9 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
     if (value !== null) state[field] = value
   }
 
-  for (const field of NUMBER_FIELDS) {
-    const value = params.get(field)
-    if (value !== null && Number.isFinite(Number(value))) state[field] = Number(value)
+  for (const { key, min, max } of NUMBER_FIELDS) {
+    const value = Number(params.get(key) ?? NaN)
+    if (Number.isFinite(value)) state[key] = Math.min(max ?? Infinity, Math.max(min, value))
   }
 
   return state

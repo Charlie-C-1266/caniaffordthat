@@ -3,9 +3,12 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
+import { FieldLabel } from '../FieldLabel'
+import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { useCalculator } from '../../state/calculatorContext'
 import { num } from '../../lib/calculations'
+import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, type OutgoingFieldKey } from '../../lib/budget'
 import { goalById } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
@@ -16,55 +19,8 @@ interface Step2BudgetProps {
   scrollToIndex: (index: number) => void
 }
 
-type BudgetFieldKey = 'housing' | 'utilities' | 'groceries' | 'transport' | 'debts' | 'savings'
-
-const OUTGOING_FIELDS: { key: BudgetFieldKey; label: string }[] = [
-  { key: 'housing', label: 'Housing (rent/mortgage)' },
-  { key: 'utilities', label: 'Utilities & bills' },
-  { key: 'groceries', label: 'Groceries & everyday spend' },
-  { key: 'transport', label: 'Transport' },
-  { key: 'debts', label: 'Debt repayments' },
-]
-
-interface BudgetFieldProps {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
-}
-
-function BudgetField({ label, value, onChange, onKeyDown }: BudgetFieldProps) {
-  return (
-    <div>
-      <label
-        style={{
-          display: 'block',
-          fontSize: 'var(--fs-label-sm)',
-          fontWeight: 600,
-          color: 'var(--text-secondary-dim)',
-          marginBottom: 7,
-        }}
-      >
-        {label}
-      </label>
-      <MoneyInput
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        accentColor="var(--text-primary)"
-        idleColor="var(--input-underline)"
-        fontSize="var(--fs-body-lg)"
-        fontWeight={700}
-        fontFamily="inherit"
-        borderWidth="var(--border-width-underline)"
-        prefixFontSize="var(--fs-prefix-sm)"
-        prefixTop={6}
-        paddingBottom={7}
-        paddingLeft={15}
-      />
-    </div>
-  )
-}
+/** A field this step may render: the five shared outgoings plus "already saved". */
+type BudgetFieldKey = OutgoingFieldKey | 'savings'
 
 /**
  * Step 3 — take-home pay plus monthly outgoings. Which fields show depends on
@@ -84,8 +40,8 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
   const showSavings = !goal?.deposit
   const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved toward this'
   // Emergency essentials live in Details; other goals collect outgoings here.
-  const outgoings = isEmergency ? [] : OUTGOING_FIELDS
-  const visibleKeys: BudgetFieldKey[] = [...outgoings.map((f) => f.key), ...(showSavings ? (['savings'] as const) : [])]
+  const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
+  const visibleKeys: BudgetFieldKey[] = [...outgoings, ...(showSavings ? (['savings'] as const) : [])]
 
   const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
 
@@ -94,7 +50,7 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
   }
 
   const savingsField = showSavings && (
-    <BudgetField
+    <LabeledMoneyField
       label={savingsLabel}
       value={state.savings}
       onChange={(value) => setField('savings', value)}
@@ -128,17 +84,7 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
           </h1>
 
           <div style={{ marginBottom: 24 }}>
-            <label
-              style={{
-                display: 'block',
-                fontSize: 'var(--fs-helper)',
-                fontWeight: 600,
-                color: 'var(--text-secondary-dim)',
-                marginBottom: 8,
-              }}
-            >
-              Take-home pay / month
-            </label>
+            <FieldLabel>Take-home pay / month</FieldLabel>
             <MoneyInput
               value={state.takeHome}
               onChange={(value) => setField('takeHome', value)}
@@ -169,10 +115,10 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
                 Monthly outgoings (defaulted to £0 — adjust what applies to you)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
-                {outgoings.map(({ key, label }) => (
-                  <BudgetField
+                {outgoings.map((key) => (
+                  <LabeledMoneyField
                     key={key}
-                    label={label}
+                    label={OUTGOING_FIELD_LABELS[key]}
                     value={state[key]}
                     onChange={(value) => setField(key, value)}
                     onKeyDown={handleEnterAdvance}

@@ -3,7 +3,7 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { useCalculator } from '../../state/calculatorContext'
-import { deriveResult } from '../../lib/derive'
+import { CHART_MONTHS_CAP, deriveResult } from '../../lib/derive'
 import { fmt, num } from '../../lib/calculations'
 import { copyToClipboard } from '../../lib/clipboard'
 import { buildShareParams } from '../../lib/urlState'
@@ -157,7 +157,7 @@ function ChartCard({ bars, endLabel, hasOverflow, months, target, title, current
       </div>
       {hasOverflow && (
         <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-          Chart capped at 24 months — full term is {months} months.
+          Chart capped at {CHART_MONTHS_CAP} months — full term is {months} months.
         </div>
       )}
     </div>

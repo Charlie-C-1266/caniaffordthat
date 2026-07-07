@@ -2,8 +2,10 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
+import { FieldLabel } from '../FieldLabel'
+import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MonthYearInput } from '../MonthYearInput'
-import { MoneyInput } from '../MoneyInput'
+import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { SliderField } from '../SliderField'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
@@ -52,17 +54,7 @@ function GoalDateInput({ accentColor }: { accentColor: string }) {
 
   return (
     <div>
-      <label
-        style={{
-          display: 'block',
-          fontSize: 'var(--fs-helper)',
-          fontWeight: 600,
-          color: 'var(--text-secondary-dim)',
-          marginBottom: 8,
-        }}
-      >
-        Goal date (MM-YYYY)
-      </label>
+      <FieldLabel>Goal date (MM-YYYY)</FieldLabel>
       <MonthYearInput
         months={state.goalMonths}
         minMonths={1}
@@ -103,77 +95,27 @@ function DurationInput({ accentColor }: { accentColor: string }) {
     }
   }
 
+  // The save accent is the active color for both segments — unlike the pay-mode
+  // toggle, this choice doesn't change the app's accent.
+  const rateModeOptions: readonly SegmentedOption<RateMode>[] = [
+    { value: 'percent', label: '% of spare cash', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },
+    { value: 'amount', label: 'Fixed amount', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },
+  ]
+
   return (
     <div style={{ marginBottom: 22 }}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 5,
-          padding: 4,
-          borderRadius: 12,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(245,243,255,0.08)',
-          marginBottom: 18,
-          width: 'fit-content',
-        }}
-      >
-        {(
-          [
-            ['percent', '% of spare cash'],
-            ['amount', 'Fixed amount'],
-          ] as const
-        ).map(([mode, label]) => {
-          const active = state.rateMode === mode
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => chooseMode(mode)}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 9,
-                border: 'none',
-                fontSize: 13,
-                fontWeight: 700,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                background: active ? accentColor : 'transparent',
-                color: active ? 'var(--on-accent-save)' : 'var(--text-secondary)',
-                transition: 'background 0.2s ease, color 0.2s ease',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
+      <div style={{ marginBottom: 18 }}>
+        <SegmentedControl size="sm" options={rateModeOptions} value={state.rateMode} onChange={chooseMode} />
       </div>
 
       {state.rateMode === 'amount' ? (
         <div>
-          <label
-            style={{
-              display: 'block',
-              fontSize: 'var(--fs-helper)',
-              fontWeight: 600,
-              color: 'var(--text-secondary-dim)',
-              marginBottom: 8,
-            }}
-          >
-            Monthly saving
-          </label>
-          <MoneyInput
+          <LabeledMoneyField
+            variant="single"
+            label="Monthly saving"
+            accentColor={accentColor}
             value={state.monthlyAmount}
             onChange={(value) => setField('monthlyAmount', value)}
-            accentColor={accentColor}
-            idleColor="var(--input-underline)"
-            fontSize="var(--fs-body-lg)"
-            fontWeight={700}
-            fontFamily="inherit"
-            borderWidth="var(--border-width-underline)"
-            prefixFontSize="var(--fs-prefix-sm)"
-            prefixTop={4}
-            paddingBottom={7}
-            paddingLeft={18}
           />
           {amountCaption && (
             <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>

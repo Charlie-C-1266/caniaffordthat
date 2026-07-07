@@ -1,4 +1,5 @@
 import type { CalculatorState, GoalId, Mode, SaveFlavor } from '../state/types'
+import type { IconName } from '../components/Icon'
 
 // The single source of truth for "tailored per goal". Every goal in the picker
 // carousel is one entry here; the Details step, hero teaser chips, and the copy
@@ -13,8 +14,8 @@ export interface Goal {
   name: string
   /** Small uppercase category tag, e.g. "Car finance". */
   tag: string
-  /** Lucide icon name (wired to `lucide-react` when the icons land). */
-  icon: string
+  /** Lucide icon name — must exist in the Icon component's registry, which `IconName` enforces at compile time. */
+  icon: IconName
   /** One-line description shown on the carousel card. */
   blurb: string
   /** Mortgage: shown in the carousel but disabled and not selectable. */
