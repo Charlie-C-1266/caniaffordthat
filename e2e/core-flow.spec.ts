@@ -6,9 +6,9 @@ test.describe('core flow', () => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'What are you saving for?' })).toBeVisible()
     await expect(page.getByText('Free · no sign-up · takes 2 minutes')).toBeVisible()
-    // The carousel opens focused on the first selectable goal, Holiday (Vehicle
-    // now ships as "Soon").
-    await expect(page.getByRole('button', { name: 'Get started with Holiday', exact: true })).toBeVisible()
+    // The carousel opens focused on the first selectable goal — Vehicle, now
+    // its calculator is live.
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
   })
 
   test('before a goal is chosen, only the carousel + placeholder exist — no budget/plan/result', async ({ page }) => {
@@ -42,10 +42,9 @@ test.describe('core flow', () => {
 
   test('the carousel wraps: going back from the first goal lands on the last', async ({ page }) => {
     await page.goto('/')
-    // Focus the first card, Vehicle (now "Soon"). The focused card exposes its
-    // name via aria-label even while disabled.
+    // Focus the first card, Vehicle (clicking also stops the auto-rotate).
     await page.getByRole('button', { name: 'Go to Vehicle' }).click()
-    await expect(page.getByRole('button', { name: 'Vehicle (coming soon)' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
 
     // Left from the first goal wraps to the last, Mortgage.
     await page.getByRole('button', { name: 'Previous goal' }).click()
@@ -53,7 +52,7 @@ test.describe('core flow', () => {
 
     // Right from the last wraps back to the first.
     await page.getByRole('button', { name: 'Next goal' }).click()
-    await expect(page.getByRole('button', { name: 'Vehicle (coming soon)' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Get started with Vehicle', exact: true })).toBeVisible()
   })
 
   test('entering a price and pressing Enter advances to the budget step', async ({ page }) => {

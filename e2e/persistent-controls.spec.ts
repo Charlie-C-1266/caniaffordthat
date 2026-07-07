@@ -22,8 +22,10 @@ test.describe('persistent controls', () => {
     await page.getByRole('button', { name: 'Our sources' }).click()
     await expect(page.getByText('What our thresholds are based on')).toBeVisible()
 
-    const links = page.locator('a[href*="moneyhelper.org.uk"], a[href*="halifax.co.uk"]')
-    await expect(links).toHaveCount(5)
+    const links = page.locator(
+      'a[href*="moneyhelper.org.uk"], a[href*="halifax.co.uk"], a[href*="gov.uk"], a[href*="rac.co.uk"], a[href*="theaa.com"]',
+    )
+    await expect(links).toHaveCount(10)
 
     // Click somewhere clearly outside the panel.
     await page.mouse.click(20, 500)
