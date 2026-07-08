@@ -11,6 +11,7 @@ import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
+import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
@@ -171,16 +172,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                       />
                     ))}
                   </div>
-                  <div
-                    style={{
-                      padding: '15px 17px',
-                      borderRadius: 14,
-                      background: 'rgba(255,255,255,0.04)',
-                      fontSize: 'var(--fs-body)',
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <SummaryBox>
                     That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(emergencyTarget)}</strong> — {state.coverMonths}{' '}
                     month{state.coverMonths === 1 ? '' : 's'} of your {fmt(essentials)} monthly essentials.
                     <div
@@ -197,7 +189,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                       {withinRecommendedBand && <Icon name="check" size={14} color={accent} strokeWidth={2.5} />}
                       {coverBandText}
                     </div>
-                  </div>
+                  </SummaryBox>
                 </>
               ) : (
                 <>

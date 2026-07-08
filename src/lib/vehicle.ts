@@ -160,6 +160,16 @@ export function expensiveCarSupplementApplies(price: number, ageYears: number): 
   return ageYears === 0 && price > EXPENSIVE_CAR_PRICE_THRESHOLD
 }
 
+/**
+ * Whether the purchase step asks for the car's age (the PCP balloon-estimate
+ * branch needs it there). The costs step asks it on every *other* path — this
+ * is the single source of truth both steps read, so the question is always
+ * asked exactly once and the two conditions can't drift apart.
+ */
+export function vehicleAgeAskedOnPurchase(state: Pick<CalculatorState, 'vehicleMethod' | 'balloonMode'>): boolean {
+  return state.vehicleMethod === 'pcp' && state.balloonMode === 'estimate'
+}
+
 /** The monthly running costs, itemised. `tax` already includes any over-£40k supplement (broken out in `supplementMonthly`). */
 export interface VehicleRunningCosts {
   fuel: number
@@ -297,9 +307,9 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   if (method !== 'cash' && principal > 0) {
     const cap = Math.min(termMonths, CHART_MONTHS_CAP)
     const i = aprPct / 100 / 12
+    let bal = principal
     for (let k = 1; k <= cap; k++) {
-      let bal = principal
-      for (let m = 0; m < k; m++) bal = bal * (1 + i) - financeMonthly
+      bal = bal * (1 + i) - financeMonthly
       // A PCP balance descends to the balloon, not zero — the bars honestly
       // top out below 100%, showing the final payment still owed.
       const frac = Math.min(1, (principal - Math.max(0, bal)) / principal)
@@ -319,9 +329,14 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
           ? `${fmt(upfront)} upfront after your ${fmt(deposit)} deposit / part-exchange, then ${runningLine}.`
           : `${fmt(upfront)} upfront, then ${runningLine}.`
       break
-    case 'pcp':
-      subheadline = `${fmt(financeMonthly)}/month on PCP over ${termMonths} months at ${aprPct}% APR, plus ${runningLine}. Keeping the car at the end means a ${fmt(balloon ?? 0)} final payment.`
+    case 'pcp': {
+      // A zero balloon (a "quote" left blank) would read absurdly as
+      // "keeping the car means a £0 final payment" — drop the sentence.
+      const keepLine =
+        balloon !== null && balloon > 0 ? ` Keeping the car at the end means a ${fmt(balloon)} final payment.` : ''
+      subheadline = `${fmt(financeMonthly)}/month on PCP over ${termMonths} months at ${aprPct}% APR, plus ${runningLine}.${keepLine}`
       break
+    }
     case 'hp':
       subheadline = `${fmt(financeMonthly)}/month on hire purchase over ${termMonths} months at ${aprPct}% APR, plus ${runningLine}. The car's yours after the final payment.`
       break

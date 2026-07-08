@@ -1,7 +1,10 @@
 import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
+import { ResultHeadline } from './ResultHeadline'
 import { ChartCard } from './ChartCard'
+import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
+import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
@@ -31,35 +34,12 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
       <VerdictBanner affordable={affordable} verdictText={result.verdictText} verdictSub={result.verdictSub} />
 
       <div style={{ padding: '26px 30px 30px' }}>
-        <div
-          style={{
-            fontSize: 'var(--fs-label)',
-            fontWeight: 800,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: eyebrowColor,
-            marginBottom: 8,
-          }}
-        >
-          {result.resultEyebrow}
-        </div>
-        <h1
-          className="mono"
-          style={{
-            fontSize: 'var(--fs-result-headline)',
-            lineHeight: 1.08,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            margin: '0 0 6px',
-            fontVariantNumeric: 'tabular-nums',
-            color: 'var(--text-primary)',
-          }}
-        >
-          {result.headline}
-        </h1>
-        <p style={{ fontSize: 'var(--fs-body)', color: 'var(--text-secondary)', margin: '0 0 16px', maxWidth: '54ch', fontWeight: 500 }}>
-          {result.subheadline}
-        </p>
+        <ResultHeadline
+          eyebrow={result.resultEyebrow}
+          eyebrowColor={eyebrowColor}
+          headline={result.headline}
+          subheadline={result.subheadline}
+        />
 
         {result.isFeasible && result.target > 0 && (
           <ChartCard
@@ -73,20 +53,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
           />
         )}
 
-        <div
-          className="mono"
-          style={{
-            background: 'var(--tile-bg)',
-            borderRadius: 'var(--radius-glass-sm)',
-            padding: '14px 15px',
-            marginBottom: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            fontSize: 'var(--fs-label-sm)',
-            fontWeight: 600,
-          }}
-        >
+        <BreakdownBox>
           <BreakdownRow
             label="GOAL"
             value={
@@ -100,11 +67,8 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
           {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}
           {result.totalCost !== undefined && <BreakdownRow label="TOTAL COST" value={fmt(result.totalCost)} />}
           <BreakdownRow label={goal?.emergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED'} value={fmt(num(state.savings))} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid rgba(245,243,255,0.12)' }}>
-            <span style={{ color: 'var(--text-secondary-dim)' }}>{result.targetRowLabel}</span>
-            <span style={{ color: 'var(--text-primary)' }}>{fmt(result.target)}</span>
-          </div>
-        </div>
+          <TotalRow label={result.targetRowLabel} value={fmt(result.target)} />
+        </BreakdownBox>
 
         <ResultActions scrollToIndex={scrollToIndex} />
       </div>

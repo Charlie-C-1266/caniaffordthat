@@ -13,6 +13,7 @@ import {
   mileageFactor,
   pcpPayment,
   retentionAt,
+  vehicleAgeAskedOnPurchase,
   vehicleRunningCosts,
 } from './vehicle'
 import { paymentForFinance } from './calculations'
@@ -295,6 +296,14 @@ describe('deriveVehicleResult', () => {
       expect(result.notes.join(' ')).toMatch(/GMFV/)
     })
 
+    it('drops the keep-the-car sentence when a "known" balloon is left blank, instead of promising a £0 final payment', () => {
+      const result = deriveVehicleResult(
+        makeCarState({ vehicleMethod: 'pcp', balloonMode: 'known', balloonAmount: '', term: 48, growth: 0 }),
+      )!
+      expect(result.balloon).toBe(0)
+      expect(result.subheadline).not.toMatch(/final payment/i)
+    })
+
     it('caps a balloon above the amount financed and flags the cap', () => {
       const result = deriveVehicleResult(
         makeCarState({
@@ -384,6 +393,16 @@ describe('deriveVehicleResult', () => {
       expect(result.supplementApplies).toBe(true)
       expect(result.notes.join(' ')).toContain(`£${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement`)
     })
+  })
+})
+
+describe('vehicleAgeAskedOnPurchase', () => {
+  it('is true only for the PCP balloon-estimate path — the one place the purchase step needs the age', () => {
+    expect(vehicleAgeAskedOnPurchase({ vehicleMethod: 'pcp', balloonMode: 'estimate' })).toBe(true)
+    expect(vehicleAgeAskedOnPurchase({ vehicleMethod: 'pcp', balloonMode: 'known' })).toBe(false)
+    expect(vehicleAgeAskedOnPurchase({ vehicleMethod: 'cash', balloonMode: 'estimate' })).toBe(false)
+    expect(vehicleAgeAskedOnPurchase({ vehicleMethod: 'hp', balloonMode: 'estimate' })).toBe(false)
+    expect(vehicleAgeAskedOnPurchase({ vehicleMethod: 'loan', balloonMode: 'estimate' })).toBe(false)
   })
 })
 

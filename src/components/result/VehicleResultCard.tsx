@@ -1,8 +1,10 @@
-import type { CSSProperties, ReactNode } from 'react'
 import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
+import { ResultHeadline } from './ResultHeadline'
 import { ChartCard } from './ChartCard'
+import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
+import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt } from '../../lib/calculations'
@@ -13,49 +15,6 @@ import type { VehicleResult } from '../../lib/vehicle'
 interface VehicleResultCardProps {
   result: VehicleResult
   scrollToIndex: (index: number) => void
-}
-
-const boxStyle: CSSProperties = {
-  background: 'var(--tile-bg)',
-  borderRadius: 'var(--radius-glass-sm)',
-  padding: '14px 15px',
-  marginBottom: 12,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  fontSize: 'var(--fs-label-sm)',
-  fontWeight: 600,
-}
-
-/** A mono breakdown box with a small uppercase heading — the vehicle result has two (monthly costs and the deal), so each says which it is. */
-function BreakdownBox({ heading, children }: { heading: string; children: ReactNode }) {
-  return (
-    <div className="mono" style={boxStyle}>
-      <div
-        style={{
-          fontSize: 'var(--fs-rail-label)',
-          fontWeight: 800,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: 'var(--text-tertiary)',
-          marginBottom: 2,
-        }}
-      >
-        {heading}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-/** The emphasised bottom line of a breakdown box (total monthly cost / total payable / due upfront). */
-function TotalRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid rgba(245,243,255,0.12)' }}>
-      <span style={{ color: 'var(--text-secondary-dim)' }}>{label}</span>
-      <span style={{ color: 'var(--text-primary)' }}>{value}</span>
-    </div>
-  )
 }
 
 /**
@@ -80,35 +39,12 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
       <VerdictBanner affordable={affordable} verdictText={result.verdictText} verdictSub={result.verdictSub} />
 
       <div style={{ padding: '26px 30px 30px' }}>
-        <div
-          style={{
-            fontSize: 'var(--fs-label)',
-            fontWeight: 800,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: eyebrowColor,
-            marginBottom: 8,
-          }}
-        >
-          {result.resultEyebrow}
-        </div>
-        <h1
-          className="mono"
-          style={{
-            fontSize: 'var(--fs-result-headline)',
-            lineHeight: 1.08,
-            fontWeight: 800,
-            letterSpacing: '-0.02em',
-            margin: '0 0 6px',
-            fontVariantNumeric: 'tabular-nums',
-            color: 'var(--text-primary)',
-          }}
-        >
-          {result.headline}
-        </h1>
-        <p style={{ fontSize: 'var(--fs-body)', color: 'var(--text-secondary)', margin: '0 0 16px', maxWidth: '54ch', fontWeight: 500 }}>
-          {result.subheadline}
-        </p>
+        <ResultHeadline
+          eyebrow={result.resultEyebrow}
+          eyebrowColor={eyebrowColor}
+          headline={result.headline}
+          subheadline={result.subheadline}
+        />
 
         {result.chartBars.length > 0 && (
           <ChartCard

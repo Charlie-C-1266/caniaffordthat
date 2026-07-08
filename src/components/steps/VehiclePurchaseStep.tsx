@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -9,9 +9,10 @@ import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { SliderField } from '../SliderField'
+import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
-import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon } from '../../lib/vehicle'
+import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon, vehicleAgeAskedOnPurchase } from '../../lib/vehicle'
 import { accentColorFor } from '../../lib/mode'
 import type { BalloonMode, VehicleFinanceMethod } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
@@ -68,24 +69,6 @@ function MethodCard({ option, active, accentColor, onSelect }: MethodCardProps) 
         {option.blurb}
       </span>
     </button>
-  )
-}
-
-/** The soft-background summary box used for the cash figure and the balloon-estimate preview. */
-function SummaryBox({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        padding: '15px 17px',
-        borderRadius: 14,
-        background: 'rgba(255,255,255,0.04)',
-        fontSize: 'var(--fs-body)',
-        color: 'var(--text-secondary)',
-        lineHeight: 1.5,
-      }}
-    >
-      {children}
-    </div>
   )
 }
 
@@ -227,7 +210,8 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                     <SegmentedControl size="sm" options={balloonModeOptions} value={state.balloonMode} onChange={(value) => setField('balloonMode', value)} />
                   </div>
 
-                  {state.balloonMode === 'known' ? (
+                  {/* Not the estimate path (where this step asks the car's age) -> take the quoted figure instead. */}
+                  {!vehicleAgeAskedOnPurchase(state) ? (
                     <LabeledMoneyField
                       variant="single"
                       label="Final payment from your quote"

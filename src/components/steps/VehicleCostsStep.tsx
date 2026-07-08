@@ -7,6 +7,7 @@ import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SliderField } from '../SliderField'
+import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import {
@@ -14,6 +15,7 @@ import {
   EXPENSIVE_CAR_SUPPLEMENT_ANNUAL,
   MAINTENANCE_PRESETS,
   STANDARD_VED_ANNUAL,
+  vehicleAgeAskedOnPurchase,
   vehicleRunningCosts,
 } from '../../lib/vehicle'
 import { accentColorFor } from '../../lib/mode'
@@ -94,7 +96,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
   // The PCP estimate path already asked the car's age on the purchase step —
   // don't ask twice. Every other path asks here (it drives the £40k
   // supplement below and gives brand-new buyers the right tax picture).
-  const ageAlreadyAsked = state.vehicleMethod === 'pcp' && state.balloonMode === 'estimate'
+  const ageAlreadyAsked = vehicleAgeAskedOnPurchase(state)
 
   const handleEnterAdvance = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') scrollToIndex(index + 1)
@@ -227,19 +229,10 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             </div>
           )}
 
-          <div
-            style={{
-              padding: '15px 17px',
-              borderRadius: 14,
-              background: 'rgba(255,255,255,0.04)',
-              fontSize: 'var(--fs-body)',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.5,
-            }}
-          >
+          <SummaryBox>
             All in, that's about <strong style={{ color: 'var(--text-primary)' }}>{fmt(costs.total)}/month</strong> to keep it
             on the road{price > 0 && costs.total > 0 && <> — before any finance payment</>}.
-          </div>
+          </SummaryBox>
 
           <div style={{ marginTop: 22, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
             Adjust anything that applies, then press Enter or scroll to continue ↓

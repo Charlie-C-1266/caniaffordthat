@@ -72,9 +72,14 @@ describe('hydrateStateFromUrl', () => {
     expect(state.rate).toBe(100)
     expect(state.growth).toBe(0)
     expect(state.goalMonths).toBe(1)
-    expect(state.term).toBe(84) // the vehicle bank-loan slider's max
+    expect(state.term).toBe(60) // no vehicle goal in the link -> the standard sliders' max
     expect(state.coverMonths).toBe(12)
     expect(state.vehicleAge).toBe(30)
+  })
+
+  it('allows terms up to 84 months only for vehicle links — the bank-loan slider is the only UI that goes there', () => {
+    expect(hydrateStateFromUrl('?goalId=car&itemPrice=15000&term=84').term).toBe(84)
+    expect(hydrateStateFromUrl('?goalId=big&itemPrice=15000&term=84').term).toBe(60)
   })
 
   it('falls back to default enums for an invalid vehicle method or balloon mode', () => {

@@ -144,5 +144,10 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
     if (Number.isFinite(value)) state[key] = Math.min(max ?? Infinity, Math.max(min, value))
   }
 
+  // The 84-month ceiling above exists only for the vehicle bank loan; every
+  // other flow's term slider stops at 60, so a crafted non-vehicle link can't
+  // smuggle in a term the UI couldn't have produced.
+  if (!goal?.vehicle) state.term = Math.min(60, state.term)
+
   return state
 }
