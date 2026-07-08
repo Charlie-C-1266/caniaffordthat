@@ -1,58 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-
-interface Source {
-  label: string
-  url: string
-}
-
-// The actual pages behind the thresholds in lib/derive.ts — kept here so the
-// citations are one click away from the app itself, not just in code
-// comments. All UK, mostly MoneyHelper (the government-backed money
-// guidance service).
-const SOURCES: Source[] = [
-  {
-    label: 'MoneyHelper — Should I save or invest? (the 5-year rule)',
-    url: 'https://www.moneyhelper.org.uk/en/savings/how-to-save/should-i-save-or-invest',
-  },
-  {
-    label: 'MoneyHelper — Emergency savings: how much is enough? (3–6 months)',
-    url: 'https://www.moneyhelper.org.uk/en/savings/types-of-savings/emergency-savings-how-much-is-enough',
-  },
-  {
-    label: 'MoneyHelper — Can I afford to rent? (the 30% rule)',
-    url: 'https://www.moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford',
-  },
-  {
-    label: 'MoneyHelper — How much should I spend on a mortgage?',
-    url: 'https://www.moneyhelper.org.uk/en/blog/buy-or-rent-a-home/how-much-should-i-spend-on-a-mortgage',
-  },
-  {
-    label: 'Halifax — The 50/30/20 rule',
-    url: 'https://www.halifax.co.uk/helpcentre/support-and-wellbeing/managing-your-money/50-30-20.html',
-  },
-  // Vehicle flow: what the finance shapes, tax figures, fuel default and
-  // depreciation curve in lib/vehicle.ts are based on.
-  {
-    label: 'MoneyHelper — Buying a car with PCP',
-    url: 'https://www.moneyhelper.org.uk/en/everyday-money/buying-and-running-a-car/financing-buying-car-personal-contract-purchase-pcp',
-  },
-  {
-    label: 'MoneyHelper — Buying a car with hire purchase',
-    url: 'https://www.moneyhelper.org.uk/en/everyday-money/buying-and-running-a-car/buying-a-car-through-hire-purchase',
-  },
-  {
-    label: 'GOV.UK — Vehicle tax rates (incl. the over-£40k supplement)',
-    url: 'https://www.gov.uk/vehicle-tax-rate-tables',
-  },
-  {
-    label: 'RAC Fuel Watch — current pump prices',
-    url: 'https://www.rac.co.uk/drive/advice/fuel-watch/',
-  },
-  {
-    label: 'The AA — how quickly new cars lose value (depreciation)',
-    url: 'https://www.theaa.com/car-buying/depreciation',
-  },
-]
+import { SOURCE_LIST } from '../lib/sources'
 
 /** Small persistent button (styled to match "Start over") that opens a panel of the UK finance guidance our thresholds are based on. */
 export function SourcesButton() {
@@ -121,7 +68,7 @@ export function SourcesButton() {
           >
             What our thresholds are based on
           </div>
-          {SOURCES.map((source) => (
+          {SOURCE_LIST.map((source) => (
             <a
               key={source.url}
               href={source.url}

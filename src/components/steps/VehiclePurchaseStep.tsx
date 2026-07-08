@@ -250,7 +250,15 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                             <strong style={{ color: 'var(--text-primary)' }}>{fmt(estimatedBalloon)}</strong> final payment —
                             estimated from a generic depreciation curve, assuming{' '}
                             {(num(state.annualMiles) > 0 ? num(state.annualMiles) : UK_AVERAGE_ANNUAL_MILES).toLocaleString('en-GB')}{' '}
-                            miles a year (you can adjust that on the next step).
+                            miles a year (you can adjust that on the next step).{' '}
+                            <a
+                              href="/methodology/vehicle/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
+                            >
+                              How we estimate this
+                            </a>
                           </>
                         ) : (
                           <>Add the car's price in the previous step and we'll estimate the final payment for you.</>

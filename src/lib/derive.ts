@@ -32,8 +32,9 @@ export const CHART_MONTHS_CAP = 24
 // Below the first threshold is "comfortable", between the two is a "good
 // chunk", above the second is "tight". See the in-app "Our sources" button
 // for the actual linked pages.
-const SPARE_CASH_COMFORTABLE_RATIO = 0.4
-const SPARE_CASH_TIGHT_RATIO = 0.6
+// Exported so the methodology page quotes the bands actually in force.
+export const SPARE_CASH_COMFORTABLE_RATIO = 0.4
+export const SPARE_CASH_TIGHT_RATIO = 0.6
 
 export interface ChartBar {
   heightPct: number

@@ -70,17 +70,20 @@ export const TERM_RANGES: Record<Exclude<VehicleFinanceMethod, 'cash'>, { min: n
 const FIRST_YEAR_RETENTION = 0.75
 const LATER_YEAR_RETENTION = 0.82
 
+// These four tuning values are exported so the methodology page quotes the
+// figures actually in force rather than a copy that could drift.
+
 /** Value the mileage adjustment moves per 1,000 miles away from average-for-age (0.4% of value). */
-const MILEAGE_VALUE_PER_1000_MILES = 0.004
+export const MILEAGE_VALUE_PER_1000_MILES = 0.004
 
 // A high-mileage car is worth less, but never a *lot* less purely on miles —
 // clamp the adjustment so extreme odometer readings can't drive the estimate
 // to silly values in either direction.
-const MILEAGE_FACTOR_MIN = 0.75
-const MILEAGE_FACTOR_MAX = 1.15
+export const MILEAGE_FACTOR_MIN = 0.75
+export const MILEAGE_FACTOR_MAX = 1.15
 
 /** Lenders set the guaranteed future value a little under the expected market value to protect themselves — mirror that. */
-const GMFV_MARGIN = 0.9
+export const GMFV_MARGIN = 0.9
 
 /** Fraction of its as-new value a typical car retains at `ageYears` (mileage-neutral). 1 at age 0, decaying along the generic curve above. */
 export function retentionAt(ageYears: number): number {
