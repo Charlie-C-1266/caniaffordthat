@@ -27,14 +27,6 @@ test.describe('sources & ethos page', () => {
     await expect(page.getByText(/places we'd genuinely send a friend/)).toBeVisible()
   })
 
-  test('the in-app "Our sources" panel links through to the page', async ({ page }) => {
-    await page.goto('/')
-    await page.getByRole('button', { name: 'Our sources' }).click()
-
-    const link = page.getByRole('link', { name: /What we use each one for, and our ethos/ })
-    await expect(link).toHaveAttribute('href', '/sources/')
-  })
-
   test('the vehicle methodology page cross-links to the sources & ethos page', async ({ page }) => {
     await page.goto('/methodology/vehicle/')
     await expect(page.getByRole('link', { name: /sources & ethos page/ })).toHaveAttribute('href', '/sources/')

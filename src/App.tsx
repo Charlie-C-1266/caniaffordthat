@@ -11,7 +11,7 @@ import { PlanStep } from './components/steps/PlanStep'
 import { ResultStep } from './components/steps/ResultStep'
 import { Footer } from './components/Footer'
 import { AlphaBadge } from './components/AlphaBadge'
-import { SourcesButton } from './components/SourcesButton'
+import { SourcesLink } from './components/SourcesLink'
 import { flowForGoal, type FlowStep } from './lib/flow'
 import { goalById } from './lib/goals'
 import { accentColorFor } from './lib/mode'
@@ -46,7 +46,7 @@ function StartOverButton({ onClick }: { onClick: () => void }) {
 function TopRightControls({ onReset }: { onReset: () => void }) {
   return (
     <div style={{ position: 'fixed', top: 20, right: 26, zIndex: 60, display: 'flex', gap: 10, alignItems: 'center' }}>
-      <SourcesButton />
+      <SourcesLink />
       <StartOverButton onClick={onReset} />
     </div>
   )
