@@ -1,5 +1,12 @@
-import type { CSSProperties, ReactNode } from 'react'
 import { Footer } from '../components/Footer'
+import { ExternalLink } from './article/ExternalLink'
+import { Section } from './article/Section'
+import { Paragraph as P } from './article/Paragraph'
+import { Strong } from './article/Strong'
+import { Formula } from './article/Formula'
+import { DataTable } from './article/DataTable'
+import { Num } from './article/Num'
+import { PageHeader } from './article/PageHeader'
 import { DepreciationChart } from './DepreciationChart'
 import { fmt, paymentForFinance } from '../lib/calculations'
 import { SPARE_CASH_COMFORTABLE_RATIO, SPARE_CASH_TIGHT_RATIO } from '../lib/derive'
@@ -21,137 +28,6 @@ import {
   retentionAt,
 } from '../lib/vehicle'
 import { SOURCES, VEHICLE_SOURCES } from '../lib/sources'
-
-// ---------------------------------------------------------------------------
-// Local page primitives. This is a prose document, not a calculator tile, so
-// it has its own small set of article components rather than reusing the
-// step-tile chrome.
-// ---------------------------------------------------------------------------
-
-const linkStyle: CSSProperties = { color: 'var(--text-secondary)', textDecoration: 'underline' }
-
-function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={linkStyle}>
-      {children}
-    </a>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section style={{ marginBottom: 46 }}>
-      <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', margin: '0 0 14px', color: 'var(--text-primary)' }}>
-        {title}
-      </h2>
-      {children}
-    </section>
-  )
-}
-
-function P({ children }: { children: ReactNode }) {
-  return (
-    <p style={{ fontSize: 'var(--fs-body-lg)', lineHeight: 1.65, color: 'var(--text-secondary)', margin: '0 0 14px', fontWeight: 500 }}>
-      {children}
-    </p>
-  )
-}
-
-/** Emphasised inline value — the page's numbers stand out from the prose. */
-function Strong({ children }: { children: ReactNode }) {
-  return <strong style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{children}</strong>
-}
-
-/** A formula, set in the mono face on its own soft card. */
-function Formula({ children }: { children: ReactNode }) {
-  return (
-    <pre
-      className="mono"
-      style={{
-        background: 'var(--tile-bg)',
-        borderRadius: 'var(--radius-glass-sm)',
-        padding: '13px 16px',
-        margin: '0 0 14px',
-        fontSize: 14,
-        fontWeight: 600,
-        color: 'var(--text-primary)',
-        overflowX: 'auto',
-        whiteSpace: 'pre',
-      }}
-    >
-      {children}
-    </pre>
-  )
-}
-
-const cellStyle: CSSProperties = {
-  padding: '10px 14px',
-  borderBottom: '1px solid rgba(245,243,255,0.1)',
-  fontSize: 'var(--fs-body)',
-  color: 'var(--text-secondary)',
-  lineHeight: 1.5,
-  textAlign: 'left',
-  verticalAlign: 'top',
-}
-
-/** A simple data table on a soft card; first column is the row's name. */
-function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
-  return (
-    <div style={{ overflowX: 'auto', background: 'var(--tile-bg)', borderRadius: 'var(--radius-glass-sm)', marginBottom: 14 }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 480 }}>
-        <thead>
-          <tr>
-            {head.map((h) => (
-              <th
-                key={h}
-                style={{
-                  ...cellStyle,
-                  fontSize: 'var(--fs-label)',
-                  fontWeight: 800,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--text-tertiary)',
-                }}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              {row.map((cell, j) => (
-                <td key={j} style={{ ...cellStyle, ...(j === 0 ? { color: 'var(--text-primary)', fontWeight: 700 } : {}) }}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-/** Mono-set numeric table cell. */
-function Num({ children }: { children: ReactNode }) {
-  return <span className="mono" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{children}</span>
-}
-
-function PageHeader() {
-  return (
-    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 44 }}>
-      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none' }}>
-        <span style={{ width: 20, height: 20, borderRadius: 5, background: 'var(--accent-finance)', display: 'inline-block' }} />
-        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Can I Afford That?</span>
-      </a>
-      <a href="/" style={{ ...linkStyle, fontSize: 'var(--fs-helper)', fontWeight: 600 }}>
-        ← Back to the calculator
-      </a>
-    </header>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // The worked example quoted through the page — computed live from the same
@@ -183,7 +59,7 @@ export function VehicleMethodologyPage() {
   return (
     <>
       <main style={{ maxWidth: 780, margin: '0 auto', padding: '36px 28px 40px' }}>
-        <PageHeader />
+        <PageHeader accentColor="var(--accent-finance)" />
 
         <h1 style={{ fontSize: 'var(--fs-h1-md)', lineHeight: 1.1, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 14px' }}>
           How the vehicle calculator works
@@ -445,6 +321,13 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
               </li>
             ))}
           </ul>
+          <P>
+            For the full list behind every calculator — and more on how the site works and why —{' '}
+            <a href="/sources/" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>
+              see our sources &amp; ethos page
+            </a>
+            .
+          </P>
           <P>
             Spotted something wrong, or a rate that's moved? Email{' '}
             <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Vehicle%20methodology">

@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL('index.html', import.meta.url)),
         vehicleMethodology: fileURLToPath(new URL('methodology/vehicle/index.html', import.meta.url)),
+        sourcesEthos: fileURLToPath(new URL('sources/index.html', import.meta.url)),
       },
     },
   },

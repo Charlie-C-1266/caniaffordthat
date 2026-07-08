@@ -85,6 +85,21 @@ export function SourcesButton() {
               {source.label}
             </a>
           ))}
+          <a
+            href="/sources/"
+            onClick={() => setOpen(false)}
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              textDecoration: 'underline',
+              lineHeight: 1.4,
+              paddingTop: 4,
+              borderTop: '1px solid rgba(245,243,255,0.12)',
+            }}
+          >
+            What we use each one for, and our ethos →
+          </a>
         </div>
       )}
     </div>
