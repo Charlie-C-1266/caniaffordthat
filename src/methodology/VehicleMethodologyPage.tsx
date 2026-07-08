@@ -374,6 +374,12 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
             head={['Maintenance preset', 'Monthly budget', 'Suits']}
             rows={MAINTENANCE_PRESETS.map((preset) => [preset.label, <Num key="m">£{preset.monthly}</Num>, preset.blurb])}
           />
+          <P>
+            No UK body publishes an official maintenance figure, so the presets are our own deliberately round budgets:
+            a year at each level ({MAINTENANCE_PRESETS.map((p) => fmt(p.monthly * 12)).join(' / ')}) is sized to cover an
+            annual service, the MOT fee, and a realistic share of tyres and wear-and-tear repairs for that kind of car.
+            They're starting points to overwrite, not quotes.
+          </P>
         </Section>
 
         <Section title="Road tax (VED)">
