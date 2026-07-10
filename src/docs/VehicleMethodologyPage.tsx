@@ -308,6 +308,16 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
                 'Option-to-purchase fees',
                 'HP agreements often add a small (~£10) fee to the final payment; we leave it out as noise at this scale.',
               ],
+              [
+                'No car-specific affordability threshold',
+                <>
+                  We looked for UK guidance on what share of income is reasonable to spend on a car specifically —
+                  MoneyHelper, the FCA, Citizens Advice and StepChange — and none of them publish one. The "10–20% of
+                  take-home pay" figures repeated across car-finance and leasing sites all trace back to US
+                  personal-finance rules of thumb (e.g. the "20/4/10 rule"), not UK research, so we don't use them. The
+                  verdict instead reuses the same spare-cash bands as every other purchase on the site, above.
+                </>,
+              ],
             ]}
           />
         </Section>
