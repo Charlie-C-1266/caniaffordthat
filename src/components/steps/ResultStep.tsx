@@ -24,7 +24,6 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
 
   const standardResult = isVehicle ? null : deriveResult(state)
   const vehicleResult = isVehicle ? deriveVehicleResult(state) : null
-  const hasResult = standardResult !== null || vehicleResult !== null
 
   const fallbackText = goal?.emergency
     ? 'Scroll back up and add your take-home pay and monthly essentials to see your result.'
@@ -41,14 +40,14 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
       panelTestId="result-panel"
     >
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}>
-        {!hasResult ? (
+        {vehicleResult !== null ? (
+          <VehicleResultCard result={vehicleResult} scrollToIndex={scrollToIndex} />
+        ) : standardResult !== null ? (
+          <StandardResultCard result={standardResult} scrollToIndex={scrollToIndex} />
+        ) : (
           <Tile maxWidth={640} padding="40px 44px">
             <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{fallbackText}</div>
           </Tile>
-        ) : vehicleResult !== null ? (
-          <VehicleResultCard result={vehicleResult} scrollToIndex={scrollToIndex} />
-        ) : (
-          <StandardResultCard result={standardResult!} scrollToIndex={scrollToIndex} />
         )}
       </RevealTile>
     </StepPanel>

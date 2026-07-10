@@ -5,6 +5,8 @@ import { Analytics } from '@vercel/analytics/react'
 import '../index.css'
 import { VehicleMethodologyPage } from './VehicleMethodologyPage'
 
+// The non-null assertion is safe: index.html (this entry's HTML shell) always
+// contains a `<div id="root">` for Vite/React to mount into.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <VehicleMethodologyPage />

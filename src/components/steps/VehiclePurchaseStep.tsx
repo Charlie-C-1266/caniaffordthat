@@ -118,8 +118,6 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
     annualMiles: num(state.annualMiles),
   })
 
-  const termRange = method === 'cash' ? null : TERM_RANGES[method]
-
   return (
     <StepPanel
       index={index}
@@ -176,8 +174,8 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                 <SliderField
                   label="Term length"
                   valueLabel={`${state.term} months`}
-                  min={termRange!.min}
-                  max={termRange!.max}
+                  min={TERM_RANGES[method].min}
+                  max={TERM_RANGES[method].max}
                   step={1}
                   value={state.term}
                   accentColor={accent}

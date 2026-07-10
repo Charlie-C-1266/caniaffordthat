@@ -62,7 +62,7 @@ function BrandMark({ accentColor }: { accentColor: string }) {
   )
 }
 
-function App() {
+export function App() {
   const { state, reset } = useCalculator()
   const { registerPanel, registerWrapper, scrollToIndex } = useStepObserver()
   const accent = accentColorFor(state.mode)
@@ -117,5 +117,3 @@ function App() {
     </>
   )
 }
-
-export default App
