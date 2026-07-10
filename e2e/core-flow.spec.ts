@@ -67,6 +67,9 @@ test.describe('core flow', () => {
 
     await expect(page.getByText("What's coming in")).toBeVisible()
     await expect(page.getByText('Housing (rent/mortgage)')).toBeVisible()
+    // The plain "Transport" label is a vehicle-goal-only relabel — every
+    // other goal keeps the generic outgoing field untouched.
+    await expect(page.getByText('Transport', { exact: true })).toBeVisible()
   })
 
   test('budget fields default to £0 and take-home + Enter advances to the plan step', async ({ page }) => {

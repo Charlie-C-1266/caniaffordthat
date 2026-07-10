@@ -1,9 +1,10 @@
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { FieldLabel } from '../FieldLabel'
+import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { useCalculator } from '../../state/calculatorContext'
@@ -45,6 +46,25 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   // Emergency essentials live in Details; other goals collect outgoings here.
   const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
   const visibleKeys: BudgetFieldKey[] = [...outgoings, ...(showSavings ? (['savings'] as const) : [])]
+
+  // The vehicle flow already itemises this car's fuel, insurance, tax and
+  // finance payment on its own steps — without a note, "Transport" here reads
+  // ambiguously (does it include the car being evaluated, or not?) and risks
+  // double-counting it. Relabel the field for that goal only, rather than
+  // hiding it: other transport spend (public transport, a second car) still
+  // belongs in spare cash.
+  const outgoingLabel = (key: OutgoingFieldKey): ReactNode => {
+    if (key !== 'transport' || !goal?.vehicle) return OUTGOING_FIELD_LABELS[key]
+    return (
+      <>
+        Transport (other than this car){' '}
+        <InfoHint
+          size={14}
+          text="This car's fuel, insurance, tax and finance payment are already counted on the previous steps — put anything else here, like public transport or another vehicle."
+        />
+      </>
+    )
+  }
 
   const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
 
@@ -121,7 +141,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                 {outgoings.map((key) => (
                   <LabeledMoneyField
                     key={key}
-                    label={OUTGOING_FIELD_LABELS[key]}
+                    label={outgoingLabel(key)}
                     value={state[key]}
                     onChange={(value) => setField(key, value)}
                     onKeyDown={handleEnterAdvance}

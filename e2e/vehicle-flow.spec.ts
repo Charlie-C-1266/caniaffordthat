@@ -109,6 +109,18 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText('PCP PAYMENT')).toHaveCount(0)
   })
 
+  test('Budget relabels Transport for the vehicle goal so it reads as additive, not double-counted', async ({ page }) => {
+    await startVehicle(page, { price: '22000', deposit: '2000' })
+    await page.getByRole('button', { name: 'Running costs', exact: true }).click()
+    await page.getByRole('button', { name: 'Budget', exact: true }).click()
+
+    // The car's own fuel/insurance/tax/finance are itemised on earlier steps,
+    // so the shared Transport outgoing is relabelled to make clear it's for
+    // anything else — not a second place to enter this car's costs.
+    await expect(page.getByText('Transport (other than this car)')).toBeVisible()
+    await expect(page.getByText('Transport', { exact: true })).toHaveCount(0)
+  })
+
   test('a brand-new car over £40k gets the tax supplement added automatically', async ({ page }) => {
     await startVehicle(page, { price: '45000' })
     await page.getByRole('button', { name: /^Cash/ }).click()
