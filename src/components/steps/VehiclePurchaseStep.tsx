@@ -33,41 +33,45 @@ const METHOD_OPTIONS: readonly { value: VehicleFinanceMethod; label: string; ico
   { value: 'loan', label: 'Bank loan', icon: 'landmark', blurb: 'Borrow the money separately and own the car from day one.' },
 ]
 
-interface MethodCardProps {
+interface MethodChipProps {
   option: (typeof METHOD_OPTIONS)[number]
   active: boolean
   accentColor: string
   onSelect: () => void
 }
 
-/** One selectable purchase-method card: icon, name, and how that deal works. */
-function MethodCard({ option, active, accentColor, onSelect }: MethodCardProps) {
+/**
+ * One selectable purchase-method chip: icon + name only, in a single row of
+ * four. Each option's full blurb sits in its `title` (a hover tooltip, same
+ * pattern as VehicleCostsStep's maintenance presets) and is shown as body
+ * text once, for whichever method is active — four full two-line
+ * descriptions stacked in a 2x2 grid was the single biggest contributor to
+ * this tile outgrowing the viewport.
+ */
+function MethodChip({ option, active, accentColor, onSelect }: MethodChipProps) {
   return (
     <button
       type="button"
       aria-pressed={active}
+      title={option.blurb}
       onClick={onSelect}
       style={{
-        textAlign: 'left',
-        padding: '14px 16px',
-        borderRadius: 14,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        padding: '12px 8px',
+        borderRadius: 12,
         border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
         background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
         color: 'var(--text-primary)',
         cursor: 'pointer',
         fontFamily: 'inherit',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 800 }}>
-        <Icon name={option.icon} size={17} color={active ? accentColor : 'var(--text-tertiary)'} />
-        {option.label}
-      </span>
-      <span style={{ fontSize: 'var(--fs-helper)', fontWeight: 500, lineHeight: 1.4, color: 'var(--text-secondary-dim)' }}>
-        {option.blurb}
-      </span>
+      <Icon name={option.icon} size={18} color={active ? accentColor : 'var(--text-tertiary)'} />
+      <span style={{ fontSize: 12.5, fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{option.label}</span>
     </button>
   )
 }
@@ -139,9 +143,9 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
             How are you buying it?
           </h1>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {METHOD_OPTIONS.map((option) => (
-              <MethodCard
+              <MethodChip
                 key={option.value}
                 option={option}
                 active={method === option.value}
@@ -149,6 +153,9 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                 onSelect={() => chooseMethod(option.value)}
               />
             ))}
+          </div>
+          <div style={{ fontSize: 'var(--fs-helper)', fontWeight: 500, lineHeight: 1.4, color: 'var(--text-secondary-dim)', marginBottom: 24 }}>
+            {METHOD_OPTIONS.find((option) => option.value === method)?.blurb}
           </div>
 
           {method === 'cash' ? (
