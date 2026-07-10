@@ -100,6 +100,15 @@ verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
             <ExternalLink href={SOURCES.rentAffordability.url}>MoneyHelper's 30%-of-income ceiling</ExternalLink> for a
             single major commitment — restated as shares of spare cash rather than shares of income.
           </P>
+          <P>
+            These bands aren't car-specific — they're the same ones every other purchase on the site is judged against.
+            We went looking for UK guidance on what share of income is reasonable to spend on a car specifically
+            (MoneyHelper, the FCA, Citizens Advice, StepChange) and none of them publish one. A figure that gets quoted a
+            lot — car payments under 10% of take-home pay, total car costs under 15–20% — turns out to be American in
+            origin (it's a restatement of US personal-finance rules of thumb like the "20/4/10 rule"), not UK research,
+            so we haven't used it here. If a UK body ever publishes car-specific guidance, this is the number we'd
+            switch to.
+          </P>
         </Section>
 
         <Section title="The four ways of paying">
@@ -310,13 +319,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
               ],
               [
                 'No car-specific affordability threshold',
-                <>
-                  We looked for UK guidance on what share of income is reasonable to spend on a car specifically —
-                  MoneyHelper, the FCA, Citizens Advice and StepChange — and none of them publish one. The "10–20% of
-                  take-home pay" figures repeated across car-finance and leasing sites all trace back to US
-                  personal-finance rules of thumb (e.g. the "20/4/10 rule"), not UK research, so we don't use them. The
-                  verdict instead reuses the same spare-cash bands as every other purchase on the site, above.
-                </>,
+                `See "The verdict" section above — we couldn't find UK guidance for what share of income is reasonable to spend on a car, so the calculator falls back to the same generic spare-cash bands as every other purchase.`,
               ],
             ]}
           />
