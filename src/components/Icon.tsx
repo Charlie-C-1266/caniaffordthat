@@ -13,8 +13,10 @@ import {
   House,
   KeyRound,
   Landmark,
+  Moon,
   Plane,
   ShoppingBag,
+  Sun,
   Umbrella,
   X,
   type LucideIcon,
@@ -44,6 +46,9 @@ const ICONS = {
   'calendar-clock': CalendarClock,
   landmark: Landmark,
   fuel: Fuel,
+  // Theme toggle.
+  sun: Sun,
+  moon: Moon,
 } satisfies Record<string, LucideIcon>
 
 /** A registered icon name — a compile error (not a silently blank icon) if a caller or the goal config typos one. */

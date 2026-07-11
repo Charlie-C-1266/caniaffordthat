@@ -12,6 +12,7 @@ import { ResultStep } from './components/steps/ResultStep'
 import { Footer } from './components/Footer'
 import { AlphaBadge } from './components/AlphaBadge'
 import { SourcesLink } from './components/SourcesLink'
+import { ThemeToggle } from './components/ThemeToggle'
 import { flowForGoal, type FlowStep } from './lib/flow'
 import { goalById } from './lib/goals'
 import { accentColorFor } from './lib/mode'
@@ -47,6 +48,7 @@ function TopRightControls({ onReset }: { onReset: () => void }) {
   return (
     <div style={{ position: 'fixed', top: 20, right: 26, zIndex: 60, display: 'flex', gap: 10, alignItems: 'center' }}>
       <SourcesLink />
+      <ThemeToggle />
       <StartOverButton onClick={onReset} />
     </div>
   )
