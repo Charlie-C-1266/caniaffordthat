@@ -154,3 +154,76 @@
   --debounce-advance: 1500ms;
   --delay-mode-select: 250ms;
 }
+
+/*
+ * Light theme. Applied via `[data-theme="light"]` on <html>, set before
+ * first paint by the inline bootstrap script in each HTML entry (see
+ * src/lib/theme.ts) — absence of the attribute means dark, the original and
+ * still-default theme. Only tokens that actually need to differ are listed;
+ * typography/spacing/motion, the brand accents (--accent-save,
+ * --accent-finance) and their *-bg tints, --on-accent-*, the gradients, and
+ * --verdict-affordable/--verdict-not-affordable are theme-independent and
+ * stay inherited from :root. The --verdict-on-fill* tokens are deliberately
+ * absent here too — see the comment on them above.
+ */
+:root[data-theme='light'] {
+  /* Colors — backgrounds */
+  --bg-dark-1: #faf9fc;
+  --bg-dark-2: #efebf7;
+
+  /* Colors — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
+  --text-primary: #1b1633;
+  --text-secondary: rgba(27, 22, 51, 0.65);
+  --text-secondary-mid: rgba(27, 22, 51, 0.55);
+  --text-secondary-dim: rgba(27, 22, 51, 0.5);
+  --text-tertiary: rgba(27, 22, 51, 0.4);
+  --text-tertiary-dim: rgba(27, 22, 51, 0.35);
+  --text-disabled: rgba(27, 22, 51, 0.4);
+
+  /* --accent-save (#2ed573) is only 1.84:1 on the light background — fine as
+     an icon fill/button/tint, fails as text. This darker green clears AA
+     (5.2:1) for the small bold text/icon spots that use it. */
+  --accent-save-text: #0f7a3f;
+  --brand-mint: #0f7a3f;
+  --brand-cyan: #0891b2;
+  /* The landing pill/card's green tint reads more washed-out on white than
+     on near-black at the same alpha, so these are bumped up slightly rather
+     than reused verbatim. */
+  --accent-save-border-soft: rgba(46, 213, 115, 0.35);
+  --accent-save-bg-pill: rgba(46, 213, 115, 0.12);
+  --accent-save-bg-card: rgba(46, 213, 115, 0.1);
+  --accent-save-bg-chip: rgba(46, 213, 115, 0.18);
+  --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.28);
+
+  /* Colors — surfaces. The white-overlay "glass" idiom becomes a
+     near-black-overlay one — same felt weight, flipped base color. */
+  --tile-bg: rgba(27, 22, 51, 0.035);
+  --tile-bg-neutral: rgba(27, 22, 51, 0.025);
+  --tile-border: rgba(27, 22, 51, 0.12);
+  --tile-border-neutral: rgba(27, 22, 51, 0.09);
+  --input-underline: rgba(27, 22, 51, 0.18);
+  --surface-selected: rgba(27, 22, 51, 0.07);
+  --surface-faint: rgba(27, 22, 51, 0.04);
+  --divider: rgba(27, 22, 51, 0.1);
+  --pill-bg: rgba(27, 22, 51, 0.05);
+  --pill-bg-hover: rgba(27, 22, 51, 0.09);
+  --pill-border: rgba(27, 22, 51, 0.14);
+  --icon-button-border: rgba(27, 22, 51, 0.14);
+  --icon-chip-fg: rgba(27, 22, 51, 0.7);
+  --button-outline-strong: rgba(27, 22, 51, 0.22);
+  --dot-inactive-bg: rgba(27, 22, 51, 0.18);
+  --chart-axis-line: rgba(27, 22, 51, 0.18);
+  --chart-bar-track: rgba(27, 22, 51, 0.14);
+
+  /* Colors — misc */
+  --badge-alpha-text: #a5670c;
+  --badge-alpha-border: rgba(165, 103, 12, 0.45);
+
+  /* Shadows. Dark mode's near-black shadow only reads as a shadow against a
+     dark surface — on a light one it needs to be much softer and tinted
+     toward the background's own hue, or every tile looks smudged. */
+  --shadow-tile: 0 24px 60px rgba(27, 22, 51, 0.14);
+  --shadow-card: 0 14px 34px rgba(27, 22, 51, 0.12);
+  --shadow-card-focused: 0 22px 56px rgba(46, 213, 115, 0.18);
+  --shadow-popover: 0 10px 26px rgba(27, 22, 51, 0.16);
+}
