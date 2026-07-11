@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 const cellStyle: CSSProperties = {
   padding: '10px 14px',
-  borderBottom: '1px solid rgba(245,243,255,0.1)',
+  borderBottom: '1px solid var(--divider)',
   fontSize: 'var(--fs-body)',
   color: 'var(--text-secondary)',
   lineHeight: 1.5,

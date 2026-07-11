@@ -76,7 +76,7 @@ export function MonthYearInput({ months, minMonths, accentColor, onChange }: Mon
         fontWeight: 600,
         border: `var(--border-width-card) solid ${focused ? accentColor : 'var(--input-underline)'}`,
         borderRadius: 10,
-        background: 'rgba(255,255,255,0.04)',
+        background: 'var(--tile-bg)',
         color: 'var(--text-primary)',
         fontFamily: 'inherit',
         outline: 'none',

@@ -27,7 +27,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
   // carries the verdict.
   const affordable = result.isAffordable
   const eyebrowColor = affordable ? accent : 'var(--text-tertiary)'
-  const currentBarColor = affordable ? accent : 'rgba(245,243,255,0.55)'
+  const currentBarColor = affordable ? accent : 'var(--text-secondary-mid)'
 
   return (
     <Tile maxWidth={640} padding="0" style={{ overflow: 'hidden' }}>

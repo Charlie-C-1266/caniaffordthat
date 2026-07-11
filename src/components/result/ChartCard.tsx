@@ -57,8 +57,8 @@ export function ChartCard({ bars, endLabel, hasOverflow, months, target, title, 
               alignItems: 'flex-end',
               gap: 3,
               height: CHART_BAR_AREA_HEIGHT,
-              borderTop: '1px dashed rgba(245,243,255,0.22)',
-              borderBottom: '1px solid rgba(245,243,255,0.22)',
+              borderTop: '1px dashed var(--chart-axis-line)',
+              borderBottom: '1px solid var(--chart-axis-line)',
             }}
           >
             {bars.map((bar, i) => (
@@ -67,7 +67,7 @@ export function ChartCard({ bars, endLabel, hasOverflow, months, target, title, 
                   style={{
                     width: '100%',
                     borderRadius: '2px 2px 0 0',
-                    background: i === bars.length - 1 ? currentBarColor : 'rgba(245,243,255,0.2)',
+                    background: i === bars.length - 1 ? currentBarColor : 'var(--chart-bar-track)',
                     height: `${bar.heightPct}%`,
                     minHeight: 3,
                   }}

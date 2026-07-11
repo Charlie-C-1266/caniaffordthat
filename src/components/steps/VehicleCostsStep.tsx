@@ -49,7 +49,7 @@ function PresetChip({ label, active, accentColor, title, onClick }: PresetChipPr
         padding: '7px 13px',
         borderRadius: 99,
         border: `1px solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+        background: active ? 'var(--surface-selected)' : 'transparent',
         color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
         fontSize: 12.5,
         fontWeight: 700,

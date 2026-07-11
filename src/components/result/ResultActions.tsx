@@ -33,7 +33,7 @@ export function ResultActions({ scrollToIndex }: ResultActionsProps) {
         style={{
           flex: 1,
           padding: 14,
-          border: '1.5px solid rgba(245,243,255,0.25)',
+          border: '1.5px solid var(--button-outline-strong)',
           borderRadius: 'var(--radius-button)',
           background: 'transparent',
           color: 'var(--text-primary)',

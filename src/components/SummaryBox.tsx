@@ -13,7 +13,7 @@ export function SummaryBox({ children }: { children: ReactNode }) {
       style={{
         padding: '15px 17px',
         borderRadius: 14,
-        background: 'rgba(255,255,255,0.04)',
+        background: 'var(--tile-bg)',
         fontSize: 'var(--fs-body)',
         color: 'var(--text-secondary)',
         lineHeight: 1.5,

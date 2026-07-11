@@ -11,15 +11,18 @@
   /* Colors — text */
   --text-primary: #f5f3ff;
   --text-secondary: rgba(245, 243, 255, 0.65);
+  --text-secondary-mid: rgba(245, 243, 255, 0.55);
   --text-secondary-dim: rgba(245, 243, 255, 0.5);
   --text-tertiary: rgba(245, 243, 255, 0.4);
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
+  --text-disabled: rgba(245, 243, 255, 0.45);
 
   /* Colors — accent (v2 goal-based re-theme, see design/adr/0003). Green is
      the primary/brand + "saving up" accent; violet is "paying monthly". The
      result screen now paints its background the active mode's accent, so the
      verdict (affordable/not) is carried by the small pill icon, not the whole
-     screen — green/red are no longer the page background. */
+     screen — green/red are no longer the page background. Theme-independent:
+     the brand hexes don't change between light and dark. */
   --accent-save: #2ed573;
   --accent-finance: #7c5cfc;
   --accent-save-bg: rgba(46, 213, 115, 0.16);
@@ -30,10 +33,37 @@
   --accent-save-gradient: linear-gradient(135deg, #2ed573, #16bd6b);
   /* Green -> cyan gradient used for the emphasised hero word. */
   --brand-text-gradient: linear-gradient(120deg, #2ed573, #5ee0ff);
+  /* Standalone versions of the gradient's two stops, for components that need
+     just one of the colors rather than the gradient (the landing pill's dot
+     text, the depreciation chart's third series). */
+  --brand-mint: #9defbe;
+  --brand-cyan: #5ee0ff;
+  /* --accent-save as literal text/icon color: fine at full brightness on a
+     dark background, but only 1.84:1 against the light theme's background —
+     nowhere near WCAG AA. Used wherever the accent renders as small text or
+     an icon fill (goal-card tag/icon), not as a background/border/glow tint,
+     which don't carry the same contrast requirement. Identical to
+     --accent-save in dark mode; only the light override (below) differs. */
+  --accent-save-text: var(--accent-save);
+  /* The goal-picker landing pill and focused card's green-tinted glow, at
+     several strengths — kept as distinct tokens (not one shared value)
+     because each is a different, deliberate strength, not a coincidence. */
+  --accent-save-border-soft: rgba(46, 213, 115, 0.3);
+  --accent-save-bg-pill: rgba(46, 213, 115, 0.08);
+  --accent-save-bg-card: rgba(46, 213, 115, 0.06);
+  --accent-save-bg-chip: rgba(46, 213, 115, 0.14);
+  --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.35);
 
-  /* Colors — verdict (the result pill only) */
+  /* Colors — verdict (the result banner only) */
   --verdict-affordable: #2ed573;
   --verdict-not-affordable: #ff5c5c;
+  /* The verdict banner is always a solid bright green/red fill, in *either*
+     theme — these three are deliberately NOT overridden in the light block
+     below, so dark text stays dark (and readable) on the fill regardless of
+     the surrounding theme. See VerdictBanner.tsx. */
+  --verdict-on-fill: #14121f;
+  --verdict-on-fill-chip: rgba(20, 18, 31, 0.9);
+  --verdict-on-fill-dim: rgba(20, 18, 31, 0.8);
 
   /* Colors — surfaces */
   --tile-bg: rgba(255, 255, 255, 0.04);
@@ -41,6 +71,35 @@
   --tile-border: rgba(245, 243, 255, 0.14);
   --tile-border-neutral: rgba(245, 243, 255, 0.12);
   --input-underline: rgba(245, 243, 255, 0.18);
+  /* A slightly stronger/weaker surface than --tile-bg, for states that need
+     to sit visually apart from plain tile background (a selected toggle, a
+     hover state) without introducing a whole extra "level" of surface. */
+  --surface-selected: rgba(255, 255, 255, 0.09);
+  --surface-faint: rgba(255, 255, 255, 0.05);
+  /* Hairline dividers/borders that are lighter than --tile-border-neutral —
+     table rules, unfocused card borders, a segmented control's outer edge. */
+  --divider: rgba(245, 243, 255, 0.09);
+  /* The "ghost pill" button chrome shared by every persistent top-right
+     control (Start over, Our sources, the theme toggle). */
+  --pill-bg: rgba(255, 255, 255, 0.06);
+  --pill-bg-hover: rgba(255, 255, 255, 0.12);
+  --pill-border: rgba(255, 255, 255, 0.12);
+  /* Round icon-button chrome (carousel prev/next) and the icon-chip fill
+     inside an unfocused goal card. */
+  --icon-button-border: rgba(245, 243, 255, 0.16);
+  --icon-chip-fg: rgba(245, 243, 255, 0.75);
+  /* The outline-only "Copy result link" button's border — stronger than
+     --tile-border since it has no fill to lean on. */
+  --button-outline-strong: rgba(245, 243, 255, 0.25);
+  /* Carousel pagination dot, inactive state. */
+  --dot-inactive-bg: rgba(245, 243, 255, 0.2);
+  /* The result chart's plot-area lines and inactive-bar fill. */
+  --chart-axis-line: rgba(245, 243, 255, 0.22);
+  --chart-bar-track: rgba(245, 243, 255, 0.2);
+
+  /* Colors — misc */
+  --badge-alpha-text: #f5a623;
+  --badge-alpha-border: rgba(245, 166, 35, 0.5);
 
   /* Typography */
   --font-ui: 'Manrope', system-ui, sans-serif;
@@ -83,6 +142,9 @@
   --dot-size-inactive: 7px;
   --dot-size-active: 10px;
   --shadow-tile: 0 30px 80px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.3);
+  --shadow-card-focused: 0 26px 70px rgba(46, 213, 115, 0.22);
+  --shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.45);
 
   /* Motion */
   --duration-reveal: 2s;
@@ -91,4 +153,77 @@
   --duration-hover: 0.15s;
   --debounce-advance: 1500ms;
   --delay-mode-select: 250ms;
+}
+
+/*
+ * Light theme. Applied via `[data-theme="light"]` on <html>, set before
+ * first paint by the inline bootstrap script in each HTML entry (see
+ * src/lib/theme.ts) — absence of the attribute means dark, the original and
+ * still-default theme. Only tokens that actually need to differ are listed;
+ * typography/spacing/motion, the brand accents (--accent-save,
+ * --accent-finance) and their *-bg tints, --on-accent-*, the gradients, and
+ * --verdict-affordable/--verdict-not-affordable are theme-independent and
+ * stay inherited from :root. The --verdict-on-fill* tokens are deliberately
+ * absent here too — see the comment on them above.
+ */
+:root[data-theme='light'] {
+  /* Colors — backgrounds */
+  --bg-dark-1: #faf9fc;
+  --bg-dark-2: #efebf7;
+
+  /* Colors — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
+  --text-primary: #1b1633;
+  --text-secondary: rgba(27, 22, 51, 0.65);
+  --text-secondary-mid: rgba(27, 22, 51, 0.55);
+  --text-secondary-dim: rgba(27, 22, 51, 0.5);
+  --text-tertiary: rgba(27, 22, 51, 0.4);
+  --text-tertiary-dim: rgba(27, 22, 51, 0.35);
+  --text-disabled: rgba(27, 22, 51, 0.4);
+
+  /* --accent-save (#2ed573) is only 1.84:1 on the light background — fine as
+     an icon fill/button/tint, fails as text. This darker green clears AA
+     (5.2:1) for the small bold text/icon spots that use it. */
+  --accent-save-text: #0f7a3f;
+  --brand-mint: #0f7a3f;
+  --brand-cyan: #0891b2;
+  /* The landing pill/card's green tint reads more washed-out on white than
+     on near-black at the same alpha, so these are bumped up slightly rather
+     than reused verbatim. */
+  --accent-save-border-soft: rgba(46, 213, 115, 0.35);
+  --accent-save-bg-pill: rgba(46, 213, 115, 0.12);
+  --accent-save-bg-card: rgba(46, 213, 115, 0.1);
+  --accent-save-bg-chip: rgba(46, 213, 115, 0.18);
+  --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.28);
+
+  /* Colors — surfaces. The white-overlay "glass" idiom becomes a
+     near-black-overlay one — same felt weight, flipped base color. */
+  --tile-bg: rgba(27, 22, 51, 0.035);
+  --tile-bg-neutral: rgba(27, 22, 51, 0.025);
+  --tile-border: rgba(27, 22, 51, 0.12);
+  --tile-border-neutral: rgba(27, 22, 51, 0.09);
+  --input-underline: rgba(27, 22, 51, 0.18);
+  --surface-selected: rgba(27, 22, 51, 0.07);
+  --surface-faint: rgba(27, 22, 51, 0.04);
+  --divider: rgba(27, 22, 51, 0.1);
+  --pill-bg: rgba(27, 22, 51, 0.05);
+  --pill-bg-hover: rgba(27, 22, 51, 0.09);
+  --pill-border: rgba(27, 22, 51, 0.14);
+  --icon-button-border: rgba(27, 22, 51, 0.14);
+  --icon-chip-fg: rgba(27, 22, 51, 0.7);
+  --button-outline-strong: rgba(27, 22, 51, 0.22);
+  --dot-inactive-bg: rgba(27, 22, 51, 0.18);
+  --chart-axis-line: rgba(27, 22, 51, 0.18);
+  --chart-bar-track: rgba(27, 22, 51, 0.14);
+
+  /* Colors — misc */
+  --badge-alpha-text: #a5670c;
+  --badge-alpha-border: rgba(165, 103, 12, 0.45);
+
+  /* Shadows. Dark mode's near-black shadow only reads as a shadow against a
+     dark surface — on a light one it needs to be much softer and tinted
+     toward the background's own hue, or every tile looks smudged. */
+  --shadow-tile: 0 24px 60px rgba(27, 22, 51, 0.14);
+  --shadow-card: 0 14px 34px rgba(27, 22, 51, 0.12);
+  --shadow-card-focused: 0 22px 56px rgba(46, 213, 115, 0.18);
+  --shadow-popover: 0 10px 26px rgba(27, 22, 51, 0.16);
 }
