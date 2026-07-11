@@ -16,17 +16,14 @@ test.describe('persistent controls', () => {
     await expect(page.locator('input[type="number"]').nth(0)).toHaveValue('')
   })
 
-  test('"Our sources" opens a panel with links, and closes on an outside click', async ({ page }) => {
+  test('"Our sources" links straight to the sources & ethos page in a new tab', async ({ page }) => {
     await page.goto('/')
 
-    await page.getByRole('button', { name: 'Our sources' }).click()
-    await expect(page.getByText('What our thresholds are based on')).toBeVisible()
-
-    const links = page.locator('a[href*="moneyhelper.org.uk"], a[href*="halifax.co.uk"]')
-    await expect(links).toHaveCount(5)
-
-    // Click somewhere clearly outside the panel.
-    await page.mouse.click(20, 500)
-    await expect(page.getByText('What our thresholds are based on')).not.toBeVisible()
+    // The old in-app popover is gone — the page carries the full annotated
+    // list, so the control is now a plain link (new tab, to keep any figures
+    // typed mid-flow).
+    const link = page.getByRole('link', { name: 'Our sources' })
+    await expect(link).toHaveAttribute('href', '/sources/')
+    await expect(link).toHaveAttribute('target', '_blank')
   })
 })

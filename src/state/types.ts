@@ -2,6 +2,14 @@ export type Mode = 'save' | 'monthly'
 export type SaveFlavor = 'duration' | 'goal'
 /** Duration flavor: whether the monthly saving is entered as a share of spare cash (`rate`) or a fixed amount (`monthlyAmount`). */
 export type RateMode = 'percent' | 'amount'
+/**
+ * Vehicle flow: how the car is being paid for. `cash` buys it outright,
+ * `pcp` / `hp` are dealer finance (PCP with a balloon, HP without), and
+ * `loan` is an unsecured personal/bank loan.
+ */
+export type VehicleFinanceMethod = 'cash' | 'pcp' | 'hp' | 'loan'
+/** PCP only: whether the balloon (GMFV) is known from a quote, or estimated from the car's age and mileage. */
+export type BalloonMode = 'known' | 'estimate'
 
 /**
  * The goals shown in the picker carousel. Kept here (rather than in
@@ -46,8 +54,31 @@ export interface CalculatorState {
   growth: number
   /** Months until the goal date. Goal flavor only. */
   goalMonths: number
-  /** Finance term in months. Finance mode only. */
+  /** Finance term in months. Finance mode and the vehicle flow's HP/PCP/loan methods. */
   term: number
+  // --- Vehicle flow (car goal only; ignored by every other goal) ---
+  /** How the car is being paid for. */
+  vehicleMethod: VehicleFinanceMethod
+  /** PCP: known balloon from a quote vs estimated from age + mileage. */
+  balloonMode: BalloonMode
+  /** PCP, `balloonMode === 'known'`: the quoted balloon / GMFV. Input-bound string (see note above). */
+  balloonAmount: string
+  /** The car's age in years now (0 = brand new). Drives the balloon estimate and the over-£40k tax supplement. */
+  vehicleAge: number
+  /** The car's current odometer reading in miles. Empty means "average for its age" (see lib/vehicle.ts). */
+  vehicleMileage: string
+  /** Miles the user expects to drive per year. */
+  annualMiles: string
+  /** The car's average fuel economy in miles per (imperial) gallon. */
+  mpg: string
+  /** Fuel price in pence per litre — a static default the user can adjust, like the RAC fuel-cost tool. */
+  fuelPencePerLitre: string
+  /** Estimated servicing/MOT/tyres/repairs budget per month. */
+  maintenanceMonthly: string
+  /** Annual insurance premium. */
+  insuranceAnnual: string
+  /** Annual road tax (VED), before the over-£40k supplement which is applied automatically. */
+  taxAnnual: string
   /** Index (0-4) of the step currently centered in the viewport. */
   activeIndex: number
   /** Steps that have animated into view at least once; they stay revealed once scrolled past. */

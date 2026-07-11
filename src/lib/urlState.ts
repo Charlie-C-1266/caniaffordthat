@@ -1,6 +1,6 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
-import type { CalculatorState, GoalId, Mode, RateMode, SaveFlavor } from '../state/types'
+import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
 // (serialise, used by "Copy result link") and `hydrateStateFromUrl` (deserialise,
@@ -18,6 +18,15 @@ const STRING_FIELDS = [
   'debts',
   'savings',
   'monthlyAmount',
+  // Vehicle flow (harmless no-ops for other goals; all parsed lazily via num()).
+  'balloonAmount',
+  'vehicleMileage',
+  'annualMiles',
+  'mpg',
+  'fuelPencePerLitre',
+  'maintenanceMonthly',
+  'insuranceAnnual',
+  'taxAnnual',
 ] as const satisfies readonly (keyof CalculatorState)[]
 
 /**
@@ -28,15 +37,16 @@ const STRING_FIELDS = [
  * upper bound because the goal-date field itself accepts any future date.
  */
 const NUMBER_FIELDS: readonly {
-  key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths'
+  key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge'
   min: number
   max?: number
 }[] = [
   { key: 'rate', min: 1, max: 100 }, // "% of spare cash" slider
   { key: 'growth', min: 0, max: 30 }, // interest sliders (finance APR's max; the save slider stops at 20)
   { key: 'goalMonths', min: 1 }, // goal-date floor is next month
-  { key: 'term', min: 1, max: 60 }, // finance term slider
+  { key: 'term', min: 1, max: 84 }, // longest term slider (the vehicle bank-loan's; others stop at 60)
   { key: 'coverMonths', min: 1, max: 12 }, // emergency-cover slider
+  { key: 'vehicleAge', min: 0, max: 30 }, // car-age slider stops at 20; allow a little headroom
 ]
 
 // `carouselIndex` is intentionally *not* shared: on load it's derived from
@@ -55,6 +65,14 @@ function isRateMode(value: string | null): value is RateMode {
   return value === 'percent' || value === 'amount'
 }
 
+function isVehicleMethod(value: string | null): value is VehicleFinanceMethod {
+  return value === 'cash' || value === 'pcp' || value === 'hp' || value === 'loan'
+}
+
+function isBalloonMode(value: string | null): value is BalloonMode {
+  return value === 'known' || value === 'estimate'
+}
+
 function isGoalId(value: string | null): value is GoalId {
   return value !== null && GOALS.some((g) => g.id === value)
 }
@@ -71,6 +89,8 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
   params.set('mode', state.mode)
   params.set('saveFlavor', state.saveFlavor)
   params.set('rateMode', state.rateMode)
+  params.set('vehicleMethod', state.vehicleMethod)
+  params.set('balloonMode', state.balloonMode)
   for (const field of STRING_FIELDS) params.set(field, state[field])
   for (const { key } of NUMBER_FIELDS) params.set(key, String(state[key]))
   return params
@@ -108,6 +128,12 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   const rateMode = params.get('rateMode')
   if (isRateMode(rateMode)) state.rateMode = rateMode
 
+  const vehicleMethod = params.get('vehicleMethod')
+  if (isVehicleMethod(vehicleMethod)) state.vehicleMethod = vehicleMethod
+
+  const balloonMode = params.get('balloonMode')
+  if (isBalloonMode(balloonMode)) state.balloonMode = balloonMode
+
   for (const field of STRING_FIELDS) {
     const value = params.get(field)
     if (value !== null) state[field] = value
@@ -117,6 +143,11 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
     const value = Number(params.get(key) ?? NaN)
     if (Number.isFinite(value)) state[key] = Math.min(max ?? Infinity, Math.max(min, value))
   }
+
+  // The 84-month ceiling above exists only for the vehicle bank loan; every
+  // other flow's term slider stops at 60, so a crafted non-vehicle link can't
+  // smuggle in a term the UI couldn't have produced.
+  if (!goal?.vehicle) state.term = Math.min(60, state.term)
 
   return state
 }

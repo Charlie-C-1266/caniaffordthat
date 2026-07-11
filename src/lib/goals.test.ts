@@ -6,8 +6,18 @@ describe('GOALS config', () => {
     expect(GOALS).toHaveLength(6)
     expect(GOALS.at(-1)?.id).toBe('mortgage')
     expect(GOALS.at(-1)?.soon).toBe(true)
-    // Vehicle and Mortgage ship as "Soon" (their calculators aren't ready).
-    expect(GOALS.filter((g) => g.soon).map((g) => g.id)).toEqual(['car', 'mortgage'])
+    // Only Mortgage still ships as "Soon" — Vehicle now has its own flow.
+    expect(GOALS.filter((g) => g.soon).map((g) => g.id)).toEqual(['mortgage'])
+  })
+
+  it('marks the car as the vehicle flow with a deposit field and no generic mode toggle', () => {
+    const car = goalById('car')
+    expect(car?.vehicle).toBe(true)
+    expect(car?.soon).toBeFalsy()
+    expect(car?.deposit).toBe(true)
+    // "How are you paying?" lives in the vehicle purchase step, so the
+    // generic save/finance toggle would double up.
+    expect(car?.allowModeToggle).toBe(false)
   })
 
   it('has unique ids', () => {
@@ -38,9 +48,9 @@ describe('GOALS config', () => {
 })
 
 describe('INITIAL_CAROUSEL_INDEX', () => {
-  it('points at the first selectable goal (Holiday, since Vehicle is now "Soon")', () => {
-    expect(INITIAL_CAROUSEL_INDEX).toBe(1)
-    expect(GOALS[INITIAL_CAROUSEL_INDEX].id).toBe('holiday')
+  it('points at the first selectable goal (Vehicle, now its calculator is live)', () => {
+    expect(INITIAL_CAROUSEL_INDEX).toBe(0)
+    expect(GOALS[INITIAL_CAROUSEL_INDEX].id).toBe('car')
     expect(GOALS[INITIAL_CAROUSEL_INDEX].soon).toBeFalsy()
   })
 })
@@ -89,8 +99,8 @@ describe('seedFromGoal', () => {
     const patch = seedFromGoal(goalById('car')!)
     expect(patch.goalId).toBe('car')
     expect(patch.mode).toBe('monthly')
-    expect(patch.term).toBe(60)
-    expect(patch.growth).toBe(7.9)
+    expect(patch.term).toBe(48)
+    expect(patch.growth).toBe(9.9)
   })
 
   it('only seeds fields the goal specifies, leaving others to keep their current value', () => {

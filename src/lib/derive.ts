@@ -32,8 +32,9 @@ export const CHART_MONTHS_CAP = 24
 // Below the first threshold is "comfortable", between the two is a "good
 // chunk", above the second is "tight". See the in-app "Our sources" button
 // for the actual linked pages.
-const SPARE_CASH_COMFORTABLE_RATIO = 0.4
-const SPARE_CASH_TIGHT_RATIO = 0.6
+// Exported so the methodology page quotes the bands actually in force.
+export const SPARE_CASH_COMFORTABLE_RATIO = 0.4
+export const SPARE_CASH_TIGHT_RATIO = 0.6
 
 export interface ChartBar {
   heightPct: number
@@ -229,16 +230,26 @@ interface CopyContext {
 
 const monthsLabel = (n: number) => `${n} month${n === 1 ? '' : 's'}`
 
-/** Standard "Yes / No" verdict shared by every non-emergency kind. */
-const withinReachVerdict = (isAffordable: boolean) => (isAffordable ? "Yes — it's within reach." : "No — that's a stretch.")
+/** Standard "Yes / No" verdict shared by every non-emergency kind (and the vehicle flow). */
+export const withinReachVerdict = (isAffordable: boolean) =>
+  isAffordable ? "Yes — it's within reach." : "No — that's a stretch."
 
-/** Sub-copy for the "fixed monthly amount" kinds (goal-date and finance): does the required payment fit the spare cash, and how comfortably. */
+/**
+ * Sub-copy for any "does this fixed monthly amount fit?" verdict — goal-date
+ * saving, generic finance, and the vehicle flow's total monthly cost all
+ * judge a committed £/month against spare cash with the same bands.
+ */
+export function spareCashFitSub(contribution: number, spareCash: number): string {
+  const ratio = spareCash > 0 ? contribution / spareCash : Infinity
+  if (contribution > spareCash) return `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
+  if (ratio <= SPARE_CASH_COMFORTABLE_RATIO) return `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
+  if (ratio <= SPARE_CASH_TIGHT_RATIO) return `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
+  return `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
+}
+
+/** The CopyContext-shaped adapter the standard result kinds use. */
 function fitsVerdictSub(c: CopyContext): string {
-  const ratio = c.spareCash > 0 ? c.contribution / c.spareCash : Infinity
-  if (!c.fits) return `${fmt(c.contribution)}/month is ${fmt(c.contribution - c.spareCash)} more than your spare cash.`
-  if (ratio <= SPARE_CASH_COMFORTABLE_RATIO) return `${fmt(c.contribution)}/month fits comfortably within your ${fmt(c.spareCash)} spare cash.`
-  if (ratio <= SPARE_CASH_TIGHT_RATIO) return `${fmt(c.contribution)}/month fits, but takes up a good chunk of your ${fmt(c.spareCash)} spare cash.`
-  return `${fmt(c.contribution)}/month fits, but it's tight — that's most of your ${fmt(c.spareCash)} spare cash.`
+  return spareCashFitSub(c.contribution, c.spareCash)
 }
 
 function resultCopy(kind: ResultKind, c: CopyContext): ResultCopy {

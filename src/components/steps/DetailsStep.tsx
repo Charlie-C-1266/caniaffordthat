@@ -11,6 +11,7 @@ import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
+import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
@@ -21,7 +22,9 @@ import { accentColorFor, accentBgFor } from '../../lib/mode'
 import type { Mode } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step1DetailsProps {
+interface DetailsStepProps {
+  /** Position in the active flow — drives the eyebrow number and where auto-advance lands. */
+  index: number
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -50,8 +53,8 @@ function ModeToggle({ mode, onChange }: ModeToggleProps) {
   )
 }
 
-/** Step 1 — the per-goal tailored inputs. Standard goals capture a price (and, for cars, a deposit); the emergency fund sizes a cushion instead. */
-export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1DetailsProps) {
+/** The Details step — the per-goal tailored inputs. Standard goals capture a price (and, for cars, a deposit); the emergency fund sizes a cushion instead. */
+export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: DetailsStepProps) {
   const { state, setField } = useCalculator()
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const goal = goalById(state.goalId)
@@ -59,18 +62,18 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
 
   const handlePriceChange = (value: string) => {
     setField('itemPrice', value)
-    if (num(value) > 0) scheduleAdvance(1, 2)
+    if (num(value) > 0) scheduleAdvance(index, index + 1)
   }
 
   const handlePriceKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(2)
+    if (event.key === 'Enter' && num(event.currentTarget.value) > 0) scrollToIndex(index + 1)
   }
 
   // Editing the name after the price is valid counts as "still on this step",
   // so the pending auto-advance from the price field keeps resetting.
   const handleNameChange = (value: string) => {
     setField('itemName', value)
-    if (num(state.itemPrice) > 0) scheduleAdvance(1, 2)
+    if (num(state.itemPrice) > 0) scheduleAdvance(index, index + 1)
   }
 
   const essentials = monthlyOutgoingsOf(state)
@@ -88,13 +91,13 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
 
   return (
     <StepPanel
-      index={1}
+      index={index}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
       wrapperHeightVh={goal?.emergency ? 150 : 160}
       panelStyle={{ background: 'var(--bg-dark-2)' }}
     >
-      <RevealTile revealed={Boolean(state.revealed[1])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding={goal?.emergency ? '34px 44px' : '46px 44px'}>
           {!goal ? (
             <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>
@@ -120,7 +123,7 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                 </div>
                 <div>
                   <Eyebrow color={accent} marginBottom={2}>
-                    Step 1 — {goal.tag}
+                    Step {index} — {goal.tag}
                   </Eyebrow>
                   <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {goal.emergency ? 'How big a cushion?' : goal.name}
@@ -169,16 +172,7 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                       />
                     ))}
                   </div>
-                  <div
-                    style={{
-                      padding: '15px 17px',
-                      borderRadius: 14,
-                      background: 'rgba(255,255,255,0.04)',
-                      fontSize: 'var(--fs-body)',
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <SummaryBox>
                     That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(emergencyTarget)}</strong> — {state.coverMonths}{' '}
                     month{state.coverMonths === 1 ? '' : 's'} of your {fmt(essentials)} monthly essentials.
                     <div
@@ -195,7 +189,7 @@ export function Step1Details({ panelRef, wrapperRef, scrollToIndex }: Step1Detai
                       {withinRecommendedBand && <Icon name="check" size={14} color={accent} strokeWidth={2.5} />}
                       {coverBandText}
                     </div>
-                  </div>
+                  </SummaryBox>
                 </>
               ) : (
                 <>

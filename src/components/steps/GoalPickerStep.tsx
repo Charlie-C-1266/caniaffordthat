@@ -6,7 +6,9 @@ import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step0GoalPickerProps {
+interface GoalPickerStepProps {
+  /** Position in the active flow (always 0 — the picker is every flow's landing). */
+  index: number
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -201,8 +203,8 @@ function RoundButton({ icon, label, onClick }: RoundButtonProps) {
   )
 }
 
-/** The landing screen: the cover-flow goal picker. Choosing a goal seeds its tailored config and scrolls on to Details (step 1). */
-export function Step0GoalPicker({ panelRef, wrapperRef, scrollToIndex }: Step0GoalPickerProps) {
+/** The landing screen: the cover-flow goal picker. Choosing a goal seeds its tailored config and scrolls on to Details. */
+export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: GoalPickerStepProps) {
   const { state, setField, setFields } = useCalculator()
   const focused = GOALS[state.carouselIndex]
 
@@ -236,7 +238,7 @@ export function Step0GoalPicker({ panelRef, wrapperRef, scrollToIndex }: Step0Go
     if (goal.soon) return
     setEngaged(true)
     setFields(seedFromGoal(goal))
-    setTimeout(() => scrollToIndex(1), SELECT_SCROLL_DELAY_MS)
+    setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
 
   useEffect(() => {
@@ -249,9 +251,9 @@ export function Step0GoalPicker({ panelRef, wrapperRef, scrollToIndex }: Step0Go
   }, [engaged, hovered, state.goalId, setField])
 
   return (
-    <StepPanel index={0} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
+    <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
       <RevealTile
-        revealed={Boolean(state.revealed[0])}
+        revealed={Boolean(state.revealed[index])}
         style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
       >
         <LandingPill />

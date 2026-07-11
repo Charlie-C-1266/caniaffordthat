@@ -1,9 +1,10 @@
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { FieldLabel } from '../FieldLabel'
+import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { useCalculator } from '../../state/calculatorContext'
@@ -13,7 +14,9 @@ import { goalById } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
 
-interface Step2BudgetProps {
+interface BudgetStepProps {
+  /** Position in the active flow — the eyebrow number and the Enter-advance target follow it. */
+  index: number
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
@@ -23,14 +26,15 @@ interface Step2BudgetProps {
 type BudgetFieldKey = OutgoingFieldKey | 'savings'
 
 /**
- * Step 3 — take-home pay plus monthly outgoings. Which fields show depends on
- * the goal (see design/adr/0004-0005): the emergency fund already captured its
- * essentials in Details (so here it only needs take-home + what's set aside),
- * and the car captured its deposit in Details (so its "already saved" field is
- * hidden here). No pause-based auto-advance — with several fields on screen a
- * debounce firing mid-check-through yanks people away before they've looked.
+ * The Budget step — take-home pay plus monthly outgoings. Which fields show
+ * depends on the goal (see design/adr/0004-0005): the emergency fund already
+ * captured its essentials in Details (so here it only needs take-home + what's
+ * set aside), and the car captured its deposit in Details (so its "already
+ * saved" field is hidden here). No pause-based auto-advance — with several
+ * fields on screen a debounce firing mid-check-through yanks people away
+ * before they've looked.
  */
-export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2BudgetProps) {
+export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: BudgetStepProps) {
   const { state, setField } = useCalculator()
   const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
@@ -43,10 +47,29 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
   const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
   const visibleKeys: BudgetFieldKey[] = [...outgoings, ...(showSavings ? (['savings'] as const) : [])]
 
+  // The vehicle flow already itemises this car's fuel, insurance, tax and
+  // finance payment on its own steps — without a note, "Transport" here reads
+  // ambiguously (does it include the car being evaluated, or not?) and risks
+  // double-counting it. Relabel the field for that goal only, rather than
+  // hiding it: other transport spend (public transport, a second car) still
+  // belongs in spare cash.
+  const outgoingLabel = (key: OutgoingFieldKey): ReactNode => {
+    if (key !== 'transport' || !goal?.vehicle) return OUTGOING_FIELD_LABELS[key]
+    return (
+      <>
+        Transport (other than this car){' '}
+        <InfoHint
+          size={14}
+          text="This car's fuel, insurance, tax and finance payment are already counted on the previous steps — put anything else here, like public transport or another vehicle."
+        />
+      </>
+    )
+  }
+
   const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
 
   const handleEnterAdvance = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && isComplete) scrollToIndex(3)
+    if (event.key === 'Enter' && isComplete) scrollToIndex(index + 1)
   }
 
   const savingsField = showSavings && (
@@ -60,16 +83,16 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
 
   return (
     <StepPanel
-      index={2}
+      index={index}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
       wrapperHeightVh={170}
       panelStyle={{ background: 'var(--bg-dark-1)' }}
     >
-      <RevealTile revealed={Boolean(state.revealed[2])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+      <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={680} padding="48px 48px">
           <Eyebrow color={accent} marginBottom={16}>
-            Step 2 — Your budget
+            Step {index} — Your budget
           </Eyebrow>
           <h1
             style={{
@@ -118,7 +141,7 @@ export function Step2Budget({ panelRef, wrapperRef, scrollToIndex }: Step2Budget
                 {outgoings.map((key) => (
                   <LabeledMoneyField
                     key={key}
-                    label={OUTGOING_FIELD_LABELS[key]}
+                    label={outgoingLabel(key)}
                     value={state[key]}
                     onChange={(value) => setField(key, value)}
                     onKeyDown={handleEnterAdvance}
