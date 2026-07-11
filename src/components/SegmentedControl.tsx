@@ -32,8 +32,8 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
         gap: 5,
         padding: md ? 5 : 4,
         borderRadius: md ? 14 : 12,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(245,243,255,0.08)',
+        background: 'var(--tile-bg)',
+        border: '1px solid var(--divider)',
         width: md ? undefined : 'fit-content',
       }}
     >

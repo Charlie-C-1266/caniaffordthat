@@ -64,7 +64,7 @@ function MethodChip({ option, active, accentColor, onSelect }: MethodChipProps) 
         padding: '12px 8px',
         borderRadius: 12,
         border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+        background: active ? 'var(--surface-selected)' : 'transparent',
         color: 'var(--text-primary)',
         cursor: 'pointer',
         fontFamily: 'inherit',

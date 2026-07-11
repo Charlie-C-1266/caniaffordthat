@@ -24,13 +24,13 @@ function LandingPill() {
         gap: 8,
         padding: '7px 15px',
         borderRadius: 99,
-        border: '1px solid rgba(46,213,115,0.3)',
-        background: 'rgba(46,213,115,0.08)',
+        border: '1px solid var(--accent-save-border-soft)',
+        background: 'var(--accent-save-bg-pill)',
         marginBottom: 20,
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2ED573', boxShadow: '0 0 10px #2ED573' }} />
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#9defbe' }}>Free · no sign-up · takes 2 minutes</span>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }} />
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--brand-mint)' }}>Free · no sign-up · takes 2 minutes</span>
     </div>
   )
 }
@@ -72,7 +72,10 @@ interface GoalCardProps {
 
 function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCardProps) {
   const geo = cardGeometry(offset)
-  const accent = 'var(--accent-save)'
+  // The text-safe variant: this accent is used for the card border, icon
+  // fill, and tag-label text below, and --accent-save fails contrast as
+  // text/icon color in the light theme (see tokens.css).
+  const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
   // transform jumps instantly across the seam when teleporting.
   const transition = teleport
@@ -100,9 +103,9 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
         cursor: goal.soon ? 'not-allowed' : 'pointer',
         fontFamily: 'inherit',
         color: 'var(--text-primary)',
-        background: focused ? 'rgba(46,213,115,0.06)' : 'rgba(255,255,255,0.03)',
-        border: `1.5px solid ${focused ? accent : 'rgba(245,243,255,0.09)'}`,
-        boxShadow: focused ? '0 26px 70px rgba(46,213,115,0.22)' : '0 16px 40px rgba(0,0,0,0.3)',
+        background: focused ? 'var(--accent-save-bg-card)' : 'var(--tile-bg-neutral)',
+        border: `1.5px solid ${focused ? accent : 'var(--divider)'}`,
+        boxShadow: focused ? 'var(--shadow-card-focused)' : 'var(--shadow-card)',
         transition,
         ...geo,
       }}
@@ -119,9 +122,9 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
             textTransform: 'uppercase',
             padding: '4px 9px',
             borderRadius: 99,
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(245,243,255,0.12)',
-            color: 'rgba(245,243,255,0.55)',
+            background: 'var(--surface-selected)',
+            border: '1px solid var(--tile-border-neutral)',
+            color: 'var(--text-secondary-mid)',
           }}
         >
           Soon
@@ -136,8 +139,8 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 18,
-          background: focused ? 'rgba(46,213,115,0.14)' : 'rgba(255,255,255,0.05)',
-          color: focused ? accent : 'rgba(245,243,255,0.75)',
+          background: focused ? 'var(--accent-save-bg-chip)' : 'var(--surface-faint)',
+          color: focused ? accent : 'var(--icon-chip-fg)',
         }}
       >
         <Icon name={goal.icon} size={26} />
@@ -148,7 +151,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
           fontWeight: 700,
           letterSpacing: '0.08em',
           textTransform: 'uppercase',
-          color: focused ? accent : 'rgba(245,243,255,0.4)',
+          color: focused ? accent : 'var(--text-tertiary)',
           marginBottom: 8,
         }}
       >
@@ -160,7 +163,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
           fontSize: 13.5,
           fontWeight: 500,
           lineHeight: 1.5,
-          color: 'rgba(245,243,255,0.55)',
+          color: 'var(--text-secondary-mid)',
           minHeight: 40,
         }}
       >
@@ -192,8 +195,8 @@ function RoundButton({ icon, label, onClick }: RoundButtonProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        border: '1px solid rgba(245,243,255,0.16)',
-        background: hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+        border: '1px solid var(--icon-button-border)',
+        background: hovered ? 'var(--surface-selected)' : 'var(--tile-bg)',
         color: 'var(--text-primary)',
         cursor: 'pointer',
       }}
@@ -318,7 +321,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
                   border: 'none',
                   borderRadius: 99,
                   cursor: 'pointer',
-                  background: active ? 'var(--accent-save)' : 'rgba(245,243,255,0.2)',
+                  background: active ? 'var(--accent-save)' : 'var(--dot-inactive-bg)',
                   transition: 'width 0.3s ease, background 0.3s ease',
                 }}
               />
@@ -358,9 +361,9 @@ function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
         cursor: disabled ? 'not-allowed' : 'pointer',
         transform: hovered && !disabled ? 'translateY(-2px)' : 'translateY(0)',
         transition: 'transform var(--duration-hover) ease',
-        background: disabled ? 'rgba(255,255,255,0.06)' : 'var(--accent-save-gradient)',
-        color: disabled ? 'rgba(245,243,255,0.45)' : 'var(--on-accent-save)',
-        boxShadow: disabled ? 'none' : '0 12px 30px rgba(46,213,115,0.35)',
+        background: disabled ? 'var(--pill-bg)' : 'var(--accent-save-gradient)',
+        color: disabled ? 'var(--text-disabled)' : 'var(--on-accent-save)',
+        boxShadow: disabled ? 'none' : 'var(--accent-save-shadow-strong)',
       }}
     >
       {disabled ? 'Coming soon' : 'Get started'}

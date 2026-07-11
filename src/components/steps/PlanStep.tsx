@@ -38,7 +38,7 @@ function ToggleButton({ label, active, accentColor, onClick }: ToggleButtonProps
         padding: 14,
         borderRadius: 'var(--radius-button)',
         border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+        background: active ? 'var(--surface-selected)' : 'transparent',
         color: 'var(--text-primary)',
         fontSize: 14,
         fontWeight: 700,

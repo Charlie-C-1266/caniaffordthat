@@ -14,7 +14,7 @@ const MAX_YEARS = 10
 
 /** The three mileage profiles the chart contrasts. Colours are theme accents that read apart on the dark background. */
 const SERIES = [
-  { annualMiles: 4_000, color: '#5ee0ff', label: '4,000 miles/year' },
+  { annualMiles: 4_000, color: 'var(--brand-cyan)', label: '4,000 miles/year' },
   { annualMiles: UK_AVERAGE_ANNUAL_MILES, color: 'var(--accent-save)', label: `${UK_AVERAGE_ANNUAL_MILES.toLocaleString('en-GB')} miles/year (UK average)` },
   { annualMiles: 16_000, color: 'var(--accent-finance)', label: '16,000 miles/year' },
 ]
@@ -56,7 +56,7 @@ export function DepreciationChart() {
               y1={y(pct)}
               x2={VIEW_W - MARGIN.right}
               y2={y(pct)}
-              stroke="rgba(245,243,255,0.12)"
+              style={{ stroke: 'var(--tile-border-neutral)' }}
               strokeWidth={1}
               strokeDasharray={pct === 0 ? undefined : '3 5'}
             />

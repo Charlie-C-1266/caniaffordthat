@@ -26,8 +26,8 @@ function StartOverButton({ onClick }: { onClick: () => void }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.12)',
+        background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
+        border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
         fontSize: 12.5,
         fontWeight: 600,

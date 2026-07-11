@@ -30,7 +30,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
   const affordable = result.isAffordable
   // As on the standard card: on a "No" only the banner carries colour.
   const eyebrowColor = affordable ? accent : 'var(--text-tertiary)'
-  const currentBarColor = affordable ? accent : 'rgba(245,243,255,0.55)'
+  const currentBarColor = affordable ? accent : 'var(--text-secondary-mid)'
   const carLabel = state.itemName || 'Vehicle'
   const isCash = result.method === 'cash'
 
@@ -100,7 +100,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
                   color: 'var(--text-tertiary)',
                   lineHeight: 1.45,
                   paddingLeft: 12,
-                  borderLeft: '2px solid rgba(245,243,255,0.14)',
+                  borderLeft: '2px solid var(--tile-border)',
                 }}
               >
                 {note}
