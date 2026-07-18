@@ -1,6 +1,8 @@
 import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance, addMonths } from './calculations'
 import { goalById } from './goals'
 import { OUTGOING_FIELD_KEYS } from './budget'
+import { budgetBreakdown, type BudgetBreakdown } from './budgetSplit'
+import { financeProjection, savingProjection, type Projection } from './projection'
 import type { CalculatorState } from '../state/types'
 
 // 5 years is MoneyHelper's (the UK's government-backed money guidance
@@ -10,9 +12,6 @@ import type { CalculatorState } from '../state/types'
 // a simple cash-savings plan for a specific purchase, which is what this
 // mode assumes.
 const AFFORDABILITY_MONTHS_CAP = 60
-
-/** Longest span the result chart draws month-by-month bars for; longer plans are truncated and flagged via `hasOverflowMonths`. Exported so the result screen's "chart capped at N months" caption can't drift from the actual cap. */
-export const CHART_MONTHS_CAP = 24
 
 // No UK body publishes a rule of thumb framed exactly as "% of leftover cash
 // after essentials" (our "spare cash"), so these are derived from two UK
@@ -35,10 +34,6 @@ export const CHART_MONTHS_CAP = 24
 // Exported so the methodology page quotes the bands actually in force.
 export const SPARE_CASH_COMFORTABLE_RATIO = 0.4
 export const SPARE_CASH_TIGHT_RATIO = 0.6
-
-export interface ChartBar {
-  heightPct: number
-}
 
 /** Sum of the five monthly outgoing fields (housing…debts). Also the emergency fund's "essential spend". */
 export function monthlyOutgoingsOf(state: CalculatorState): number {
@@ -69,9 +64,10 @@ export interface DerivedResult {
   subheadline: string
   contributionRowLabel: string
   targetRowLabel: string
-  chartBars: ChartBar[]
-  hasOverflowMonths: boolean
-  chartEndLabel: string
+  /** Month-by-month series behind the balance chart and projection table; `null` when there's nothing to project (not feasible, or the target's already met). */
+  projection: Projection | null
+  /** How the monthly commitment sits within the budget — the data behind the budget donut. */
+  budget: BudgetBreakdown
 }
 
 /**
@@ -131,31 +127,15 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     fits = contribution <= spareCash
   }
 
-  const chartBars: ChartBar[] = []
-  let hasOverflowMonths = false
-  let chartEndLabel = ''
-  if (isFeasible) {
-    const cap = Math.min(months, CHART_MONTHS_CAP) || 1
-    const i = state.growth / 100 / 12
-    for (let k = 1; k <= cap; k++) {
-      let frac: number
-      if (isFinance) {
-        let bal = target
-        for (let m = 0; m < k; m++) bal = bal * (1 + i) - contribution
-        bal = Math.max(0, bal)
-        frac = target > 0 ? Math.min(1, 1 - bal / target) : 1
-      } else {
-        let bal = 0
-        for (let m = 0; m < k; m++) bal = bal * (1 + i) + contribution
-        frac = target > 0 ? Math.min(1, bal / target) : 1
-      }
-      // The final (current-month) bar is coloured by the view; here we only
-      // need each month's progress height toward the target.
-      chartBars.push({ heightPct: Math.max(3, Math.round(frac * 100)) })
-    }
-    hasOverflowMonths = months > CHART_MONTHS_CAP
-    chartEndLabel = months <= CHART_MONTHS_CAP ? addMonths(months) : `${addMonths(CHART_MONTHS_CAP)}+`
-  }
+  // The month-by-month series behind the balance chart, projection table and
+  // legacy bars — only when there's actually something to project (a feasible
+  // plan reaching for a target that isn't already met).
+  const projection =
+    isFeasible && target > 0
+      ? isFinance
+        ? financeProjection(target, contribution, state.growth, months)
+        : savingProjection(target, contribution, state.growth, months)
+      : null
 
   // All the presentation copy for the result is built per "kind" (emergency /
   // duration / goal-date / finance), so each mode's headline, sub-copy, and
@@ -193,9 +173,8 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     subheadline,
     contributionRowLabel: isFinance ? 'MONTHLY PAYMENT' : 'MONTHLY SAVING',
     targetRowLabel: isFinance ? 'AMOUNT TO FINANCE' : 'AMOUNT LEFT TO SAVE',
-    chartBars,
-    hasOverflowMonths,
-    chartEndLabel,
+    projection,
+    budget: budgetBreakdown(state, contribution),
   }
 }
 

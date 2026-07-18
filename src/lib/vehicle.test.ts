@@ -228,7 +228,7 @@ describe('deriveVehicleResult', () => {
       expect(result.balloon).toBeNull()
       expect(result.totalMonthly).toBe(60)
       expect(result.isAffordable).toBe(true)
-      expect(result.chartBars).toHaveLength(0)
+      expect(result.projection).toBeNull() // cash has no finance balance to project
       expect(result.notes.join(' ')).toMatch(/emergency cushion/i)
     })
   })
@@ -333,19 +333,19 @@ describe('deriveVehicleResult', () => {
           growth: 0,
         }),
       )!
-      expect(result.chartBars).toHaveLength(24)
-      expect(result.hasOverflowMonths).toBe(false)
+      expect(result.projection?.bars).toHaveLength(24)
+      expect(result.projection?.hasOverflow).toBe(false)
       // £500/mo repays £12,000 of the £20,000 financed: the last bar sits at 60%.
-      expect(result.chartBars.at(-1)?.heightPct).toBe(60)
+      expect(result.projection?.bars.at(-1)?.heightPct).toBe(60)
     })
 
     it('fully repays an HP chart by the end of the term, capping long terms at 24 bars', () => {
       const result = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', term: 48, growth: 0 }))!
-      expect(result.chartBars).toHaveLength(24)
-      expect(result.hasOverflowMonths).toBe(true)
-      expect(result.chartEndLabel).toMatch(/\+$/)
+      expect(result.projection?.bars).toHaveLength(24)
+      expect(result.projection?.hasOverflow).toBe(true)
+      expect(result.projection?.endLabel).toMatch(/\+$/)
       const shortTerm = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', term: 24, growth: 0 }))!
-      expect(shortTerm.chartBars.at(-1)?.heightPct).toBe(100)
+      expect(shortTerm.projection?.bars.at(-1)?.heightPct).toBe(100)
     })
   })
 

@@ -96,6 +96,20 @@
   /* The result chart's plot-area lines and inactive-bar fill. */
   --chart-axis-line: rgba(245, 243, 255, 0.22);
   --chart-bar-track: rgba(245, 243, 255, 0.2);
+  /* Result-screen budget-donut palette. Three hue families — a blue ramp for
+     the essentials, rose for the new cost being weighed up, green for what's
+     left, red for any overspend. Validated for colour-blind separation and
+     ≥3:1 contrast against the dark tile with the dataviz palette validator;
+     the light block below re-steps each hue for the light surface (a
+     near-white surface needs darker hues than a near-black one). */
+  --chart-essential-1: #86b6ef;
+  --chart-essential-2: #5f9aec;
+  --chart-essential-3: #4485e2;
+  --chart-essential-4: #3570cf;
+  --chart-essential-5: #2a5cb2;
+  --chart-newcost: #d55181;
+  --chart-leftover: #008300;
+  --chart-over: #ff5c5c;
 
   /* Colors — misc */
   --badge-alpha-text: #f5a623;
@@ -214,6 +228,17 @@
   --dot-inactive-bg: rgba(27, 22, 51, 0.18);
   --chart-axis-line: rgba(27, 22, 51, 0.18);
   --chart-bar-track: rgba(27, 22, 51, 0.14);
+  /* Budget-donut palette, re-stepped for the light surface — same four hue
+     families as the dark block, darkened so each clears contrast on the near-
+     white tile (validated with the dataviz palette validator). */
+  --chart-essential-1: #6f97e0;
+  --chart-essential-2: #4f7ad2;
+  --chart-essential-3: #3563c2;
+  --chart-essential-4: #284fa8;
+  --chart-essential-5: #1e3f88;
+  --chart-newcost: #c23b86;
+  --chart-leftover: #0f8a45;
+  --chart-over: #d8322f;
 
   /* Colors — misc */
   --badge-alpha-text: #a5670c;

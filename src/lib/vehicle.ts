@@ -1,5 +1,7 @@
-import { fmt, num, paymentForFinance, addMonths } from './calculations'
-import { CHART_MONTHS_CAP, spareCashOf, spareCashFitSub, withinReachVerdict, type ChartBar } from './derive'
+import { fmt, num, paymentForFinance } from './calculations'
+import { spareCashOf, spareCashFitSub, withinReachVerdict } from './derive'
+import { financeProjection, type Projection } from './projection'
+import { budgetBreakdown, type BudgetBreakdown } from './budgetSplit'
 import type { CalculatorState, VehicleFinanceMethod } from '../state/types'
 
 // Pure maths and reference figures for the vehicle flow. Everything here is
@@ -229,10 +231,10 @@ export interface VehicleResult {
   resultEyebrow: string
   headline: string
   subheadline: string
-  /** Finance methods: balance repaid over time (a PCP's bars top out below 100% — the balloon is still owed). Empty for cash. */
-  chartBars: ChartBar[]
-  chartEndLabel: string
-  hasOverflowMonths: boolean
+  /** Finance methods: the balance-repaid series behind the chart and table (a PCP tops out below 100% — the balloon is still owed). `null` for cash. */
+  projection: Projection | null
+  /** How the car's total monthly cost sits within the budget — the data behind the budget donut. */
+  budget: BudgetBreakdown
   /** Caveats worth the user's attention, rendered under the breakdown. */
   notes: string[]
 }
@@ -303,24 +305,11 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   const totalMonthly = financeMonthly + running.total
   const isAffordable = totalMonthly <= spareCash
 
-  // --- The projection chart: balance repaid over the term ---
-  const chartBars: ChartBar[] = []
-  let chartEndLabel = ''
-  let hasOverflowMonths = false
-  if (method !== 'cash' && principal > 0) {
-    const cap = Math.min(termMonths, CHART_MONTHS_CAP)
-    const i = aprPct / 100 / 12
-    let bal = principal
-    for (let k = 1; k <= cap; k++) {
-      bal = bal * (1 + i) - financeMonthly
-      // A PCP balance descends to the balloon, not zero — the bars honestly
-      // top out below 100%, showing the final payment still owed.
-      const frac = Math.min(1, (principal - Math.max(0, bal)) / principal)
-      chartBars.push({ heightPct: Math.max(3, Math.round(frac * 100)) })
-    }
-    hasOverflowMonths = termMonths > CHART_MONTHS_CAP
-    chartEndLabel = hasOverflowMonths ? `${addMonths(CHART_MONTHS_CAP)}+` : addMonths(termMonths)
-  }
+  // --- The projection: balance repaid over the term ---
+  // A PCP payment amortizes only down to its balloon, so the repaid series
+  // honestly tops out below 100% — the final payment is still owed. Cash has
+  // no finance balance to project.
+  const projection = method !== 'cash' && principal > 0 ? financeProjection(principal, financeMonthly, aprPct, termMonths) : null
 
   // --- Copy ---
   const runningLine = `${fmt(running.total)}/month to run (fuel, maintenance, insurance and tax)`
@@ -386,9 +375,8 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
     resultEyebrow: 'Total monthly cost',
     headline: `${fmt(totalMonthly)}/mo`,
     subheadline,
-    chartBars,
-    chartEndLabel,
-    hasOverflowMonths,
+    projection,
+    budget: budgetBreakdown(state, totalMonthly),
     notes,
   }
 }
