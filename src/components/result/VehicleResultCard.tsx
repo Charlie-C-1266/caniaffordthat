@@ -1,7 +1,7 @@
 import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
 import { ResultHeadline } from './ResultHeadline'
-import { ChartCard } from './ChartCard'
+import { ResultChart } from './ResultChart'
 import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
 import { TotalRow } from './TotalRow'
@@ -46,17 +46,14 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
           subheadline={result.subheadline}
         />
 
-        {result.chartBars.length > 0 && (
-          <ChartCard
-            bars={result.chartBars}
-            endLabel={result.chartEndLabel}
-            hasOverflow={result.hasOverflowMonths}
-            months={result.termMonths}
-            target={result.principal}
-            title="Balance repaid over time"
-            currentBarColor={currentBarColor}
-          />
-        )}
+        <ResultChart
+          projection={result.projection}
+          budget={result.budget}
+          chartTitle="Balance repaid over time"
+          accentColor={currentBarColor}
+          newCostLabel="Total car cost"
+          months={result.termMonths}
+        />
 
         <BreakdownBox heading="Monthly costs">
           {!isCash && <BreakdownRow label={financeRowLabel(result.method).toUpperCase()} value={fmt(result.financeMonthly)} />}

@@ -1,7 +1,7 @@
 import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
 import { ResultHeadline } from './ResultHeadline'
-import { ChartCard } from './ChartCard'
+import { ResultChart } from './ResultChart'
 import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
 import { TotalRow } from './TotalRow'
@@ -41,15 +41,14 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
           subheadline={result.subheadline}
         />
 
-        {result.isFeasible && result.target > 0 && (
-          <ChartCard
-            bars={result.chartBars}
-            endLabel={result.chartEndLabel}
-            hasOverflow={result.hasOverflowMonths}
+        {result.target > 0 && (
+          <ResultChart
+            projection={result.projection}
+            budget={result.budget}
+            chartTitle={state.mode === 'monthly' ? 'Balance repaid over time' : 'Savings balance over time'}
+            accentColor={currentBarColor}
+            newCostLabel={state.mode === 'monthly' ? 'Monthly payment' : 'Monthly saving'}
             months={result.months}
-            target={result.target}
-            title={state.mode === 'monthly' ? 'Balance repaid over time' : 'Savings balance over time'}
-            currentBarColor={currentBarColor}
           />
         )}
 

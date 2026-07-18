@@ -311,25 +311,34 @@ describe('deriveResult', () => {
     })
   })
 
-  describe('chart bars', () => {
+  describe('projection', () => {
     it('caps at 24 bars and flags overflow for longer timelines', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '12000', takeHome: '5000', term: 36 }))
-      expect(result?.chartBars).toHaveLength(24)
-      expect(result?.hasOverflowMonths).toBe(true)
-      expect(result?.chartEndLabel).toMatch(/\+$/)
+      expect(result?.projection?.bars).toHaveLength(24)
+      expect(result?.projection?.hasOverflow).toBe(true)
+      expect(result?.projection?.endLabel).toMatch(/\+$/)
     })
 
     it('does not flag overflow for timelines at or under 24 months', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 12 }))
-      expect(result?.chartBars).toHaveLength(12)
-      expect(result?.hasOverflowMonths).toBe(false)
+      expect(result?.projection?.bars).toHaveLength(12)
+      expect(result?.projection?.hasOverflow).toBe(false)
     })
 
     it('grows the bars toward 100% by the final month', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 6 }))
-      const bars = result?.chartBars ?? []
+      const bars = result?.projection?.bars ?? []
       expect(bars.at(-1)?.heightPct).toBe(100)
       expect(bars[0].heightPct).toBeLessThan(100)
+    })
+
+    it('is null when there is nothing to project (an already-met target)', () => {
+      // £1,000 item, £1,000 already saved -> target 0 -> no projection to draw.
+      const result = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1000', savings: '1000', takeHome: '2000' }),
+      )
+      expect(result?.target).toBe(0)
+      expect(result?.projection).toBeNull()
     })
   })
 })
