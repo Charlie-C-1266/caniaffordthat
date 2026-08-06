@@ -341,4 +341,38 @@ describe('deriveResult', () => {
       expect(result?.projection).toBeNull()
     })
   })
+
+  describe('requiredTakeHomeMonthly (reverse "what salary?" mode)', () => {
+    it('for a fixed commitment (finance) is essentials plus the monthly payment', () => {
+      // £1,200 over 12 months at 0% -> £100/mo payment; £500 essentials.
+      const result = deriveResult(
+        makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', housing: '500', term: 12, growth: 0 }),
+      )
+      expect(result?.contribution).toBeCloseTo(100, 6)
+      expect(result?.requiredTakeHomeMonthly).toBeCloseTo(600, 6) // 500 essentials + 100 payment
+    })
+
+    it('for share-of-spare-cash saving reverses the 60-month affordability cap', () => {
+      // £6,000 target, 50% save rate, 0% growth. To reach it in 60 months you'd
+      // need £100/mo -> £200 spare cash at 50% -> £200 take-home (no essentials).
+      const result = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '6000', takeHome: '2000', rate: 50, growth: 0 }),
+      )
+      expect(result?.requiredTakeHomeMonthly).toBeCloseTo(200, 6)
+    })
+
+    it('is null for a fixed-amount save, which does not depend on income', () => {
+      const result = deriveResult(
+        makeState({
+          mode: 'save',
+          saveFlavor: 'duration',
+          rateMode: 'amount',
+          monthlyAmount: '250',
+          itemPrice: '2000',
+          takeHome: '2000',
+        }),
+      )
+      expect(result?.requiredTakeHomeMonthly).toBeNull()
+    })
+  })
 })

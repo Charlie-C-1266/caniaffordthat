@@ -368,6 +368,9 @@ describe('deriveVehicleResult', () => {
       expect(result.isAffordable).toBe(true)
       // 360/500 = 72% of spare cash -> the "tight" band.
       expect(result.verdictSub).toMatch(/tight/i)
+      // Reverse mode: the take-home the car needs is essentials + its total
+      // monthly cost (£1,500 housing + £360).
+      expect(result.requiredTakeHomeMonthly).toBeCloseTo(1860, 6)
     })
 
     it("says no when the total monthly cost exceeds spare cash", () => {

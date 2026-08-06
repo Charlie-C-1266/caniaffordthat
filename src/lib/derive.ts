@@ -68,6 +68,8 @@ export interface DerivedResult {
   projection: Projection | null
   /** How the monthly commitment sits within the budget — the data behind the budget donut. */
   budget: BudgetBreakdown
+  /** Monthly take-home the plan needs to be affordable, for the reverse "what salary?" panel; `null` when income doesn't affect the plan (a fixed-amount save) or there's no target. */
+  requiredTakeHomeMonthly: number | null
 }
 
 /**
@@ -137,6 +139,27 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
         : savingProjection(target, contribution, state.growth, months)
       : null
 
+  // The take-home the plan needs to be affordable, for the reverse "what
+  // salary?" panel. Each mode's affordability boundary reverses differently:
+  //  - fixed monthly commitment (goal-date save, finance): the commitment must
+  //    fit spare cash, so required take-home = essentials + the commitment.
+  //  - share-of-spare-cash saving: the plan is affordable within the 60-month
+  //    cap, so required take-home = essentials + the spare cash whose `rate`%
+  //    reaches the target in 60 months.
+  //  - fixed-amount saving is income-independent (you save the same £ whatever
+  //    you earn), so there's nothing to reverse — left null.
+  let requiredTakeHomeMonthly: number | null = null
+  if (target > 0) {
+    if (isDuration) {
+      if (state.rateMode === 'percent' && state.rate > 0) {
+        const requiredContribution = contributionForGoal(target, AFFORDABILITY_MONTHS_CAP, state.growth)
+        requiredTakeHomeMonthly = essentialSpend + requiredContribution / (state.rate / 100)
+      }
+    } else {
+      requiredTakeHomeMonthly = essentialSpend + contribution
+    }
+  }
+
   // All the presentation copy for the result is built per "kind" (emergency /
   // duration / goal-date / finance), so each mode's headline, sub-copy, and
   // verdict live together rather than spread across three parallel branches.
@@ -175,6 +198,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     targetRowLabel: isFinance ? 'AMOUNT TO FINANCE' : 'AMOUNT LEFT TO SAVE',
     projection,
     budget: budgetBreakdown(state, contribution),
+    requiredTakeHomeMonthly,
   }
 }
 
