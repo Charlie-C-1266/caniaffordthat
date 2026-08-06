@@ -92,8 +92,16 @@ export function SalaryFlip({ requiredTakeHomeMonthly, currentTakeHomeMonthly, ac
           </span>
         )}
         <span style={{ color: 'var(--text-tertiary-dim)' }}>
-          Estimate for England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, no student loan or pension. Tax bands via “Our sources”.
+          Estimate for England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, no student loan or pension.
         </span>
+        <a
+          href="/methodology/salary/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--text-secondary)', textDecoration: 'underline', fontWeight: 600 }}
+        >
+          See how this is worked out →
+        </a>
       </div>
     </div>
   )

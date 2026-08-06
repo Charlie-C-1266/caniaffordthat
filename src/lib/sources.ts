@@ -94,6 +94,9 @@ export const VEHICLE_SOURCES: readonly Source[] = [
   SOURCES.depreciation,
 ]
 
+/** The tax/earnings sources behind the reverse "what salary?" mode, cited on the salary methodology page. */
+export const SALARY_SOURCES: readonly Source[] = [SOURCES.incomeTax, SOURCES.nationalInsurance, SOURCES.medianSalary]
+
 /** A general money-guidance resource we point people at — not something a calculation depends on. */
 export interface HelpfulLink {
   label: string

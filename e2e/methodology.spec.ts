@@ -44,3 +44,37 @@ test.describe('vehicle methodology page', () => {
     await expect(link).toHaveAttribute('href', '/methodology/vehicle/')
   })
 })
+
+test.describe('salary methodology page', () => {
+  test('publishes the working: the tax and NI bands, the £100k taper, and the honesty section', async ({ page }) => {
+    await page.goto('/methodology/salary/')
+
+    await expect(page.getByRole('heading', { name: /what salary would I need/i })).toBeVisible()
+
+    // The income-tax bands quote the real thresholds, straight from the constants.
+    await expect(page.getByText('£12,570 to £50,270').first()).toBeVisible()
+    await expect(page.getByText('Over £125,140').first()).toBeVisible()
+
+    // The £100k allowance-taper section is called out.
+    await expect(page.getByText(/£100,000 .*tax trap/i)).toBeVisible()
+
+    // Honesty section, and a way back.
+    await expect(page.getByText("What we deliberately don't model (yet)")).toBeVisible()
+    await expect(page.getByRole('link', { name: '← Back to the calculator' })).toBeVisible()
+  })
+
+  test('the worked example is computed from the live maths, not hard-coded copy', async ({ page }) => {
+    await page.goto('/methodology/salary/')
+    // A £50,000 salary -> £39,520 take-home, straight from netFromGross.
+    await expect(page.getByText(/£39,520/).first()).toBeVisible()
+  })
+
+  test('the result card links to the salary methodology page', async ({ page }) => {
+    await page.goto('/?goalId=big&itemPrice=15000&takeHome=2500')
+    await page.getByRole('button', { name: 'Result', exact: true }).click()
+    await page.getByText('Copy result link').waitFor()
+
+    const link = page.getByRole('link', { name: /how this is worked out/i })
+    await expect(link).toHaveAttribute('href', '/methodology/salary/')
+  })
+})
