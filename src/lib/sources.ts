@@ -63,6 +63,23 @@ export const SOURCES = {
     url: 'https://www.theaa.com/car-buying/depreciation',
     usedFor: 'The generic depreciation curve behind estimated balloons: ~25% off in year one, around half the value gone by year three.',
   },
+  // Reverse "what salary would I need?" mode: the income-tax and NI bands the
+  // gross↔take-home engine uses, and the median it's compared against.
+  incomeTax: {
+    label: 'GOV.UK — Income Tax rates and personal allowances',
+    url: 'https://www.gov.uk/income-tax-rates',
+    usedFor: 'The reverse "what salary would I need?" engine: the £12,570 personal allowance (tapered over £100k) and the 20/40/45% bands (2026-27, England/Wales/NI).',
+  },
+  nationalInsurance: {
+    label: 'GOV.UK — National Insurance rates and categories',
+    url: 'https://www.gov.uk/national-insurance-rates-letters',
+    usedFor: 'The employee (Class 1) National Insurance in the salary engine: 8% between £12,570 and £50,270, 2% above (2026-27).',
+  },
+  medianSalary: {
+    label: 'ONS — Annual Survey of Hours and Earnings (median pay)',
+    url: 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/bulletins/annualsurveyofhoursandearnings/latest',
+    usedFor: 'The "above/below the UK median" context on the required-salary panel: median gross pay for full-time employees.',
+  },
 } as const satisfies Record<string, Source>
 
 /** All sources in display order, for the "Our sources" panel. */
@@ -76,6 +93,9 @@ export const VEHICLE_SOURCES: readonly Source[] = [
   SOURCES.fuelWatch,
   SOURCES.depreciation,
 ]
+
+/** The tax/earnings sources behind the reverse "what salary?" mode, cited on the salary methodology page. */
+export const SALARY_SOURCES: readonly Source[] = [SOURCES.incomeTax, SOURCES.nationalInsurance, SOURCES.medianSalary]
 
 /** A general money-guidance resource we point people at — not something a calculation depends on. */
 export interface HelpfulLink {

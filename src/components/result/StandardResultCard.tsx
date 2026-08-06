@@ -2,6 +2,7 @@ import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
 import { ResultHeadline } from './ResultHeadline'
 import { ResultChart } from './ResultChart'
+import { SalaryFlip } from './SalaryFlip'
 import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
 import { TotalRow } from './TotalRow'
@@ -68,6 +69,14 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
           <BreakdownRow label={goal?.emergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED'} value={fmt(num(state.savings))} />
           <TotalRow label={result.targetRowLabel} value={fmt(result.target)} />
         </BreakdownBox>
+
+        {result.requiredTakeHomeMonthly !== null && (
+          <SalaryFlip
+            requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
+            currentTakeHomeMonthly={num(state.takeHome)}
+            accentColor={eyebrowColor}
+          />
+        )}
 
         <ResultActions scrollToIndex={scrollToIndex} />
       </div>
