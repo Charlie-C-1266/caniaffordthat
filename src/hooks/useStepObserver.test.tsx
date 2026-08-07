@@ -123,7 +123,7 @@ describe('useStepObserver', () => {
   it('disconnects the observer on unmount', () => {
     const { unmount } = renderHook(() => useHarness(), { wrapper })
     const instance = FakeIntersectionObserver.instances[0]
-    const disconnectSpy = vi.spyOn(instance!, 'disconnect')
+    const disconnectSpy = vi.spyOn(instance, 'disconnect')
 
     unmount()
 

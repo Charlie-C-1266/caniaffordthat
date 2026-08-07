@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Icon, type IconName } from '../Icon'
@@ -51,14 +51,14 @@ const SELECT_SCROLL_DELAY_MS = 260
 const AUTO_ROTATE_MS = 3200
 
 /** Per-card cover-flow transform, opacity, and stacking from its distance to the focused card. */
-function cardGeometry(offset: number) {
+function cardGeometry(offset: number): CSSProperties {
   const ax = Math.abs(offset)
   const scale = Math.max(0.7, 1 - ax * 0.13)
   return {
     transform: `translateX(calc(-50% + ${offset * CARD_STEP_X}px)) scale(${scale})`,
     opacity: ax > MAX_VISIBLE_OFFSET ? 0 : 1 - ax * 0.32,
     zIndex: 20 - ax,
-    pointerEvents: (ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto') as 'none' | 'auto',
+    pointerEvents: ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto',
   }
 }
 

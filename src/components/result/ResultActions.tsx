@@ -29,7 +29,7 @@ export function ResultActions({ scrollToIndex }: ResultActionsProps) {
     <div style={{ display: 'flex', gap: 12 }}>
       <button
         type="button"
-        onClick={copyLink}
+        onClick={() => void copyLink()}
         style={{
           flex: 1,
           padding: 14,
