@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   check:
@@ -19,6 +19,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Format check
+        run: npm run format:check
 
       - name: Type check
         run: npx tsc -b
