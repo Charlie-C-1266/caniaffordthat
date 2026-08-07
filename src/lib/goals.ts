@@ -41,9 +41,7 @@ export interface Goal {
   /** Label for the deposit field, when shown. */
   depositLabel?: string
   /** Seeds applied to state on selection (see `seedFromGoal`). Absent seeds keep the current default. */
-  seeds: Partial<
-    Pick<CalculatorState, 'mode' | 'saveFlavor' | 'goalMonths' | 'term' | 'growth' | 'coverMonths'>
-  >
+  seeds: Partial<Pick<CalculatorState, 'mode' | 'saveFlavor' | 'goalMonths' | 'term' | 'growth' | 'coverMonths'>>
 }
 
 // Carousel order (see design/adr/0006). The most common goals lead; the

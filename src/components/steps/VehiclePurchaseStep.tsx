@@ -29,7 +29,12 @@ interface VehiclePurchaseStepProps {
 const METHOD_OPTIONS: readonly { value: VehicleFinanceMethod; label: string; icon: IconName; blurb: string }[] = [
   { value: 'cash', label: 'Cash', icon: 'banknote', blurb: 'Pay the full price upfront — no borrowing, no interest.' },
   { value: 'pcp', label: 'PCP', icon: 'key-round', blurb: 'Lower monthly payments, then a big optional final payment to keep the car.' },
-  { value: 'hp', label: 'Hire purchase', icon: 'calendar-clock', blurb: 'Equal instalments against the car — it becomes yours after the last one.' },
+  {
+    value: 'hp',
+    label: 'Hire purchase',
+    icon: 'calendar-clock',
+    blurb: 'Equal instalments against the car — it becomes yours after the last one.',
+  },
   { value: 'loan', label: 'Bank loan', icon: 'landmark', blurb: 'Borrow the money separately and own the car from day one.' },
 ]
 
@@ -152,7 +157,9 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
               />
             ))}
           </div>
-          <div style={{ fontSize: 'var(--fs-helper)', fontWeight: 500, lineHeight: 1.4, color: 'var(--text-secondary-dim)', marginBottom: 24 }}>
+          <div
+            style={{ fontSize: 'var(--fs-helper)', fontWeight: 500, lineHeight: 1.4, color: 'var(--text-secondary-dim)', marginBottom: 24 }}
+          >
             {METHOD_OPTIONS.find((option) => option.value === method)?.blurb}
           </div>
 
@@ -161,8 +168,8 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
               {price > 0 ? (
                 <>
                   That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(price - deposit)}</strong> on the day
-                  {deposit > 0 && <> after your {fmt(deposit)} deposit / part-exchange</>} — no monthly finance payments.
-                  Next up: what it costs to run.
+                  {deposit > 0 && <> after your {fmt(deposit)} deposit / part-exchange</>} — no monthly finance payments. Next up: what it
+                  costs to run.
                 </>
               ) : (
                 <>Add the car's price in the previous step and we'll show what you'd hand over on the day.</>
@@ -212,7 +219,12 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                     <InfoHint text="On a PCP the lender guarantees the car's value at the end of the deal — the GMFV. Pay it to keep the car, or hand the car back and walk away." />
                   </div>
                   <div style={{ marginBottom: 18 }}>
-                    <SegmentedControl size="sm" options={balloonModeOptions} value={state.balloonMode} onChange={(value) => setField('balloonMode', value)} />
+                    <SegmentedControl
+                      size="sm"
+                      options={balloonModeOptions}
+                      value={state.balloonMode}
+                      onChange={(value) => setField('balloonMode', value)}
+                    />
                   </div>
 
                   {/* Not the estimate path (where this step asks the car's age) -> take the quoted figure instead. */}
@@ -251,11 +263,10 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                       <SummaryBox>
                         {price > 0 ? (
                           <>
-                            We'll plan around a{' '}
-                            <strong style={{ color: 'var(--text-primary)' }}>{fmt(estimatedBalloon)}</strong> final payment —
-                            estimated from a generic depreciation curve, assuming{' '}
-                            {(num(state.annualMiles) > 0 ? num(state.annualMiles) : UK_AVERAGE_ANNUAL_MILES).toLocaleString('en-GB')}{' '}
-                            miles a year (you can adjust that on the next step).{' '}
+                            We'll plan around a <strong style={{ color: 'var(--text-primary)' }}>{fmt(estimatedBalloon)}</strong> final
+                            payment — estimated from a generic depreciation curve, assuming{' '}
+                            {(num(state.annualMiles) > 0 ? num(state.annualMiles) : UK_AVERAGE_ANNUAL_MILES).toLocaleString('en-GB')} miles
+                            a year (you can adjust that on the next step).{' '}
                             <a
                               href="/methodology/vehicle/"
                               target="_blank"

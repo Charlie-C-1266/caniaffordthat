@@ -1,0 +1,15 @@
+# yamllint config for MegaLinter. Prettier owns YAML formatting, so the
+# stylistic rules that would fight it are relaxed here; yamllint keeps the
+# correctness checks (syntax, duplicate keys, and the like).
+extends: default
+
+rules:
+  line-length: disable
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  truthy:
+    check-keys: false
+  braces: disable
+  brackets: disable

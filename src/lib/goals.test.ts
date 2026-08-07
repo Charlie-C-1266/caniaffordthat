@@ -33,8 +33,10 @@ describe('GOALS config', () => {
   })
 
   it('provides a name placeholder whenever the name field is shown', () => {
-    for (const goal of GOALS) {
-      if (goal.showName) expect(goal.namePlaceholder, `${goal.id}`).toBeTruthy()
+    const named = GOALS.filter((goal) => goal.showName)
+    expect(named.length).toBeGreaterThan(0)
+    for (const goal of named) {
+      expect(goal.namePlaceholder, `${goal.id}`).toBeTruthy()
     }
   })
 

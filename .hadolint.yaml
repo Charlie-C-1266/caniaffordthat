@@ -1,0 +1,5 @@
+# hadolint config for MegaLinter. DL3002 (last USER should not be root) is
+# ignored: the nginx runtime image runs its master as root and drops workers
+# to the nginx user by design, which is standard for a static-file server.
+ignored:
+  - DL3002

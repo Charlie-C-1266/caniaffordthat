@@ -190,9 +190,7 @@ export function vehicleRunningCosts(state: CalculatorState): VehicleRunningCosts
   const fuel = fuelCostPerMonth(num(state.annualMiles), num(state.mpg), num(state.fuelPencePerLitre))
   const maintenance = num(state.maintenanceMonthly)
   const insurance = num(state.insuranceAnnual) / 12
-  const supplementMonthly = expensiveCarSupplementApplies(num(state.itemPrice), state.vehicleAge)
-    ? EXPENSIVE_CAR_SUPPLEMENT_ANNUAL / 12
-    : 0
+  const supplementMonthly = expensiveCarSupplementApplies(num(state.itemPrice), state.vehicleAge) ? EXPENSIVE_CAR_SUPPLEMENT_ANNUAL / 12 : 0
   const tax = num(state.taxAnnual) / 12 + supplementMonthly
   return { fuel, maintenance, insurance, tax, supplementMonthly, total: fuel + maintenance + insurance + tax }
 }
@@ -326,8 +324,7 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
     case 'pcp': {
       // A zero balloon (a "quote" left blank) would read absurdly as
       // "keeping the car means a £0 final payment" — drop the sentence.
-      const keepLine =
-        balloon !== null && balloon > 0 ? ` Keeping the car at the end means a ${fmt(balloon)} final payment.` : ''
+      const keepLine = balloon !== null && balloon > 0 ? ` Keeping the car at the end means a ${fmt(balloon)} final payment.` : ''
       subheadline = `${fmt(financeMonthly)}/month on PCP over ${termMonths} months at ${aprPct}% APR, plus ${runningLine}.${keepLine}`
       break
     }

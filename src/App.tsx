@@ -107,12 +107,7 @@ export function App() {
     <>
       <BrandMark accentColor={accent} />
       <TopRightControls onReset={handleReset} />
-      <ProgressRail
-        activeIndex={state.activeIndex}
-        labels={flow.map((step) => step.label)}
-        accentColor={accent}
-        onSelect={scrollToIndex}
-      />
+      <ProgressRail activeIndex={state.activeIndex} labels={flow.map((step) => step.label)} accentColor={accent} onSelect={scrollToIndex} />
 
       <main>{flow.map(renderStep)}</main>
       <Footer />

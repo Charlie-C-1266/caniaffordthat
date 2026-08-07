@@ -120,9 +120,7 @@ function DurationInput({ accentColor }: { accentColor: string }) {
             onChange={(value) => setField('monthlyAmount', value)}
           />
           {amountCaption && (
-            <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-              {amountCaption}
-            </div>
+            <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{amountCaption}</div>
           )}
         </div>
       ) : (
@@ -178,12 +176,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                   accentColor={accent}
                   onClick={() => setFlavor('duration')}
                 />
-                <ToggleButton
-                  label="I have a goal date"
-                  active={isGoal}
-                  accentColor={accent}
-                  onClick={() => setFlavor('goal')}
-                />
+                <ToggleButton label="I have a goal date" active={isGoal} accentColor={accent} onClick={() => setFlavor('goal')} />
               </div>
               {isDuration && <DurationInput accentColor={accent} />}
               {isGoal && (
@@ -240,9 +233,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
               />
             </>
           )}
-          <div style={{ marginTop: 26, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
-            ↓ Scroll for your result
-          </div>
+          <div style={{ marginTop: 26, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>↓ Scroll for your result</div>
         </Tile>
       </RevealTile>
     </StepPanel>

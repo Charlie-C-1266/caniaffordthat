@@ -37,7 +37,7 @@ npm run build   # outputs to dist/
 
 ## Found a bug?
 
-Please [raise an issue](../../issues) or email **hello@caniaffordthat.co.uk** —
+Please [raise an issue](../../issues) or email **<hello@caniaffordthat.co.uk>** —
 whichever's easier. A note on how to reproduce it is always appreciated.
 
 ## Contributing

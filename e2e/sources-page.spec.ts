@@ -16,10 +16,7 @@ test.describe('sources & ethos page', () => {
     await expect(page.getByText(/restated as 40% of spare cash/)).toBeVisible()
 
     // The per-calculator methodology pages are linked.
-    await expect(page.getByRole('link', { name: 'How the vehicle calculator works' })).toHaveAttribute(
-      'href',
-      '/methodology/vehicle/',
-    )
+    await expect(page.getByRole('link', { name: 'How the vehicle calculator works' })).toHaveAttribute('href', '/methodology/vehicle/')
 
     // The helpful-reading list is seeded and framed as non-citations.
     await expect(page.getByRole('link', { name: 'MoneyHelper', exact: true })).toBeVisible()

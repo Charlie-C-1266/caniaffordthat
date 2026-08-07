@@ -1,0 +1,6 @@
+# Revisions to skip in `git blame` — bulk mechanical reformats with no logic
+# change. GitHub honours this file automatically; locally, run:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Apply Prettier formatting across the codebase
+42d7638213e4a111cb0aa4bbd0f822776fef8992

@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { CalculatorContext, type CalculatorContextValue } from './calculatorContext'
 import { DEFAULT_STATE } from './defaults'
 import { hydrateStateFromUrl } from '../lib/urlState'
@@ -33,9 +33,12 @@ export function CalculatorProvider({ children }: CalculatorProviderProps) {
 
   const reset = useCallback<CalculatorContextValue['reset']>(() => setState(DEFAULT_STATE), [])
 
-  return (
-    <CalculatorContext.Provider value={{ state, setField, setFields, revealStep, reset }}>
-      {children}
-    </CalculatorContext.Provider>
+  // Stable value identity (the setters never change; only `state` does) so
+  // consumers don't re-render on unrelated provider re-renders.
+  const value = useMemo<CalculatorContextValue>(
+    () => ({ state, setField, setFields, revealStep, reset }),
+    [state, setField, setFields, revealStep, reset],
   )
+
+  return <CalculatorContext.Provider value={value}>{children}</CalculatorContext.Provider>
 }

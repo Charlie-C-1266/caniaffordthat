@@ -16,4 +16,4 @@ services:
     container_name: caniaffordthat
     restart: unless-stopped
     ports:
-      - "4321:80"
+      - '4321:80'

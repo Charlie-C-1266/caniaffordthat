@@ -19,7 +19,7 @@ export const SOURCES = {
   emergencySavings: {
     label: 'MoneyHelper — Emergency savings: how much is enough? (3–6 months)',
     url: 'https://www.moneyhelper.org.uk/en/savings/types-of-savings/emergency-savings-how-much-is-enough',
-    usedFor: 'The emergency fund\'s recommended 3–6 months of essential outgoings, and its default 3-month starting target.',
+    usedFor: "The emergency fund's recommended 3–6 months of essential outgoings, and its default 3-month starting target.",
   },
   rentAffordability: {
     label: 'MoneyHelper — Can I afford to rent? (the 30% rule)',
@@ -41,7 +41,8 @@ export const SOURCES = {
   pcp: {
     label: 'MoneyHelper — Buying a car with PCP',
     url: 'https://www.moneyhelper.org.uk/en/everyday-money/buying-and-running-a-car/financing-buying-car-personal-contract-purchase-pcp',
-    usedFor: 'How the vehicle calculator models PCP: deposit, monthly payments bridging to a balloon (GMFV), and the keep-or-return choice.',
+    usedFor:
+      'How the vehicle calculator models PCP: deposit, monthly payments bridging to a balloon (GMFV), and the keep-or-return choice.',
   },
   hirePurchase: {
     label: 'MoneyHelper — Buying a car with hire purchase',
@@ -56,7 +57,7 @@ export const SOURCES = {
   fuelWatch: {
     label: 'RAC Fuel Watch — current pump prices',
     url: 'https://www.rac.co.uk/drive/advice/fuel-watch/',
-    usedFor: 'Where to check today\'s pump price — the fuel field ships a static, editable default rather than a live feed.',
+    usedFor: "Where to check today's pump price — the fuel field ships a static, editable default rather than a live feed.",
   },
   depreciation: {
     label: 'The AA — how quickly new cars lose value (depreciation)',
@@ -68,7 +69,8 @@ export const SOURCES = {
   incomeTax: {
     label: 'GOV.UK — Income Tax rates and personal allowances',
     url: 'https://www.gov.uk/income-tax-rates',
-    usedFor: 'The reverse "what salary would I need?" engine: the £12,570 personal allowance (tapered over £100k) and the 20/40/45% bands (2026-27, England/Wales/NI).',
+    usedFor:
+      'The reverse "what salary would I need?" engine: the £12,570 personal allowance (tapered over £100k) and the 20/40/45% bands (2026-27, England/Wales/NI).',
   },
   nationalInsurance: {
     label: 'GOV.UK — National Insurance rates and categories',
@@ -112,7 +114,8 @@ export const HELPFUL_LINKS: readonly HelpfulLink[] = [
   {
     label: 'MoneyHelper',
     url: 'https://www.moneyhelper.org.uk/en',
-    blurb: 'The government-backed free money guidance service — the first stop for almost any money question, and the source behind most of our thresholds.',
+    blurb:
+      'The government-backed free money guidance service — the first stop for almost any money question, and the source behind most of our thresholds.',
   },
   {
     label: 'Citizens Advice — debt and money',
@@ -122,11 +125,13 @@ export const HELPFUL_LINKS: readonly HelpfulLink[] = [
   {
     label: 'StepChange',
     url: 'https://www.stepchange.org/',
-    blurb: 'A debt charity offering free, judgement-free debt advice and managed plans — the place to go if repayments have become unmanageable.',
+    blurb:
+      'A debt charity offering free, judgement-free debt advice and managed plans — the place to go if repayments have become unmanageable.',
   },
   {
     label: 'MoneySavingExpert',
     url: 'https://www.moneysavingexpert.com/',
-    blurb: 'Practical UK consumer-finance journalism: deals, switching guides and calculators for cutting the costs the calculator asks you about.',
+    blurb:
+      'Practical UK consumer-finance journalism: deals, switching guides and calculators for cutting the costs the calculator asks you about.',
   },
 ]

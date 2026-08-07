@@ -83,7 +83,17 @@ export function SalaryFlip({ requiredTakeHomeMonthly, currentTakeHomeMonthly, ac
         />
       </BreakdownBox>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary)', fontWeight: 600, lineHeight: 1.45 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 5,
+          fontSize: 'var(--fs-helper)',
+          color: 'var(--text-tertiary)',
+          fontWeight: 600,
+          lineHeight: 1.45,
+        }}
+      >
         <span>{medianLine}</span>
         {flip.inTaperBand && (
           <span>
