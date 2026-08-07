@@ -33,9 +33,5 @@ export function CalculatorProvider({ children }: CalculatorProviderProps) {
 
   const reset = useCallback<CalculatorContextValue['reset']>(() => setState(DEFAULT_STATE), [])
 
-  return (
-    <CalculatorContext.Provider value={{ state, setField, setFields, revealStep, reset }}>
-      {children}
-    </CalculatorContext.Provider>
-  )
+  return <CalculatorContext.Provider value={{ state, setField, setFields, revealStep, reset }}>{children}</CalculatorContext.Provider>
 }

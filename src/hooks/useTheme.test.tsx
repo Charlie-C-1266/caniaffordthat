@@ -47,7 +47,7 @@ describe('useTheme', () => {
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
   })
 
-  it('two independent mounts (simulating two of the app\'s three React roots) each reflect the same shared DOM/storage state', () => {
+  it("two independent mounts (simulating two of the app's three React roots) each reflect the same shared DOM/storage state", () => {
     const a = renderHook(() => useTheme())
     const b = renderHook(() => useTheme())
 

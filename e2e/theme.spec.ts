@@ -47,7 +47,9 @@ test.describe('theme', () => {
     expect(await currentTheme(page)).toBe('dark')
   })
 
-  test('the toggle is reachable from the main app and both docs pages, and its accessible name reflects the current state', async ({ page }) => {
+  test('the toggle is reachable from the main app and both docs pages, and its accessible name reflects the current state', async ({
+    page,
+  }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
 
     await page.goto('/')

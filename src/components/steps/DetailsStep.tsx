@@ -100,9 +100,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding={goal?.emergency ? '34px 44px' : '46px 44px'}>
           {!goal ? (
-            <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>
-              Scroll back up and pick a goal to get started.
-            </p>
+            <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>Scroll back up and pick a goal to get started.</p>
           ) : (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
@@ -127,9 +125,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                   </Eyebrow>
                   <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {goal.emergency ? 'How big a cushion?' : goal.name}
-                    {goal.emergency && (
-                      <InfoHint text="A common rule of thumb is 3–6 months of essential spending set aside." />
-                    )}
+                    {goal.emergency && <InfoHint text="A common rule of thumb is 3–6 months of essential spending set aside." />}
                   </div>
                 </div>
               </div>
@@ -173,8 +169,8 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     ))}
                   </div>
                   <SummaryBox>
-                    That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(emergencyTarget)}</strong> — {state.coverMonths}{' '}
-                    month{state.coverMonths === 1 ? '' : 's'} of your {fmt(essentials)} monthly essentials.
+                    That's <strong style={{ color: 'var(--text-primary)' }}>{fmt(emergencyTarget)}</strong> — {state.coverMonths} month
+                    {state.coverMonths === 1 ? '' : 's'} of your {fmt(essentials)} monthly essentials.
                     <div
                       style={{
                         marginTop: 10,

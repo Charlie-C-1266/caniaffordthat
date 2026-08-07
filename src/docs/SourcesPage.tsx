@@ -32,17 +32,16 @@ export function SourcesPage() {
           Our sources &amp; ethos
         </h1>
         <P>
-          Can I Afford That? answers one question — is this within reach? — with a straight yes or no, backed by real
-          numbers. This page is where those numbers come from: the UK guidance behind every threshold, the principles the
-          site is built on, and where to go for proper help beyond a calculator.
+          Can I Afford That? answers one question — is this within reach? — with a straight yes or no, backed by real numbers. This page is
+          where those numbers come from: the UK guidance behind every threshold, the principles the site is built on, and where to go for
+          proper help beyond a calculator.
         </P>
 
         <Section title="What this site is for">
           <P>
-            Big-purchase maths is easy to get wrong and easy to be misled about — a monthly payment always <em>looks</em>{' '}
-            affordable in a showroom. The aim here is a two-minute, judgement-free way to see a purchase the way a
-            careful friend would: what it really costs each month, how that sits against the money you actually have
-            spare, and what you'd be signing up to.
+            Big-purchase maths is easy to get wrong and easy to be misled about — a monthly payment always <em>looks</em> affordable in a
+            showroom. The aim here is a two-minute, judgement-free way to see a purchase the way a careful friend would: what it really
+            costs each month, how that sits against the money you actually have spare, and what you'd be signing up to.
           </P>
         </Section>
 
@@ -60,7 +59,7 @@ export function SourcesPage() {
               ],
               [
                 'UK-first',
-                'Pounds, UK finance products as they\'re actually sold (PCP, HP), UK tax rates, and UK guidance bodies — not translated American rules of thumb.',
+                "Pounds, UK finance products as they're actually sold (PCP, HP), UK tax rates, and UK guidance bodies — not translated American rules of thumb.",
               ],
               [
                 'Estimates, not advice',
@@ -83,13 +82,15 @@ export function SourcesPage() {
 
         <Section title="The sources behind the numbers">
           <P>
-            Every threshold and rate in the calculators traces back to one of these — the same list as the{' '}
-            <Strong>"Our sources"</Strong> button in the app, with what each one actually backs:
+            Every threshold and rate in the calculators traces back to one of these — the same list as the <Strong>"Our sources"</Strong>{' '}
+            button in the app, with what each one actually backs:
           </P>
           <DataTable
             head={['Source', 'What we use it for']}
             rows={SOURCE_LIST.map((source) => [
-              <ExternalLink key="l" href={source.url}>{source.label}</ExternalLink>,
+              <ExternalLink key="l" href={source.url}>
+                {source.label}
+              </ExternalLink>,
               source.usedFor,
             ])}
           />
@@ -112,13 +113,15 @@ export function SourcesPage() {
 
         <Section title="Helpful reading">
           <P>
-            Not citations — just places we'd genuinely send a friend for wider money knowledge, or for proper help when a
-            calculator isn't the right tool:
+            Not citations — just places we'd genuinely send a friend for wider money knowledge, or for proper help when a calculator isn't
+            the right tool:
           </P>
           <DataTable
-            head={['Resource', 'Why it\'s worth a look']}
+            head={['Resource', "Why it's worth a look"]}
             rows={HELPFUL_LINKS.map((link) => [
-              <ExternalLink key="l" href={link.url}>{link.label}</ExternalLink>,
+              <ExternalLink key="l" href={link.url}>
+                {link.label}
+              </ExternalLink>,
               link.blurb,
             ])}
           />

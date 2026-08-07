@@ -234,8 +234,7 @@ interface CopyContext {
 const monthsLabel = (n: number) => `${n} month${n === 1 ? '' : 's'}`
 
 /** Standard "Yes / No" verdict shared by every non-emergency kind (and the vehicle flow). */
-export const withinReachVerdict = (isAffordable: boolean) =>
-  isAffordable ? "Yes — it's within reach." : "No — that's a stretch."
+export const withinReachVerdict = (isAffordable: boolean) => (isAffordable ? "Yes — it's within reach." : "No — that's a stretch.")
 
 /**
  * Sub-copy for any "does this fixed monthly amount fit?" verdict — goal-date
@@ -246,7 +245,8 @@ export function spareCashFitSub(contribution: number, spareCash: number): string
   const ratio = spareCash > 0 ? contribution / spareCash : Infinity
   if (contribution > spareCash) return `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
   if (ratio <= SPARE_CASH_COMFORTABLE_RATIO) return `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
-  if (ratio <= SPARE_CASH_TIGHT_RATIO) return `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
+  if (ratio <= SPARE_CASH_TIGHT_RATIO)
+    return `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
   return `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
 }
 

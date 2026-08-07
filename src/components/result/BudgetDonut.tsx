@@ -38,8 +38,7 @@ function essentialColor(key: (typeof OUTGOING_FIELD_KEYS)[number]): string {
 
 /** The budget-split donut with its legend. */
 export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
-  const { essentials, newCost, newCostWithin, newCostOver, leftover, overBudget, ringTotal, shareOfTakeHome, takeHome } =
-    budget
+  const { essentials, newCost, newCostWithin, newCostOver, leftover, overBudget, ringTotal, shareOfTakeHome, takeHome } = budget
 
   // Drawn arcs, in ring order: essentials, the part of the new cost that fits,
   // any overspend, then whatever's left over. The over/leftover pair is
@@ -138,10 +137,7 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
         </div>
         {legend.map((row, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 'var(--fs-label-sm)' }}>
-            <span
-              aria-hidden="true"
-              style={{ width: 12, height: 12, borderRadius: 3, background: row.color, flexShrink: 0 }}
-            />
+            <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 3, background: row.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{row.label}</span>
             <span className="mono" style={{ marginLeft: 'auto', color: 'var(--text-primary)', fontWeight: 600 }}>
               {fmt(row.amount)}

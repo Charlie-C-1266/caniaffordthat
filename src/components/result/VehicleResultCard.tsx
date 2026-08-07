@@ -77,10 +77,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
               <BreakdownRow label="TERM" value={`${result.termMonths} months`} />
               <BreakdownRow label="APR" value={`${result.aprPct}%`} />
               {result.balloon !== null && (
-                <BreakdownRow
-                  label={result.balloonIsEstimate ? 'FINAL PAYMENT (EST.)' : 'FINAL PAYMENT'}
-                  value={fmt(result.balloon)}
-                />
+                <BreakdownRow label={result.balloonIsEstimate ? 'FINAL PAYMENT (EST.)' : 'FINAL PAYMENT'} value={fmt(result.balloon)} />
               )}
               <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid)} />
               <TotalRow label={result.method === 'pcp' ? 'TOTAL IF YOU KEEP IT' : 'TOTAL PAYABLE'} value={fmt(result.totalPayable)} />

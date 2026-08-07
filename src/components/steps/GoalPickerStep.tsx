@@ -29,7 +29,9 @@ function LandingPill() {
         marginBottom: 20,
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }} />
+      <span
+        style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }}
+      />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--brand-mint)' }}>Free · no sign-up · takes 2 minutes</span>
     </div>
   )
@@ -87,9 +89,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
       type="button"
       onClick={focused ? onSelect : onFocus}
       disabled={goal.soon && focused}
-      aria-label={
-        goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`
-      }
+      aria-label={goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`}
       style={{
         position: 'absolute',
         top: 0,

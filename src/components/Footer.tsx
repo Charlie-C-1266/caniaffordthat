@@ -19,8 +19,8 @@ export function Footer() {
           lineHeight: 1.5,
         }}
       >
-        Heads up: Can I Afford That? is currently in <strong style={{ color: 'var(--text-primary)' }}>early alpha</strong>.
-        It's actively being built, so expect bugs, rough edges, and things changing from one visit to the next.
+        Heads up: Can I Afford That? is currently in <strong style={{ color: 'var(--text-primary)' }}>early alpha</strong>. It's actively
+        being built, so expect bugs, rough edges, and things changing from one visit to the next.
       </p>
       <p
         style={{
@@ -31,11 +31,9 @@ export function Footer() {
           lineHeight: 1.6,
         }}
       >
-        It provides estimates for illustrative purposes only. It is not financial
-        advice, and results depend entirely on the figures you enter — they don't
-        account for tax, fees, interest rate changes, or changes in your
-        circumstances. Please speak to a qualified financial adviser before making
-        significant financial decisions.
+        It provides estimates for illustrative purposes only. It is not financial advice, and results depend entirely on the figures you
+        enter — they don't account for tax, fees, interest rate changes, or changes in your circumstances. Please speak to a qualified
+        financial adviser before making significant financial decisions.
         <br />
         <br />
         Found a bug, or got an idea for something you'd like to see? Email{' '}

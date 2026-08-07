@@ -57,9 +57,7 @@ export interface BudgetBreakdown {
  */
 export function budgetBreakdown(state: CalculatorState, newCost: number): BudgetBreakdown {
   const takeHome = num(state.takeHome)
-  const essentials: BudgetLine[] = OUTGOING_FIELD_KEYS.map((key) => ({ key, amount: num(state[key]) })).filter(
-    (line) => line.amount > 0,
-  )
+  const essentials: BudgetLine[] = OUTGOING_FIELD_KEYS.map((key) => ({ key, amount: num(state[key]) })).filter((line) => line.amount > 0)
   const essentialsTotal = essentials.reduce((sum, line) => sum + line.amount, 0)
   const spareCash = Math.max(0, takeHome - essentialsTotal)
   const cost = Math.max(0, newCost)
