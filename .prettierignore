@@ -1,0 +1,17 @@
+# Build output and dependencies
+dist
+coverage
+node_modules
+
+# Machine-managed / generated
+package-lock.json
+skills-lock.json
+
+# Hand-crafted HTML entry shells (bespoke theme-bootstrap script + meta tags)
+index.html
+methodology/**/*.html
+sources/**/*.html
+
+# Playwright artefacts
+playwright-report
+test-results
