@@ -64,6 +64,12 @@ export function grossFromNet(net: number, year: TaxYear = CURRENT_TAX_YEAR): num
   return (lo + hi) / 2
 }
 
+/** Monthly take-home pay for an annual gross salary — the forward direction the Budget step's "enter my salary" option uses. 0 for a non-positive salary. */
+export function monthlyTakeHomeFromGross(grossAnnual: number, year: TaxYear = CURRENT_TAX_YEAR): number {
+  if (grossAnnual <= 0) return 0
+  return netFromGross(grossAnnual, year) / 12
+}
+
 /** The fraction of the next £1 of gross salary kept after tax and NI at a given income — 0.72 in the basic-rate band, ~0.38 in the £100k allowance-taper band. */
 export function marginalNetRate(gross: number, year: TaxYear = CURRENT_TAX_YEAR): number {
   return netFromGross(gross + 1, year) - netFromGross(gross, year)

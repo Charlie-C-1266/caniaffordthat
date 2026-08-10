@@ -1,6 +1,6 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
-import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, VehicleFinanceMethod } from '../state/types'
+import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
 // (serialise, used by "Copy result link") and `hydrateStateFromUrl` (deserialise,
@@ -11,6 +11,7 @@ const STRING_FIELDS = [
   'itemName',
   'itemPrice',
   'takeHome',
+  'grossSalary',
   'housing',
   'utilities',
   'groceries',
@@ -65,6 +66,10 @@ function isRateMode(value: string | null): value is RateMode {
   return value === 'percent' || value === 'amount'
 }
 
+function isTakeHomeMode(value: string | null): value is TakeHomeMode {
+  return value === 'takehome' || value === 'salary'
+}
+
 function isVehicleMethod(value: string | null): value is VehicleFinanceMethod {
   return value === 'cash' || value === 'pcp' || value === 'hp' || value === 'loan'
 }
@@ -89,6 +94,7 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
   params.set('mode', state.mode)
   params.set('saveFlavor', state.saveFlavor)
   params.set('rateMode', state.rateMode)
+  params.set('takeHomeMode', state.takeHomeMode)
   params.set('vehicleMethod', state.vehicleMethod)
   params.set('balloonMode', state.balloonMode)
   for (const field of STRING_FIELDS) params.set(field, state[field])
@@ -127,6 +133,9 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
 
   const rateMode = params.get('rateMode')
   if (isRateMode(rateMode)) state.rateMode = rateMode
+
+  const takeHomeMode = params.get('takeHomeMode')
+  if (isTakeHomeMode(takeHomeMode)) state.takeHomeMode = takeHomeMode
 
   const vehicleMethod = params.get('vehicleMethod')
   if (isVehicleMethod(vehicleMethod)) state.vehicleMethod = vehicleMethod

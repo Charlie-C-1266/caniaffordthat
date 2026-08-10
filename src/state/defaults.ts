@@ -15,6 +15,8 @@ export const DEFAULT_STATE: CalculatorState = {
   itemName: '',
   itemPrice: '',
   takeHome: '',
+  takeHomeMode: 'takehome',
+  grossSalary: '',
   housing: '0',
   utilities: '0',
   groceries: '0',
