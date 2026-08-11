@@ -7,6 +7,7 @@ import { FieldLabel } from '../FieldLabel'
 import { Icon } from '../Icon'
 import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
+import { ProductUrlField } from '../ProductUrlField'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
@@ -18,6 +19,7 @@ import { num, fmt } from '../../lib/calculations'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
+import type { ProductParseSuccess } from '../../lib/productUrl'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
 import type { Mode } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
@@ -74,6 +76,17 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
   const handleNameChange = (value: string) => {
     setField('itemName', value)
     if (num(state.itemPrice) > 0) scheduleAdvance(index, index + 1)
+  }
+
+  // A successful product-link parse fills only fields the user hasn't touched
+  // (so it never clobbers a typed name/price), then advances just like the
+  // manual price path once a real price has landed.
+  const handleProductParsed = (result: ProductParseSuccess) => {
+    if (result.name && goal?.showName && !state.itemName.trim()) setField('itemName', result.name)
+    if (result.price && num(state.itemPrice) === 0) {
+      setField('itemPrice', result.price)
+      scheduleAdvance(index, index + 1)
+    }
   }
 
   const essentials = monthlyOutgoingsOf(state)
@@ -193,6 +206,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                 </>
               ) : (
                 <>
+                  {goal.allowProductUrl && <ProductUrlField accentColor={accent} onParsed={handleProductParsed} />}
                   {goal.showName && (
                     <div style={{ marginBottom: 30 }}>
                       <FieldLabel>

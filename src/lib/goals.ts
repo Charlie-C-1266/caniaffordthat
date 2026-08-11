@@ -32,6 +32,8 @@ export interface Goal {
   saveFlavor: SaveFlavor
   /** Whether the Details step shows the free-text name field. */
   showName: boolean
+  /** Whether the Details step offers the optional "paste a product link" autofill field. Product-shaped goals only. */
+  allowProductUrl?: boolean
   /** Placeholder for the name field, when shown. */
   namePlaceholder?: string
   /** Heading above the price input, e.g. "How much is the car?". Absent for the price-less emergency fund. */
@@ -65,6 +67,7 @@ export const GOALS: readonly Goal[] = [
     defaultMode: 'monthly',
     saveFlavor: 'duration',
     showName: true,
+    allowProductUrl: true,
     namePlaceholder: 'e.g. Volkswagen Golf',
     priceHeadline: 'How much is the car?',
     deposit: true,
@@ -110,6 +113,7 @@ export const GOALS: readonly Goal[] = [
     defaultMode: 'save',
     saveFlavor: 'duration',
     showName: true,
+    allowProductUrl: true,
     namePlaceholder: 'e.g. Omega watch',
     priceHeadline: 'How much is it?',
     seeds: { mode: 'save', saveFlavor: 'duration' },
@@ -124,6 +128,7 @@ export const GOALS: readonly Goal[] = [
     defaultMode: 'save',
     saveFlavor: 'duration',
     showName: true,
+    allowProductUrl: true,
     namePlaceholder: 'e.g. Wedding, new kitchen, sofa',
     priceHeadline: "What's the total cost?",
     seeds: { mode: 'save', saveFlavor: 'duration' },
