@@ -16,6 +16,28 @@ export type ParseReason =
 /** Which extraction tier produced the fields — the metric for whether a paid fallback is ever needed. */
 export type ExtractSource = 'json-ld' | 'og' | 'microdata' | 'title'
 
+/**
+ * Optional, non-sensitive diagnostics returned when the request carries
+ * `?debug=1`. Intended for working through a range of URLs on the preview — it
+ * exposes *why* a URL failed (upstream status, which structured data was
+ * present) without ever returning page content. Gate or drop this before the
+ * feature is publicised (Phase 3).
+ */
+export interface ParseDebug {
+  /** The HTTP status the retailer returned to the function (undefined on a network-level failure). */
+  upstreamStatus?: number
+  /** The URL actually fetched after following redirects. */
+  finalUrl?: string
+  /** Size of the fetched HTML, in bytes. */
+  htmlBytes?: number
+  /** Whether the raw HTML contained any `application/ld+json` block. */
+  hadJsonLd?: boolean
+  /** Whether one of those blocks was a schema.org Product. */
+  hadProductJsonLd?: boolean
+  /** Whether an OG/product price meta tag was present. */
+  hadOgPrice?: boolean
+}
+
 export interface ParseSuccess {
   ok: true
   /** Product name, or `null` when only a price was found. */
@@ -29,11 +51,13 @@ export interface ParseSuccess {
   source: ExtractSource
   /** Bare retailer hostname, e.g. `"currys.co.uk"`. */
   retailer: string
+  debug?: ParseDebug
 }
 
 export interface ParseFailure {
   ok: false
   reason: ParseReason
+  debug?: ParseDebug
 }
 
 export type ParseResult = ParseSuccess | ParseFailure
@@ -41,9 +65,12 @@ export type ParseResult = ParseSuccess | ParseFailure
 /** Thrown internally to carry a `ParseReason` up to the orchestrator, which maps it to a `ParseFailure`. */
 export class ParseError extends Error {
   reason: ParseReason
-  constructor(reason: ParseReason) {
+  /** The upstream HTTP status, when the failure came from a response (e.g. a 403 bot wall). */
+  status?: number
+  constructor(reason: ParseReason, status?: number) {
     super(reason)
     this.name = 'ParseError'
     this.reason = reason
+    this.status = status
   }
 }

@@ -200,3 +200,22 @@ export function extractProduct(html: string): Extracted | null {
   const $ = cheerio.load(html)
   return fromJsonLd($) ?? fromOpenGraph($) ?? fromMicrodata($) ?? fromTitle($)
 }
+
+/** Non-sensitive signals about what structured data a page exposed — for the debug mode only. */
+export function probeStructuredData(html: string): { hadJsonLd: boolean; hadProductJsonLd: boolean; hadOgPrice: boolean } {
+  const $ = cheerio.load(html)
+  const blocks = $('script[type="application/ld+json"]')
+  let hadProductJsonLd = false
+  blocks.each((_, el) => {
+    if (hadProductJsonLd) return
+    try {
+      const nodes: Record<string, unknown>[] = []
+      collectNodes(JSON.parse($(el).contents().text()), nodes)
+      if (nodes.some(isProductNode)) hadProductJsonLd = true
+    } catch {
+      // Ignore malformed blocks.
+    }
+  })
+  const hadOgPrice = $('meta[property="product:price:amount"], meta[property="og:price:amount"]').length > 0
+  return { hadJsonLd: blocks.length > 0, hadProductJsonLd, hadOgPrice }
+}

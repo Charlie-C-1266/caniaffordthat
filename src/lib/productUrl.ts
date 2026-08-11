@@ -18,11 +18,14 @@ export interface ProductParseSuccess {
   image: string | null
   source: string
   retailer: string
+  /** Present only with `?debug=1`; the UI ignores it. Mirrors `ParseDebug` on the backend. */
+  debug?: unknown
 }
 
 export interface ProductParseFailure {
   ok: false
   reason: ProductParseReason
+  debug?: unknown
 }
 
 export type ProductParseResult = ProductParseSuccess | ProductParseFailure

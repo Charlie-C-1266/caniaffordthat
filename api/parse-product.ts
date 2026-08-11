@@ -21,10 +21,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const raw = req.query.url
   const url = typeof raw === 'string' ? raw : Array.isArray(raw) ? (raw[0] ?? '') : ''
+  // `?debug=1` adds a non-sensitive diagnostics block (upstream status, which
+  // structured data was present) — handy for working through a range of URLs
+  // on the preview. Gate or drop before publicising (Phase 3).
+  const debug = req.query.debug === '1' || req.query.debug === 'true'
 
   let result
   try {
-    result = await parseProductFromUrl(url)
+    result = await parseProductFromUrl(url, { debug })
   } catch {
     // parseProductFromUrl is designed not to throw; this is a last-resort guard.
     res.setHeader('Cache-Control', 'no-store')

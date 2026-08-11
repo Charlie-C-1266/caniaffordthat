@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractProduct, cleanPrice } from './extract'
+import { extractProduct, cleanPrice, probeStructuredData } from './extract'
 
 // Fixtures are inline HTML rather than saved files: each is trimmed to just the
 // markup the extractor cares about, so a failing test points straight at the
@@ -112,5 +112,26 @@ describe('extractProduct — microdata & title fallbacks', () => {
 
   it('returns null when there is nothing usable', () => {
     expect(extractProduct('<html><body><p>hello</p></body></html>')).toBeNull()
+  })
+})
+
+describe('probeStructuredData', () => {
+  it('reports which structured data a page exposed', () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name: 'X', offers: { price: '9.99', priceCurrency: 'GBP' } })}</script>`
+    expect(probeStructuredData(html)).toEqual({ hadJsonLd: true, hadProductJsonLd: true, hadOgPrice: false })
+  })
+
+  it('distinguishes a non-Product JSON-LD block and an OG price', () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({ '@type': 'WebPage' })}</script>
+      <meta property="product:price:amount" content="10.00">`
+    expect(probeStructuredData(html)).toEqual({ hadJsonLd: true, hadProductJsonLd: false, hadOgPrice: true })
+  })
+
+  it('reports nothing for a bare page', () => {
+    expect(probeStructuredData('<html><body>hi</body></html>')).toEqual({
+      hadJsonLd: false,
+      hadProductJsonLd: false,
+      hadOgPrice: false,
+    })
   })
 })
