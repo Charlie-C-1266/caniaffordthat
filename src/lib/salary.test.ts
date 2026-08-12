@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { netFromGross, grossFromNet, incomeTaxOn, nationalInsuranceOn, marginalNetRate, inAllowanceTaper } from './salary'
+import {
+  netFromGross,
+  grossFromNet,
+  incomeTaxOn,
+  nationalInsuranceOn,
+  marginalNetRate,
+  inAllowanceTaper,
+  monthlyTakeHomeFromGross,
+} from './salary'
 
 // Golden figures hand-computed from the 2026/27 rest-of-UK rules in taxYears.ts
 // (PA £12,570 tapering over £100k; tax 20/40/45 at £50,270/£125,140; NI 8/2 at
@@ -39,6 +47,19 @@ describe('grossFromNet', () => {
   it('returns 0 for a non-positive take-home', () => {
     expect(grossFromNet(0)).toBe(0)
     expect(grossFromNet(-100)).toBe(0)
+  })
+})
+
+describe('monthlyTakeHomeFromGross', () => {
+  it('converts an annual gross salary to monthly take-home', () => {
+    // £40k: tax £5,486 + NI £2,194.40 -> £32,319.60/yr -> £2,693.30/month.
+    expect(monthlyTakeHomeFromGross(40000)).toBeCloseTo(2693.3, 2)
+    expect(monthlyTakeHomeFromGross(50000)).toBeCloseTo(39519.6 / 12, 2)
+  })
+
+  it('is 0 for a non-positive salary', () => {
+    expect(monthlyTakeHomeFromGross(0)).toBe(0)
+    expect(monthlyTakeHomeFromGross(-5000)).toBe(0)
   })
 })
 

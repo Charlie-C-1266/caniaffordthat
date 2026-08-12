@@ -2,6 +2,8 @@ export type Mode = 'save' | 'monthly'
 export type SaveFlavor = 'duration' | 'goal'
 /** Duration flavor: whether the monthly saving is entered as a share of spare cash (`rate`) or a fixed amount (`monthlyAmount`). */
 export type RateMode = 'percent' | 'amount'
+/** How take-home pay is entered on the Budget step: typed directly, or worked out from an annual gross salary via the tax engine. */
+export type TakeHomeMode = 'takehome' | 'salary'
 /**
  * Vehicle flow: how the car is being paid for. `cash` buys it outright,
  * `pcp` / `hp` are dealer finance (PCP with a balloon, HP without), and
@@ -33,8 +35,12 @@ export interface CalculatorState {
   // into numbers via `num()` (see lib/calculations.ts) at calculation time,
   // never converted eagerly, so a half-typed value like "12." isn't clobbered.
   itemPrice: string
-  /** Take-home pay per month — the one required budget field. */
+  /** Take-home pay per month — the one required budget field. In salary mode it's computed from `grossSalary`; everything downstream reads only this. */
   takeHome: string
+  /** How take-home is entered: typed directly, or derived from an annual gross salary. */
+  takeHomeMode: TakeHomeMode
+  /** Salary mode only: annual gross salary the user typed, from which `takeHome` is computed. */
+  grossSalary: string
   housing: string
   utilities: string
   groceries: string
