@@ -152,8 +152,8 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             />
           </div>
           <div style={{ fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 26 }}>
-            ≈ <strong style={{ color: 'var(--text-secondary)' }}>{fmt(costs.fuel)}/month</strong> on fuel. The pump price is a
-            static default — check today's on RAC Fuel Watch (see "Our sources").
+            ≈ <strong style={{ color: 'var(--text-secondary)' }}>{fmt(costs.fuel)}/month</strong> on fuel. The pump price is a static
+            default — check today's on RAC Fuel Watch (see "Our sources").
           </div>
 
           <SectionLabel>Maintenance</SectionLabel>
@@ -230,8 +230,8 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
           )}
 
           <SummaryBox>
-            All in, that's about <strong style={{ color: 'var(--text-primary)' }}>{fmt(costs.total)}/month</strong> to keep it
-            on the road{price > 0 && costs.total > 0 && <> — before any finance payment</>}.
+            All in, that's about <strong style={{ color: 'var(--text-primary)' }}>{fmt(costs.total)}/month</strong> to keep it on the road
+            {price > 0 && costs.total > 0 && <> — before any finance payment</>}.
           </SummaryBox>
 
           <div style={{ marginTop: 22, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>

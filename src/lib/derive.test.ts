@@ -35,9 +35,7 @@ describe('deriveResult', () => {
     it('is affordable within the 60-month cap', () => {
       // £2000 take-home, no outgoings -> £2000 spare cash; 25% rate -> £500/mo.
       // Target £2000, so 4 months to save it.
-      const result = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '2000', takeHome: '2000', rate: 25 }),
-      )
+      const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '2000', takeHome: '2000', rate: 25 }))
       expect(result).not.toBeNull()
       expect(result?.isFeasible).toBe(true)
       expect(result?.isAffordable).toBe(true)
@@ -67,9 +65,7 @@ describe('deriveResult', () => {
       // £200 spare cash, 50% rate -> £100/mo; £10,000 target -> exactly 100
       // months: feasible (well under the 600-month cap) but over the 60-month
       // affordability threshold.
-      const result = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '10000', takeHome: '200', rate: 50 }),
-      )
+      const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '10000', takeHome: '200', rate: 50 }))
       expect(result?.isFeasible).toBe(true)
       expect(result?.months).toBe(100)
       expect(result?.isAffordable).toBe(false)
@@ -113,9 +109,7 @@ describe('deriveResult', () => {
 
   describe('saving up — goal-date flavor', () => {
     it('is affordable when the required contribution fits spare cash', () => {
-      const result = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }),
-      )
+      const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }))
       expect(result?.isFeasible).toBe(true)
       expect(result?.contribution).toBeCloseTo(100, 6)
       expect(result?.isAffordable).toBe(true)
@@ -123,9 +117,7 @@ describe('deriveResult', () => {
     })
 
     it('is not affordable when the required contribution exceeds spare cash', () => {
-      const result = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '12000', takeHome: '500', goalMonths: 12 }),
-      )
+      const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '12000', takeHome: '500', goalMonths: 12 }))
       expect(result?.fits).toBe(false)
       expect(result?.isAffordable).toBe(false)
       expect(result?.verdictSub).toMatch(/more than your spare cash/)
@@ -133,23 +125,17 @@ describe('deriveResult', () => {
 
     it('tiers the "fits" copy by how much of spare cash the contribution uses', () => {
       // £100 contribution / £2000 spare cash = 5% -> comfortable
-      const comfortable = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }),
-      )
+      const comfortable = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }))
       expect(comfortable?.verdictSub).toMatch(/comfortably/)
 
       // £500 / £1000 = 50% -> a "good chunk", not comfortable, not tight
-      const moderate = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '6000', takeHome: '1000', goalMonths: 12 }),
-      )
+      const moderate = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '6000', takeHome: '1000', goalMonths: 12 }))
       expect(moderate?.isAffordable).toBe(true)
       expect(moderate?.verdictSub).toMatch(/good chunk/)
       expect(moderate?.verdictSub).not.toMatch(/comfortably|tight/)
 
       // £900 / £1000 = 90% -> tight
-      const tight = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '10800', takeHome: '1000', goalMonths: 12 }),
-      )
+      const tight = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '10800', takeHome: '1000', goalMonths: 12 }))
       expect(tight?.isAffordable).toBe(true)
       expect(tight?.verdictSub).toMatch(/tight/)
     })
@@ -157,9 +143,7 @@ describe('deriveResult', () => {
 
   describe('paying monthly (finance)', () => {
     it('computes total cost and interest paid, and is affordable when it fits', () => {
-      const result = deriveResult(
-        makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 12, growth: 0 }),
-      )
+      const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 12, growth: 0 }))
       expect(result?.contribution).toBeCloseTo(100, 6)
       expect(result?.totalCost).toBeCloseTo(1200, 6)
       expect(result?.interestPaid).toBeCloseTo(0, 6)
@@ -220,9 +204,7 @@ describe('deriveResult', () => {
     })
 
     it('returns null when essentials are all zero, since there is no target to derive', () => {
-      const result = deriveResult(
-        makeState({ goalId: 'emergency', mode: 'save', itemPrice: '', takeHome: '3000', coverMonths: 6 }),
-      )
+      const result = deriveResult(makeState({ goalId: 'emergency', mode: 'save', itemPrice: '', takeHome: '3000', coverMonths: 6 }))
       expect(result).toBeNull()
     })
 
@@ -334,11 +316,41 @@ describe('deriveResult', () => {
 
     it('is null when there is nothing to project (an already-met target)', () => {
       // £1,000 item, £1,000 already saved -> target 0 -> no projection to draw.
-      const result = deriveResult(
-        makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1000', savings: '1000', takeHome: '2000' }),
-      )
+      const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1000', savings: '1000', takeHome: '2000' }))
       expect(result?.target).toBe(0)
       expect(result?.projection).toBeNull()
+    })
+  })
+
+  describe('requiredTakeHomeMonthly (reverse "what salary?" mode)', () => {
+    it('for a fixed commitment (finance) is essentials plus the monthly payment', () => {
+      // £1,200 over 12 months at 0% -> £100/mo payment; £500 essentials.
+      const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', housing: '500', term: 12, growth: 0 }))
+      expect(result?.contribution).toBeCloseTo(100, 6)
+      expect(result?.requiredTakeHomeMonthly).toBeCloseTo(600, 6) // 500 essentials + 100 payment
+    })
+
+    it('for share-of-spare-cash saving reverses the 60-month affordability cap', () => {
+      // £6,000 target, 50% save rate, 0% growth. To reach it in 60 months you'd
+      // need £100/mo -> £200 spare cash at 50% -> £200 take-home (no essentials).
+      const result = deriveResult(
+        makeState({ mode: 'save', saveFlavor: 'duration', itemPrice: '6000', takeHome: '2000', rate: 50, growth: 0 }),
+      )
+      expect(result?.requiredTakeHomeMonthly).toBeCloseTo(200, 6)
+    })
+
+    it('is null for a fixed-amount save, which does not depend on income', () => {
+      const result = deriveResult(
+        makeState({
+          mode: 'save',
+          saveFlavor: 'duration',
+          rateMode: 'amount',
+          monthlyAmount: '250',
+          itemPrice: '2000',
+          takeHome: '2000',
+        }),
+      )
+      expect(result?.requiredTakeHomeMonthly).toBeNull()
     })
   })
 })

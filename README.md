@@ -1,8 +1,9 @@
 # Can I Afford That?
 
 A single-page scrollytelling calculator that helps you decide whether something
-is affordable — either by working out how long it'd take to save up for it, or
-what the monthly payment would be if you financed it.
+is affordable — by working out how long it'd take to save up for it, or what the
+monthly payment would be if you financed it, and then flipping the question
+round to show what salary you'd need to earn to afford it.
 
 Standalone POC: React + Vite, GBP-only, and no backend — a pure static,
 client-side app. This repository contains the full source, tests, and Docker
@@ -36,7 +37,7 @@ npm run build   # outputs to dist/
 
 ## Found a bug?
 
-Please [raise an issue](../../issues) or email **hello@caniaffordthat.co.uk** —
+Please [raise an issue](../../issues) or email **<hello@caniaffordthat.co.uk>** —
 whichever's easier. A note on how to reproduce it is always appreciated.
 
 ## Contributing

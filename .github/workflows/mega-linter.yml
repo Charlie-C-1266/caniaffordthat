@@ -1,0 +1,41 @@
+name: MegaLinter
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: megalinter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  megalinter:
+    name: MegaLinter (non-code files)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The cupcake flavor is a slimmer image that still bundles markdownlint,
+      # yamllint, hadolint, actionlint and the secret scanners we use.
+      - name: MegaLinter
+        uses: oxsecurity/megalinter/flavors/cupcake@v8
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload MegaLinter reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: megalinter-reports
+          path: |
+            megalinter-reports
+            mega-linter.log

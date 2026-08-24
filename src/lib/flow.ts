@@ -29,13 +29,7 @@ const RESULT_STEP: FlowStep = { id: 'result', label: 'Result' }
 const PRE_GOAL_FLOW: readonly FlowStep[] = [GOAL_STEP, DETAILS_STEP]
 
 /** The standard five-step flow every non-vehicle goal uses. */
-const STANDARD_FLOW: readonly FlowStep[] = [
-  GOAL_STEP,
-  DETAILS_STEP,
-  BUDGET_STEP,
-  { id: 'plan', label: 'Plan' },
-  RESULT_STEP,
-]
+const STANDARD_FLOW: readonly FlowStep[] = [GOAL_STEP, DETAILS_STEP, BUDGET_STEP, { id: 'plan', label: 'Plan' }, RESULT_STEP]
 
 // The vehicle flow replaces the generic Plan step with two car-specific ones:
 // how the car is being paid for (cash/PCP/HP/loan, including any balloon),

@@ -2,12 +2,13 @@ import { Tile } from '../Tile'
 import { VerdictBanner } from './VerdictBanner'
 import { ResultHeadline } from './ResultHeadline'
 import { ResultChart } from './ResultChart'
+import { SalaryFlip } from './SalaryFlip'
 import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
 import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
-import { fmt } from '../../lib/calculations'
+import { fmt, num } from '../../lib/calculations'
 import { accentColorFor } from '../../lib/mode'
 import { financeRowLabel } from '../../lib/vehicle'
 import type { VehicleResult } from '../../lib/vehicle'
@@ -76,10 +77,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
               <BreakdownRow label="TERM" value={`${result.termMonths} months`} />
               <BreakdownRow label="APR" value={`${result.aprPct}%`} />
               {result.balloon !== null && (
-                <BreakdownRow
-                  label={result.balloonIsEstimate ? 'FINAL PAYMENT (EST.)' : 'FINAL PAYMENT'}
-                  value={fmt(result.balloon)}
-                />
+                <BreakdownRow label={result.balloonIsEstimate ? 'FINAL PAYMENT (EST.)' : 'FINAL PAYMENT'} value={fmt(result.balloon)} />
               )}
               <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid)} />
               <TotalRow label={result.method === 'pcp' ? 'TOTAL IF YOU KEEP IT' : 'TOTAL PAYABLE'} value={fmt(result.totalPayable)} />
@@ -105,6 +103,12 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
             ))}
           </div>
         )}
+
+        <SalaryFlip
+          requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
+          currentTakeHomeMonthly={num(state.takeHome)}
+          accentColor={eyebrowColor}
+        />
 
         <div style={{ marginBottom: 16, fontSize: 'var(--fs-helper)', fontWeight: 600 }}>
           <a

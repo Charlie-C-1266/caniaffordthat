@@ -39,7 +39,10 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
       panelStyle={{ background: 'var(--bg-dark-1)', padding: '80px 40px 56px' }}
       panelTestId="result-panel"
     >
-      <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}>
+      <RevealTile
+        revealed={Boolean(state.revealed[index])}
+        style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}
+      >
         {vehicleResult !== null ? (
           <VehicleResultCard result={vehicleResult} scrollToIndex={scrollToIndex} />
         ) : standardResult !== null ? (

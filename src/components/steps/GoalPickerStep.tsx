@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Icon, type IconName } from '../Icon'
@@ -29,7 +29,9 @@ function LandingPill() {
         marginBottom: 20,
       }}
     >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }} />
+      <span
+        style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }}
+      />
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--brand-mint)' }}>Free · no sign-up · takes 2 minutes</span>
     </div>
   )
@@ -49,14 +51,14 @@ const SELECT_SCROLL_DELAY_MS = 260
 const AUTO_ROTATE_MS = 3200
 
 /** Per-card cover-flow transform, opacity, and stacking from its distance to the focused card. */
-function cardGeometry(offset: number) {
+function cardGeometry(offset: number): CSSProperties {
   const ax = Math.abs(offset)
   const scale = Math.max(0.7, 1 - ax * 0.13)
   return {
     transform: `translateX(calc(-50% + ${offset * CARD_STEP_X}px)) scale(${scale})`,
     opacity: ax > MAX_VISIBLE_OFFSET ? 0 : 1 - ax * 0.32,
     zIndex: 20 - ax,
-    pointerEvents: (ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto') as 'none' | 'auto',
+    pointerEvents: ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto',
   }
 }
 
@@ -87,9 +89,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
       type="button"
       onClick={focused ? onSelect : onFocus}
       disabled={goal.soon && focused}
-      aria-label={
-        goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`
-      }
+      aria-label={goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`}
       style={{
         position: 'absolute',
         top: 0,

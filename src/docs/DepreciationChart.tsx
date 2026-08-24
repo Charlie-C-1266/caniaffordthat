@@ -15,7 +15,11 @@ const MAX_YEARS = 10
 /** The three mileage profiles the chart contrasts. Colours are theme accents that read apart on the dark background. */
 const SERIES = [
   { annualMiles: 4_000, color: 'var(--brand-cyan)', label: '4,000 miles/year' },
-  { annualMiles: UK_AVERAGE_ANNUAL_MILES, color: 'var(--accent-save)', label: `${UK_AVERAGE_ANNUAL_MILES.toLocaleString('en-GB')} miles/year (UK average)` },
+  {
+    annualMiles: UK_AVERAGE_ANNUAL_MILES,
+    color: 'var(--accent-save)',
+    label: `${UK_AVERAGE_ANNUAL_MILES.toLocaleString('en-GB')} miles/year (UK average)`,
+  },
   { annualMiles: 16_000, color: 'var(--accent-finance)', label: '16,000 miles/year' },
 ]
 

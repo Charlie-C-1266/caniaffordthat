@@ -83,15 +83,11 @@ describe('estimateBalloon', () => {
 
   it('treats a blank odometer as average-for-age (the ratio cancels the mileage adjustment)', () => {
     const used = { price: 10000, ageYears: 3, termMonths: 36, annualMiles: 8000 }
-    expect(estimateBalloon({ ...used, currentMileage: 0 })).toBe(
-      estimateBalloon({ ...used, currentMileage: 3 * UK_AVERAGE_ANNUAL_MILES }),
-    )
+    expect(estimateBalloon({ ...used, currentMileage: 0 })).toBe(estimateBalloon({ ...used, currentMileage: 3 * UK_AVERAGE_ANNUAL_MILES }))
   })
 
   it('falls back to the UK average when the annual mileage is unknown', () => {
-    expect(estimateBalloon({ ...newCar, annualMiles: 0 })).toBe(
-      estimateBalloon({ ...newCar, annualMiles: UK_AVERAGE_ANNUAL_MILES }),
-    )
+    expect(estimateBalloon({ ...newCar, annualMiles: 0 })).toBe(estimateBalloon({ ...newCar, annualMiles: UK_AVERAGE_ANNUAL_MILES }))
   })
 
   it('estimates less for a car that will rack up more miles', () => {
@@ -108,7 +104,9 @@ describe('estimateBalloon', () => {
 
   it('never exceeds the price or drops below zero, and is zero without a price or term', () => {
     expect(estimateBalloon({ ...newCar, termMonths: 1 })).toBeLessThanOrEqual(20000)
-    expect(estimateBalloon({ price: 500, ageYears: 15, currentMileage: 200000, termMonths: 48, annualMiles: 30000 })).toBeGreaterThanOrEqual(0)
+    expect(
+      estimateBalloon({ price: 500, ageYears: 15, currentMileage: 200000, termMonths: 48, annualMiles: 30000 }),
+    ).toBeGreaterThanOrEqual(0)
     expect(estimateBalloon({ ...newCar, price: 0 })).toBe(0)
     expect(estimateBalloon({ ...newCar, termMonths: 0 })).toBe(0)
   })
@@ -235,9 +233,7 @@ describe('deriveVehicleResult', () => {
 
   describe('hire purchase and personal loan', () => {
     it('amortises the balance after the deposit over the term', () => {
-      const result = deriveVehicleResult(
-        makeCarState({ vehicleMethod: 'hp', itemPrice: '12000', savings: '0', term: 48, growth: 0 }),
-      )!
+      const result = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', itemPrice: '12000', savings: '0', term: 48, growth: 0 }))!
       expect(result.financeMonthly).toBeCloseTo(250, 6)
       expect(result.totalMonthly).toBeCloseTo(250, 6)
       expect(result.totalPayable).toBeCloseTo(12000, 6)
@@ -321,7 +317,7 @@ describe('deriveVehicleResult', () => {
       expect(result.notes.join(' ')).toMatch(/capped it at £6,000/)
     })
 
-    it("charts the balance descending to the balloon — the bars top out below 100%", () => {
+    it('charts the balance descending to the balloon — the bars top out below 100%', () => {
       const result = deriveVehicleResult(
         makeCarState({
           vehicleMethod: 'pcp',
@@ -368,9 +364,12 @@ describe('deriveVehicleResult', () => {
       expect(result.isAffordable).toBe(true)
       // 360/500 = 72% of spare cash -> the "tight" band.
       expect(result.verdictSub).toMatch(/tight/i)
+      // Reverse mode: the take-home the car needs is essentials + its total
+      // monthly cost (£1,500 housing + £360).
+      expect(result.requiredTakeHomeMonthly).toBeCloseTo(1860, 6)
     })
 
-    it("says no when the total monthly cost exceeds spare cash", () => {
+    it('says no when the total monthly cost exceeds spare cash', () => {
       const result = deriveVehicleResult(
         makeCarState({
           vehicleMethod: 'hp',
@@ -387,9 +386,7 @@ describe('deriveVehicleResult', () => {
     })
 
     it('flags the over-£40k supplement in the notes when it applies', () => {
-      const result = deriveVehicleResult(
-        makeCarState({ vehicleMethod: 'cash', itemPrice: '45000', vehicleAge: 0, taxAnnual: '195' }),
-      )!
+      const result = deriveVehicleResult(makeCarState({ vehicleMethod: 'cash', itemPrice: '45000', vehicleAge: 0, taxAnnual: '195' }))!
       expect(result.supplementApplies).toBe(true)
       expect(result.notes.join(' ')).toContain(`£${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement`)
     })

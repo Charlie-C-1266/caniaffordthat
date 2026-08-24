@@ -1,0 +1,42 @@
+# MegaLinter — non-code files only. The TypeScript/React source is linted by
+# oxlint + typescript-eslint and formatted by Prettier (see the CI job and the
+# npm scripts); MegaLinter covers what those don't: Markdown, YAML, the
+# Dockerfile, GitHub Actions workflows, and secret scanning.
+APPLY_FIXES: none
+SHOW_ELAPSED_TIME: true
+FLAVOR_SUGGESTIONS: false
+PRINT_ALPACA: false
+PRINT_APPLY_FIXES_TIPS: false
+
+# Whitelist: only these descriptors run. Everything owned by the native
+# toolchain (TypeScript, JavaScript, JSX, CSS, JSON, HTML) stays off, as do
+# spell-check and copy-paste detection.
+ENABLE:
+  - MARKDOWN
+  - YAML
+  - DOCKERFILE
+  - ACTION
+  - REPOSITORY
+
+# Trim the enabled descriptors to the linters worth running here: drop the
+# formatters that would fight Prettier (yaml/prettier), the network-dependent
+# link and schema checks, and the heavyweight security/SBOM scanners that are
+# noise for a static client-side site — keeping secret detection.
+DISABLE_LINTERS:
+  - YAML_PRETTIER
+  - YAML_V8R
+  - MARKDOWN_MARKDOWN_LINK_CHECK
+  - MARKDOWN_MARKDOWN_TABLE_FORMATTING
+  - REPOSITORY_CHECKOV
+  - REPOSITORY_DEVSKIM
+  - REPOSITORY_DUSTILOCK
+  - REPOSITORY_GRYPE
+  - REPOSITORY_KICS
+  - REPOSITORY_SEMGREP
+  - REPOSITORY_SYFT
+  - REPOSITORY_TRIVY
+  - REPOSITORY_TRUFFLEHOG
+  - REPOSITORY_CHECKMAKE
+
+# Vendored, generated, and sub-project paths that aren't ours to lint.
+FILTER_REGEX_EXCLUDE: (node_modules/|dist/|coverage/|package-lock\.json|\.agents/|scripts/og-image/)
