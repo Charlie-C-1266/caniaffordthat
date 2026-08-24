@@ -10,6 +10,9 @@
 //   - Income tax: 20% to £50,270, 40% to £125,140, 45% above.
 //   - Employee (Class 1) NI: 8% between £12,570 and £50,270, 2% above.
 //   - All thresholds frozen until 2030/31 (Autumn 2022 / Spring 2024).
+// The freeze covers income tax and NI only. Student loan thresholds do not share
+// it — Plan 1 and Plan 4 move every April — so adding them here also adds a real
+// annual maintenance obligation this table does not currently carry.
 // Verified against GOV.UK income-tax-rates and national-insurance-rates for
 // the 2026/27 year.
 
