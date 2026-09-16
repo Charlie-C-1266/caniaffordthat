@@ -317,7 +317,7 @@ describe('deriveVehicleResult', () => {
       expect(result.notes.join(' ')).toMatch(/capped it at £6,000/)
     })
 
-    it('charts the balance descending to the balloon — the bars top out below 100%', () => {
+    it('charts the balance descending to the balloon — the repaid series tops out below the target', () => {
       const result = deriveVehicleResult(
         makeCarState({
           vehicleMethod: 'pcp',
@@ -329,19 +329,20 @@ describe('deriveVehicleResult', () => {
           growth: 0,
         }),
       )!
-      expect(result.projection?.bars).toHaveLength(24)
+      expect(result.projection?.points).toHaveLength(25) // month 0 + 24 months
       expect(result.projection?.hasOverflow).toBe(false)
-      // £500/mo repays £12,000 of the £20,000 financed: the last bar sits at 60%.
-      expect(result.projection?.bars.at(-1)?.heightPct).toBe(60)
+      // £500/mo repays £12,000 of the £20,000 financed: the series tops out at 60%.
+      expect(result.projection?.points.at(-1)?.value).toBe(12000)
+      expect(result.projection?.target).toBe(20000)
     })
 
-    it('fully repays an HP chart by the end of the term, capping long terms at 24 bars', () => {
+    it('fully repays an HP chart by the end of the term, capping long terms at 24 charted months', () => {
       const result = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', term: 48, growth: 0 }))!
-      expect(result.projection?.bars).toHaveLength(24)
+      expect(result.projection?.points).toHaveLength(25) // month 0 + the 24-month cap
       expect(result.projection?.hasOverflow).toBe(true)
       expect(result.projection?.endLabel).toMatch(/\+$/)
       const shortTerm = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', term: 24, growth: 0 }))!
-      expect(shortTerm.projection?.bars.at(-1)?.heightPct).toBe(100)
+      expect(shortTerm.projection?.points.at(-1)?.value).toBeCloseTo(shortTerm.projection?.target ?? 0, 6)
     })
   })
 

@@ -294,24 +294,24 @@ describe('deriveResult', () => {
   })
 
   describe('projection', () => {
-    it('caps at 24 bars and flags overflow for longer timelines', () => {
+    it('caps at 24 charted months and flags overflow for longer timelines', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '12000', takeHome: '5000', term: 36 }))
-      expect(result?.projection?.bars).toHaveLength(24)
+      expect(result?.projection?.points).toHaveLength(25) // month 0 + the 24-month cap
       expect(result?.projection?.hasOverflow).toBe(true)
       expect(result?.projection?.endLabel).toMatch(/\+$/)
     })
 
     it('does not flag overflow for timelines at or under 24 months', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 12 }))
-      expect(result?.projection?.bars).toHaveLength(12)
+      expect(result?.projection?.points).toHaveLength(13) // month 0 + 12 months
       expect(result?.projection?.hasOverflow).toBe(false)
     })
 
-    it('grows the bars toward 100% by the final month', () => {
+    it('grows the balance to the full target by the final month', () => {
       const result = deriveResult(makeState({ mode: 'monthly', itemPrice: '1200', takeHome: '2000', term: 6 }))
-      const bars = result?.projection?.bars ?? []
-      expect(bars.at(-1)?.heightPct).toBe(100)
-      expect(bars[0].heightPct).toBeLessThan(100)
+      const points = result?.projection?.points ?? []
+      expect(points.at(-1)?.value).toBe(result?.projection?.target)
+      expect(points[1].value).toBeLessThan(result?.projection?.target ?? 0)
     })
 
     it('is null when there is nothing to project (an already-met target)', () => {
