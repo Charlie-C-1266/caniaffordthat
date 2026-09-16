@@ -7,6 +7,14 @@ function makeState(overrides: Partial<CalculatorState>): CalculatorState {
   return { ...DEFAULT_STATE, ...overrides }
 }
 
+/** Asserts every numeric field of a breakdown is finite — no NaN or Infinity. */
+function expectAllNumericFieldsFinite(breakdown: object): void {
+  const numericEntries = Object.entries(breakdown).filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+  for (const [key, value] of numericEntries) {
+    expect(Number.isFinite(value), `${key} should be finite`).toBe(true)
+  }
+}
+
 describe('budgetBreakdown', () => {
   it('lists only the non-zero essentials, in canonical order', () => {
     const b = budgetBreakdown(makeState({ takeHome: '2000', housing: '800', groceries: '300' }), 200)
@@ -43,5 +51,25 @@ describe('budgetBreakdown', () => {
   it('reports the new cost as a share of take-home pay', () => {
     const b = budgetBreakdown(makeState({ takeHome: '2000' }), 500)
     expect(b.shareOfTakeHome).toBeCloseTo(0.25, 6)
+  })
+
+  it('guards the take-home share when take-home is zero — no NaN or Infinity anywhere', () => {
+    // The app's derive layer gates on takeHome > 0 before calling this, but
+    // budgetBreakdown is independently exported, so the takeHome === 0 guard
+    // on shareOfTakeHome deserves its own coverage.
+    const b = budgetBreakdown(makeState({ takeHome: '0', housing: '800' }), 500)
+    expect(b.takeHome).toBe(0)
+    expect(b.shareOfTakeHome).toBe(0)
+    expectAllNumericFieldsFinite(b)
+  })
+
+  it('treats a blank or negative take-home the same as zero', () => {
+    for (const takeHome of ['', '-2000']) {
+      const b = budgetBreakdown(makeState({ takeHome }), 500)
+      expect(b.takeHome).toBe(0)
+      expect(b.shareOfTakeHome).toBe(0)
+      expect(b.spareCash).toBe(0)
+      expectAllNumericFieldsFinite(b)
+    }
   })
 })

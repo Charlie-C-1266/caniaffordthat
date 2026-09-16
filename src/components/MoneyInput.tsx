@@ -1,5 +1,11 @@
 import { useState, type KeyboardEvent } from 'react'
 
+// `min={0}` only affects the browser's validity styling — a typed or pasted
+// negative still lands in the value, and num() would then silently floor it
+// to 0 downstream, leaving the displayed figure disagreeing with the one the
+// calculations use. Clamp to "0" here so the two can never diverge.
+const clampNegative = (raw: string): string => (raw.startsWith('-') || Number(raw) < 0 ? '0' : raw)
+
 interface MoneyInputProps {
   value: string
   onChange: (value: string) => void
@@ -58,8 +64,13 @@ export function MoneyInput({
         type="number"
         min={0}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={onKeyDown}
+        onChange={(e) => onChange(clampNegative(e.target.value))}
+        onKeyDown={(e) => {
+          // Block the minus sign at the keystroke, so "-500" can't be typed at
+          // all — the paste path is covered by the onChange clamp instead.
+          if (e.key === '-') e.preventDefault()
+          onKeyDown?.(e)
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="0"

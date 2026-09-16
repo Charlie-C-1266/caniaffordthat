@@ -76,23 +76,6 @@ export function addMonths(n: number): string {
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
 
-/** "YYYY-MM" for `n` months from now — matches the `<input type="month">` format. */
-export function isoFromMonths(n: number): string {
-  const d = startOfCurrentMonth()
-  d.setMonth(d.getMonth() + n)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-/**
- * Number of months from now until an "YYYY-MM" goal date. Clamped to a
- * minimum of 1 (the goal-date picker's own minimum is next month anyway).
- */
-export function monthsFromIso(iso: string): number {
-  const [y, m] = iso.split('-').map(Number)
-  const now = startOfCurrentMonth()
-  return Math.max(1, (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1)))
-}
-
 /**
  * "MM-YYYY" for `n` months from now, e.g. "08-2026" — used by the goal-date
  * field instead of a native `<input type="month">`, which clamps/snaps back
@@ -122,8 +105,8 @@ export function formatMonthYearDraft(raw: string): string {
 /**
  * Parses "MM-YYYY" into months from now. Returns null (not a clamped
  * fallback) for anything that isn't a fully valid month/year, so callers can
- * tell "still being typed" apart from "a real date" and decide what to do —
- * unlike `monthsFromIso`, this never silently coerces bad input into NaN.
+ * tell "still being typed" apart from "a real date" and decide what to do,
+ * rather than silently coercing bad input into NaN.
  */
 export function monthsFromMonthYear(value: string): number | null {
   const match = /^(\d{1,2})-(\d{4})$/.exec(value.trim())
