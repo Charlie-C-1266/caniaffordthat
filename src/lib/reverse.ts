@@ -49,6 +49,9 @@ export function salaryFlip(requiredTakeHomeMonthly: number, currentTakeHomeMonth
     vsMedian: ratio > 1.05 ? 'above' : ratio < 0.95 ? 'below' : 'about',
     medianFullTimeSalary: median,
     inTaperBand: inAllowanceTaper(requiredGross, year),
+    // Purely defensive: with the current tax tables the kept fraction never
+    // falls below ~0.38, so the 0 fallback is unreachable — reverse.test.ts
+    // sweeps the band boundaries to pin that down.
     salaryPerTakeHome: marginal > 0 ? 1 / marginal : 0,
   }
 }
