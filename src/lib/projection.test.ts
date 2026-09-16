@@ -16,10 +16,9 @@ describe('projection', () => {
       const p = savingProjection(1000, 250, 0, 4)
       expect(p.kind).toBe('save')
       expect(p.points).toHaveLength(5) // month 0..4 inclusive
-      expect(p.points[0]).toMatchObject({ month: 0, value: 0, heightPct: 0 })
-      expect(p.points.at(-1)?.value).toBe(1000)
-      expect(p.points.at(-1)?.heightPct).toBe(100)
-      expect(p.bars).toHaveLength(4) // months 1..4, excludes "now"
+      expect(p.points[0]).toMatchObject({ month: 0, value: 0 })
+      expect(p.points.map((pt) => pt.value)).toEqual([0, 250, 500, 750, 1000])
+      expect(p.points.at(-1)?.value).toBe(p.target)
     })
 
     it('caps the balance at the target rather than overshooting', () => {
@@ -30,7 +29,7 @@ describe('projection', () => {
 
     it('truncates and flags overflow past the chart cap', () => {
       const p = savingProjection(100000, 100, 0, 400)
-      expect(p.bars).toHaveLength(CHART_MONTHS_CAP)
+      expect(p.points).toHaveLength(CHART_MONTHS_CAP + 1) // month 0 + the capped horizon
       expect(p.hasOverflow).toBe(true)
       expect(p.endLabel).toMatch(/\+$/)
     })
@@ -51,15 +50,15 @@ describe('projection', () => {
       expect(p.target).toBe(1200)
       expect(p.points[0]).toMatchObject({ month: 0, value: 0 })
       expect(p.points.at(-1)?.value).toBe(1200)
-      expect(p.points.at(-1)?.heightPct).toBe(100)
+      expect(p.points.at(-1)?.value).toBe(p.target)
     })
 
-    it('tops out below 100% when a payment leaves a balloon owed (PCP)', () => {
+    it('tops out below the principal when a payment leaves a balloon owed (PCP)', () => {
       // £500/mo repays only £12,000 of a £20,000 balance over 24 months — the
-      // rest is the balloon, so the repaid series tops out at 60%.
+      // rest is the balloon, so the repaid series tops out at 60% of the target.
       const p = financeProjection(20000, 500, 0, 24)
-      expect(p.bars.at(-1)?.heightPct).toBe(60)
       expect(p.points.at(-1)?.value).toBe(12000)
+      expect((p.points.at(-1)?.value ?? 0) / p.target).toBeCloseTo(0.6, 6)
     })
   })
 })

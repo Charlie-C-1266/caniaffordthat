@@ -14,6 +14,17 @@ export type Theme = 'light' | 'dark'
  */
 export const THEME_STORAGE_KEY = 'theme'
 
+// The four resolution helpers below (isTheme, prefersLightScheme,
+// readStoredTheme, resolveInitialTheme) are NOT called by the running app.
+// They exist as the testable, documented mirror of the inline bootstrap
+// <script> hand-copied into index.html, sources/index.html and
+// methodology/vehicle/index.html — which must run before any bundle exists
+// and so can't import this module. useTheme.ts then deliberately reads the
+// initial theme off `document.documentElement.dataset.theme` (set by that
+// script) instead of re-resolving it, so React state can't disagree with
+// what was already painted. Keep these helpers and the three scripts in
+// sync if the resolution rules ever change.
+
 /** Type guard for an untrusted value (localStorage, or hand-typed in devtools). */
 export function isTheme(value: string | null): value is Theme {
   return value === 'light' || value === 'dark'

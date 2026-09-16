@@ -6,8 +6,6 @@ import {
   contributionForGoal,
   paymentForFinance,
   addMonths,
-  isoFromMonths,
-  monthsFromIso,
   monthYearFromMonths,
   monthsFromMonthYear,
   formatMonthYearDraft,
@@ -135,21 +133,6 @@ describe('date helpers (anchored to the real current date)', () => {
     expect(addMonths(6)).toBe('January 2027')
   })
 
-  it('isoFromMonths(0) resolves to the current YYYY-MM', () => {
-    expect(isoFromMonths(0)).toBe('2026-07')
-  })
-
-  it('isoFromMonths and monthsFromIso round-trip for future months', () => {
-    for (const n of [1, 6, 13, 24]) {
-      expect(monthsFromIso(isoFromMonths(n))).toBe(n)
-    }
-  })
-
-  it('monthsFromIso clamps to a minimum of 1 for the current or a past month', () => {
-    expect(monthsFromIso('2026-07')).toBe(1)
-    expect(monthsFromIso('2025-01')).toBe(1)
-  })
-
   it('monthYearFromMonths(0) resolves to the current MM-YYYY', () => {
     expect(monthYearFromMonths(0)).toBe('07-2026')
   })
@@ -160,7 +143,15 @@ describe('date helpers (anchored to the real current date)', () => {
     }
   })
 
-  it('monthsFromMonthYear does not clamp — unlike monthsFromIso, it can return 0 or negative', () => {
+  it('monthYearFromMonths and monthsFromMonthYear round-trip across the December→January boundary', () => {
+    // From July 2026: +5 lands on December 2026, +6 rolls into January 2027.
+    expect(monthYearFromMonths(5)).toBe('12-2026')
+    expect(monthYearFromMonths(6)).toBe('01-2027')
+    expect(monthsFromMonthYear('12-2026')).toBe(5)
+    expect(monthsFromMonthYear('01-2027')).toBe(6)
+  })
+
+  it('monthsFromMonthYear does not clamp — it can return 0 or negative', () => {
     expect(monthsFromMonthYear('07-2026')).toBe(0)
     expect(monthsFromMonthYear('01-2025')).toBeLessThan(0)
   })
