@@ -30,12 +30,17 @@ async function clickAndSettle(button: HTMLElement) {
   await act(() => Promise.resolve())
 }
 
-/** Advances the fake clock past the label window, inside act so React flushes the revert. */
-async function advancePastLabelWindow() {
+/** Advances the fake clock, inside act so React flushes any revert that fires. */
+async function advanceBy(ms: number) {
   await act(() => {
-    vi.advanceTimersByTime(LABEL_DURATION_MS)
+    vi.advanceTimersByTime(ms)
     return Promise.resolve()
   })
+}
+
+/** Advances the fake clock past the label window. */
+async function advancePastLabelWindow() {
+  await advanceBy(LABEL_DURATION_MS)
 }
 
 describe('ResultActions copy feedback', () => {
@@ -80,13 +85,34 @@ describe('ResultActions copy feedback', () => {
     expect(button.textContent).toBe(LABEL_IDLE)
   })
 
-  it('recovers to the success label when a retry succeeds after a failure', async () => {
+  it('recovers to the success label when a retry succeeds after a failure, for a full label window', async () => {
     mockCopy.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const button = renderActions()
     await clickAndSettle(button)
     expect(button.textContent).toBe(LABEL_FAILED)
 
+    // Retry partway through the failure label's window.
+    await advanceBy(1500)
     await clickAndSettle(button)
     expect(button.textContent).toBe(LABEL_COPIED)
+
+    // Past the failed click's original deadline: the confirmation must survive
+    // it rather than being reverted by that earlier click's timer.
+    await advanceBy(600)
+    expect(button.textContent).toBe(LABEL_COPIED)
+
+    // The full window after the successful click, then back to idle.
+    await advanceBy(LABEL_DURATION_MS - 600)
+    expect(button.textContent).toBe(LABEL_IDLE)
+  })
+
+  it('leaves no revert timer running once unmounted mid-window', async () => {
+    mockCopy.mockResolvedValue(true)
+    const button = renderActions()
+    await clickAndSettle(button)
+    expect(vi.getTimerCount()).toBe(1)
+
+    cleanup()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
