@@ -11,18 +11,29 @@ interface ResultActionsProps {
 }
 
 /** The result card's action row: copy a shareable link to this result, or start again from the goal picker. */
+/** What the copy button last did: quiet until clicked, then a brief confirmation or failure label. */
+type CopyStatus = 'idle' | 'copied' | 'failed'
+
+const COPY_LABELS: Record<CopyStatus, string> = {
+  idle: 'Copy result link',
+  copied: 'Link copied ✓',
+  failed: "Couldn't copy — try again",
+}
+
 export function ResultActions({ scrollToIndex }: ResultActionsProps) {
   const { state } = useCalculator()
-  const [copied, setCopied] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
 
   const copyLink = async () => {
     const params = buildShareParams(state)
     const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`
     const succeeded = await copyToClipboard(url)
-    if (succeeded) {
-      setCopied(true)
-      setTimeout(() => setCopied(false), COPIED_LABEL_DURATION_MS)
-    }
+    // Both outcomes get the same brief label window: a confirmation on
+    // success, and on failure (clipboard API unavailable/denied and the
+    // execCommand fallback also failed) a quiet nudge instead of a button
+    // that visibly does nothing.
+    setCopyStatus(succeeded ? 'copied' : 'failed')
+    setTimeout(() => setCopyStatus('idle'), COPIED_LABEL_DURATION_MS)
   }
 
   return (
@@ -43,7 +54,7 @@ export function ResultActions({ scrollToIndex }: ResultActionsProps) {
           fontFamily: 'inherit',
         }}
       >
-        {copied ? 'Link copied ✓' : 'Copy result link'}
+        {COPY_LABELS[copyStatus]}
       </button>
       <button
         type="button"
