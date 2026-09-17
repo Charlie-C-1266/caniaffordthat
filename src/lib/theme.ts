@@ -5,25 +5,27 @@
 
 export type Theme = 'light' | 'dark'
 
-/**
- * localStorage key for the user's explicit theme choice. The inline
- * bootstrap <script> in each HTML entry (index.html, sources/index.html,
- * methodology/vehicle/index.html) hand-copies this exact literal — it runs
- * before any bundled JS exists, so it can't import this module. Keep the
- * three scripts and this constant in sync if the key ever changes.
- */
-export const THEME_STORAGE_KEY = 'theme'
+// The pre-paint bootstrap <script> injected into every HTML entry (see
+// src/lib/themeBootstrap.ts) embeds this constant directly — the script runs
+// before any bundled JS exists so it can't import this module at runtime,
+// but its text is generated from this value, so they can't drift. It lives
+// in its own DOM-free module so vite.config.ts can import the generator
+// without dragging this file's window/document usage into the node-side TS
+// project; re-exported here so app code keeps one import site.
+export { THEME_STORAGE_KEY } from './themeStorageKey.ts'
+import { THEME_STORAGE_KEY } from './themeStorageKey.ts'
 
 // The four resolution helpers below (isTheme, prefersLightScheme,
 // readStoredTheme, resolveInitialTheme) are NOT called by the running app.
 // They exist as the testable, documented mirror of the inline bootstrap
-// <script> hand-copied into index.html, sources/index.html and
-// methodology/vehicle/index.html — which must run before any bundle exists
-// and so can't import this module. useTheme.ts then deliberately reads the
+// <script> injected into every HTML entry by themeBootstrapPlugin (see
+// src/lib/themeBootstrap.ts) — which must run before any bundle exists and
+// so can't import this module. useTheme.ts then deliberately reads the
 // initial theme off `document.documentElement.dataset.theme` (set by that
 // script) instead of re-resolving it, so React state can't disagree with
-// what was already painted. Keep these helpers and the three scripts in
-// sync if the resolution rules ever change.
+// what was already painted. themeBootstrap.test.ts executes the generated
+// script and pins its behavior against these helpers, so a change to the
+// resolution rules that misses the script fails a test instead of shipping.
 
 /** Type guard for an untrusted value (localStorage, or hand-typed in devtools). */
 export function isTheme(value: string | null): value is Theme {
