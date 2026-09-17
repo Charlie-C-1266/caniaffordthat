@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildShareParams, hydrateStateFromUrl } from './urlState'
+import { buildShareParams, hydrateStateFromUrl, startOverUrl } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
 
 describe('hydrateStateFromUrl', () => {
@@ -188,5 +188,16 @@ describe('buildShareParams', () => {
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
     expect(restored.growth).toBe(8.9)
+  })
+})
+
+describe('startOverUrl', () => {
+  it('is the bare origin + pathname, dropping a shared link query string', () => {
+    const sharedLink = new URL('https://example.co.uk/?goalId=car&itemPrice=9000&takeHome=2000')
+    expect(startOverUrl(sharedLink)).toBe('https://example.co.uk/')
+  })
+
+  it('keeps the path of a non-root entry point', () => {
+    expect(startOverUrl(new URL('https://example.co.uk/methodology/salary/?x=1#top'))).toBe('https://example.co.uk/methodology/salary/')
   })
 })

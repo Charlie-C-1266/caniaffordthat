@@ -160,3 +160,13 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
 
   return state
 }
+
+/**
+ * Where the error boundary's "Start over" reloads to: the bare origin +
+ * pathname, deliberately dropping any query string. State hydrated from a
+ * shared link's params is one plausible crash source, so recovering into the
+ * same URL could just re-crash on arrival.
+ */
+export function startOverUrl({ origin, pathname }: Pick<Location, 'origin' | 'pathname'> = window.location): string {
+  return `${origin}${pathname}`
+}

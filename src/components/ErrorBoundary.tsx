@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { startOverUrl } from '../lib/urlState'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -11,16 +12,6 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   hasError: boolean
-}
-
-/**
- * Where "Start over" reloads to: the bare origin + pathname, deliberately
- * stripping any query string. State hydrated from a shared link's params is
- * one plausible crash source, so recovering into the same URL could just
- * re-crash on arrival.
- */
-export function startOverUrl(): string {
-  return `${window.location.origin}${window.location.pathname}`
 }
 
 /**

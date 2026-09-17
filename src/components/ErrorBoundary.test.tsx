@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import { ErrorBoundary, startOverUrl } from './ErrorBoundary'
+import { ErrorBoundary } from './ErrorBoundary'
 
 /** A child that renders fine or throws, depending on props — the two sides of the boundary. */
 function Bomb({ explode }: { explode: boolean }) {
@@ -60,12 +60,6 @@ describe('ErrorBoundary', () => {
     expect(target.search).toBe('')
     expect(`${target.origin}${target.pathname}`).toBe(`${window.location.origin}${window.location.pathname}`)
 
-    window.history.replaceState(null, '', '/')
-  })
-
-  it('startOverUrl is the bare origin + pathname', () => {
-    window.history.replaceState(null, '', '/some/path?x=1')
-    expect(startOverUrl()).toBe(`${window.location.origin}/some/path`)
     window.history.replaceState(null, '', '/')
   })
 })
