@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCalculator } from '../../state/calculatorContext'
 import { copyToClipboard } from '../../lib/clipboard'
 import { buildShareParams } from '../../lib/urlState'
@@ -10,7 +10,6 @@ interface ResultActionsProps {
   scrollToIndex: (index: number) => void
 }
 
-/** The result card's action row: copy a shareable link to this result, or start again from the goal picker. */
 /** What the copy button last did: quiet until clicked, then a brief confirmation or failure label. */
 type CopyStatus = 'idle' | 'copied' | 'failed'
 
@@ -20,9 +19,16 @@ const COPY_LABELS: Record<CopyStatus, string> = {
   failed: "Couldn't copy — try again",
 }
 
+/** The result card's action row: copy a shareable link to this result, or start again from the goal picker. */
 export function ResultActions({ scrollToIndex }: ResultActionsProps) {
   const { state } = useCalculator()
   const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+  // Only one revert-to-idle timer may be pending: each click restarts the
+  // label window, so a quick retry after "Couldn't copy" isn't cut short by
+  // the failed click's timer.
+  const revertTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => () => clearTimeout(revertTimer.current), [])
 
   const copyLink = async () => {
     const params = buildShareParams(state)
@@ -33,7 +39,8 @@ export function ResultActions({ scrollToIndex }: ResultActionsProps) {
     // execCommand fallback also failed) a quiet nudge instead of a button
     // that visibly does nothing.
     setCopyStatus(succeeded ? 'copied' : 'failed')
-    setTimeout(() => setCopyStatus('idle'), COPIED_LABEL_DURATION_MS)
+    clearTimeout(revertTimer.current)
+    revertTimer.current = setTimeout(() => setCopyStatus('idle'), COPIED_LABEL_DURATION_MS)
   }
 
   return (
