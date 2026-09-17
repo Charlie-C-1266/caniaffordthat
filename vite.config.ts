@@ -2,10 +2,13 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { themeBootstrapPlugin } from './src/lib/themeBootstrap.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  // themeBootstrapPlugin injects the pre-paint theme script into every HTML
+  // entry below, replacing the four hand-copied inline <script> blocks.
+  plugins: [react(), themeBootstrapPlugin()],
   build: {
     rollupOptions: {
       // Multi-page build: the calculator plus the methodology page(s). Each
