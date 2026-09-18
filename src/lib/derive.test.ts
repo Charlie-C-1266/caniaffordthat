@@ -203,6 +203,25 @@ describe('deriveResult', () => {
       expect(result?.target).toBe(4000)
     })
 
+    it('reports "You\'re already covered" when existing savings meet the target', () => {
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'duration',
+          takeHome: '3000',
+          housing: '1000',
+          coverMonths: 6,
+          savings: '7500',
+        }),
+      )
+      // grossTarget = 6 x 1000 = 6000; savings already exceed it -> nothing left to save.
+      expect(result?.target).toBe(0)
+      expect(result?.headline).toBe("You're already covered")
+      expect(result?.subheadline).toMatch(/£6,000/)
+      expect(result?.subheadline).toMatch(/easy-access/)
+    })
+
     it('returns null when essentials are all zero, since there is no target to derive', () => {
       const result = deriveResult(makeState({ goalId: 'emergency', mode: 'save', itemPrice: '', takeHome: '3000', coverMonths: 6 }))
       expect(result).toBeNull()
