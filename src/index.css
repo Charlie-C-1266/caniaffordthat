@@ -1,5 +1,46 @@
 @import './styles/tokens.css';
 
+/*
+ * Goal-carousel geometry. The design's cover-flow spec is a 250px card stepped
+ * 268px from its neighbours, which needs roughly 1100px to show the focused
+ * card plus one card each side. Below that the cards have to shrink and close
+ * up, or the carousel simply doesn't fit — so the two figures live here, where
+ * a media query can step them down, rather than as constants in
+ * GoalPickerStep.tsx.
+ *
+ * These are layout, not design-handoff values, which is why they live here
+ * rather than in tokens.css.
+ */
+:root {
+  --goal-card-width: 250px;
+  --goal-card-step-x: 268px;
+  /* The prev / "Get started" / next row under the carousel. At these sizes it
+     measures 370px, which is wider than a 360px phone. */
+  --goal-nav-size: 48px;
+  --goal-controls-gap: 22px;
+  --goal-cta-min-width: 230px;
+  --goal-cta-padding-x: 30px;
+}
+
+/*
+ * Phone/tablet-portrait widths. A step of 268px would put the neighbouring
+ * cards' centres off-screen entirely at 360-420px wide (the stage is only
+ * ~280px across at 360px, once the step panel's 40px gutters are taken off),
+ * leaving a lone card and no way to tap a neighbour. 200/132 keeps the focused
+ * card comfortably inside the stage and both neighbours peeking, with their
+ * centres still within it so they stay tappable.
+ */
+@media (max-width: 600px) {
+  :root {
+    --goal-card-width: 200px;
+    --goal-card-step-x: 132px;
+    --goal-nav-size: 44px;
+    --goal-controls-gap: 10px;
+    --goal-cta-min-width: 170px;
+    --goal-cta-padding-x: 22px;
+  }
+}
+
 *,
 *::before,
 *::after {
