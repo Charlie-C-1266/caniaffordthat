@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { salaryFlip } from './reverse'
 import { grossFromNet, marginalNetRate, netFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 
 describe('salaryFlip', () => {
   it('reports the gross behind the required take-home and the gap to current pay', () => {
@@ -25,6 +26,24 @@ describe('salaryFlip', () => {
   it('places a big requirement above the UK median', () => {
     const flip = salaryFlip(5000, 2000)
     expect(flip.vsMedian).toBe('above')
+  })
+
+  it('calls a requirement within ±5% of the ONS median "about" the median', () => {
+    // A plan whose required take-home inverts to exactly the median full-time
+    // gross — ratio 1.0, squarely inside the [0.95, 1.05] "about" band.
+    const median = CURRENT_TAX_YEAR.medianFullTimeSalary
+    const monthly = netFromGross(median) / 12
+    const flip = salaryFlip(monthly, 2000)
+    expect(flip.requiredGross).toBeCloseTo(median, 0)
+    expect(flip.medianFullTimeSalary).toBe(median)
+    expect(flip.vsMedian).toBe('about')
+
+    // And the band is inclusive of its edges: ±4% either side still reads
+    // 'about', so the boundary isn't knife-edge on the exact median.
+    for (const factor of [0.96, 1.04]) {
+      const edge = salaryFlip(netFromGross(median * factor) / 12, 2000)
+      expect(edge.vsMedian, `gross at ${factor}× the median`).toBe('about')
+    }
   })
 
   it('surfaces the marginal cost inside the £100k allowance-taper band', () => {
