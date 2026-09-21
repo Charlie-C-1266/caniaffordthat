@@ -128,7 +128,14 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
           </h1>
 
           <SectionLabel>Fuel</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px 18px', marginBottom: 12 }}>
+          {/*
+            Three equal tracks fit comfortably at the tile's full width, but
+            on a phone they'd each be ~56px — too narrow for a value plus its
+            unit however the gutter is sized. `auto-fit` + a 150px floor drops
+            to two tracks, then one, as the room runs out, and resolves to the
+            same three tracks from tablet widths up.
+          */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px 18px', marginBottom: 12 }}>
             <LabeledUnitField
               label="Miles you drive / year"
               unit="miles"
