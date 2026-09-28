@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useCalculator } from './state/calculatorContext'
 import { useStepObserver } from './hooks/useStepObserver'
 import { ProgressRail } from './components/ProgressRail'
@@ -12,36 +11,11 @@ import { ResultStep } from './components/steps/ResultStep'
 import { Footer } from './components/Footer'
 import { AlphaBadge } from './components/AlphaBadge'
 import { SourcesLink } from './components/SourcesLink'
+import { StartOverButton } from './components/StartOverButton'
 import { ThemeToggle } from './components/ThemeToggle'
 import { flowForGoal, type FlowStep } from './lib/flow'
 import { goalById } from './lib/goals'
 import { accentColorFor } from './lib/mode'
-
-function StartOverButton({ onClick }: { onClick: () => void }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
-        border: '1px solid var(--pill-border)',
-        color: 'var(--text-primary)',
-        fontSize: 12.5,
-        fontWeight: 600,
-        padding: '8px 14px',
-        borderRadius: 20,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      Start over
-    </button>
-  )
-}
 
 /** Fixed top-right button row — both share this single positioning context rather than guessing pixel offsets against each other. */
 function TopRightControls({ onReset }: { onReset: () => void }) {
