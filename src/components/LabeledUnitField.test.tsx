@@ -9,6 +9,22 @@ const ACCENT = 'rgb(124, 207, 255)'
 // A number input is exposed as role="spinbutton", not "textbox".
 const getInput = () => screen.getByRole<HTMLInputElement>('spinbutton')
 
+/**
+ * The field's rendered underline, read from whichever element carries it —
+ * the input itself, or an ancestor when the unit suffix sits in the flow
+ * beside the input and the rule has to span both. These tests are about the
+ * focus colour, so they assert on the underline rather than on which element
+ * happens to own it.
+ */
+function underline(): string {
+  // An element with no border of its own still reports the shorthand's
+  // default width ('medium'), so match on the declared rule, not truthiness.
+  for (let el: HTMLElement | null = getInput(); el; el = el.parentElement) {
+    if (el.style.borderBottom.includes('solid')) return el.style.borderBottom
+  }
+  throw new Error('expected the field to render an underline')
+}
+
 /** A controlled harness, mirroring the vehicle flow's mileage / mpg / fuel-price fields. */
 function Harness({ initial = '' }: { initial?: string }) {
   const [value, setValue] = useState(initial)
@@ -20,18 +36,18 @@ describe('LabeledUnitField', () => {
 
   it('underlines with the neutral idle color before focus', () => {
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} accentColor={ACCENT} />)
-    expect(getInput().style.borderBottom).toContain('var(--input-underline)')
+    expect(underline()).toContain('var(--input-underline)')
   })
 
   it('switches the underline to the accent color while focused, and back on blur', () => {
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} accentColor={ACCENT} />)
 
     fireEvent.focus(getInput())
-    expect(getInput().style.borderBottom).toContain(ACCENT)
+    expect(underline()).toContain(ACCENT)
 
     fireEvent.blur(getInput())
-    expect(getInput().style.borderBottom).toContain('var(--input-underline)')
-    expect(getInput().style.borderBottom).not.toContain(ACCENT)
+    expect(underline()).toContain('var(--input-underline)')
+    expect(underline()).not.toContain(ACCENT)
   })
 
   it('falls back to the neutral primary-text accent when none is given', () => {
@@ -39,7 +55,7 @@ describe('LabeledUnitField', () => {
     // lighting up in a mode color the other does not have.
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} />)
     fireEvent.focus(getInput())
-    expect(getInput().style.borderBottom).toContain('var(--text-primary)')
+    expect(underline()).toContain('var(--text-primary)')
   })
 
   it('renders whichever unit suffix it was given', () => {
