@@ -32,6 +32,27 @@ jobs:
       - name: Test
         run: npm test
 
+      # Surfaces the coverage numbers on every run: the `text` reporter prints
+      # the per-file table straight into this job's log, so a reviewer can see
+      # a 0%-covered file without reproducing the run locally. Deliberately no
+      # `thresholds` in vite.config.ts — large parts of the app are mid-
+      # remediation, so this must not gate the build. A threshold gate is a
+      # follow-up once that backlog is closer to clear.
+      - name: Coverage
+        run: npm run test:coverage
+
+      # The same run's `html` reporter output, kept browsable from the Actions
+      # run. `if: always()` so the report still lands when a test fails —
+      # that's exactly when the numbers are worth looking at.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Build
         run: npx vite build
 
