@@ -16,9 +16,6 @@ import type { CalculatorState } from '../../state/types'
 
 const noop = () => {}
 
-/** Matches a caveat line: the card's only left-ruled elements. */
-const CAVEAT_SELECTOR = '[style*="border-left"]'
-
 let calculator: CalculatorContextValue | null = null
 
 /** Exposes the provider's context so a test can seed the state the earlier steps would have captured. */
@@ -179,26 +176,18 @@ describe('VehicleResultCard', () => {
   describe('the caveats block', () => {
     it('renders one line per note', () => {
       const notes = ['The final payment is our estimate, not a quote.', 'Over £40k attracts the VED supplement.']
-      const { container } = render(
-        <CalculatorProvider>
-          <VehicleResultCard result={financedResult({ notes })} scrollToIndex={noop} />
-        </CalculatorProvider>,
-      )
+      renderCard(financedResult({ notes }))
 
-      for (const note of notes) expect(screen.getByText(note)).toBeTruthy()
-      // The caveats are the only left-ruled elements on the card, so the same
-      // selector proves both halves of this condition.
-      expect(container.querySelectorAll(CAVEAT_SELECTOR)).toHaveLength(notes.length)
+      const block = screen.getByTestId('vehicle-caveats')
+      expect(Array.from(block.children, (line) => line.textContent)).toEqual(notes)
     })
 
     it('is absent entirely when there are no notes', () => {
-      const { container } = render(
-        <CalculatorProvider>
-          <VehicleResultCard result={financedResult({ notes: [] })} scrollToIndex={noop} />
-        </CalculatorProvider>,
-      )
+      renderCard(financedResult({ notes: [] }))
 
-      expect(container.querySelectorAll(CAVEAT_SELECTOR)).toHaveLength(0)
+      // The block itself, not just its lines: an empty wrapper would still
+      // leave its bottom margin as a stray gap above the salary panel.
+      expect(screen.queryByTestId('vehicle-caveats')).toBeNull()
     })
   })
 

@@ -86,7 +86,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
         </BreakdownBox>
 
         {result.notes.length > 0 && (
-          <div style={{ margin: '0 0 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div data-testid="vehicle-caveats" style={{ margin: '0 0 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {result.notes.map((note) => (
               <div
                 key={note}
