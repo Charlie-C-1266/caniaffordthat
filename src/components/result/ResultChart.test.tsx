@@ -53,10 +53,12 @@ function renderChart(proj: Projection | null) {
 }
 
 const viewButton = (label: string) => screen.getByRole('button', { name: label })
+/** The balance chart, by its accessible name — the donut is an SVG too, so "any svg" can't tell them apart. */
+const chartIsShown = () => screen.queryByRole('img', { name: /^Area chart of the balance/ }) !== null
+/** The budget donut, by its accessible name. */
+const donutIsShown = () => screen.queryByRole('img', { name: /^Donut chart/ }) !== null
 /** The projection table, identified by a column heading only it renders. */
 const tableIsShown = () => screen.queryByText('% of goal') !== null
-/** The budget donut, identified by the legend row only it renders. */
-const donutIsShown = () => screen.queryByText(NEW_COST_LABEL) !== null
 const captionText = () => `Showing the first ${CHART_MONTHS_CAP} months — the full term is ${MONTHS} months.`
 
 describe('ResultChart', () => {
@@ -83,11 +85,11 @@ describe('ResultChart', () => {
 
   describe('the view toggle', () => {
     it('opens on the balance chart, under the chart title', () => {
-      const { container } = renderChart(projection())
+      renderChart(projection())
 
       expect(screen.getByText(CHART_TITLE)).toBeTruthy()
-      // The chart is the only SVG among the three views.
-      expect(container.querySelector('svg')).toBeTruthy()
+      expect(chartIsShown()).toBe(true)
+      expect(donutIsShown()).toBe(false)
       expect(tableIsShown()).toBe(false)
     })
 
@@ -99,6 +101,7 @@ describe('ResultChart', () => {
       expect(screen.getByText(BUDGET_HEADING)).toBeTruthy()
       expect(screen.queryByText(CHART_TITLE)).toBeNull()
       expect(donutIsShown()).toBe(true)
+      expect(chartIsShown()).toBe(false)
       expect(tableIsShown()).toBe(false)
     })
 
@@ -110,6 +113,7 @@ describe('ResultChart', () => {
       expect(screen.getByText(TABLE_HEADING)).toBeTruthy()
       expect(screen.queryByText(CHART_TITLE)).toBeNull()
       expect(tableIsShown()).toBe(true)
+      expect(chartIsShown()).toBe(false)
     })
 
     it('goes back to the chart when "Balance" is picked again', () => {
@@ -119,6 +123,7 @@ describe('ResultChart', () => {
       fireEvent.click(viewButton('Balance'))
 
       expect(screen.getByText(CHART_TITLE)).toBeTruthy()
+      expect(chartIsShown()).toBe(true)
       expect(tableIsShown()).toBe(false)
     })
   })
