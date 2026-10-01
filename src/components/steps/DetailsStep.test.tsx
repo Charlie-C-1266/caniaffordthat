@@ -51,7 +51,7 @@ describe('DetailsStep emergency-fund cover band copy', () => {
     calculator = null
   })
 
-  it('nudges toward 3 months when the cover is under the recommended band', () => {
+  it('nudges towards 3 months when the cover is under the recommended band', () => {
     renderEmergencyDetails(1)
 
     expect(bandRow(UNDER_BAND)).toBeTruthy()
