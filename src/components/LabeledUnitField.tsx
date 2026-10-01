@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { FieldLabel } from './FieldLabel'
 
 interface LabeledUnitFieldProps {
@@ -20,14 +20,19 @@ interface LabeledUnitFieldProps {
  */
 export function LabeledUnitField({ label, unit, value, onChange, onKeyDown, accentColor = 'var(--text-primary)' }: LabeledUnitFieldProps) {
   const [focused, setFocused] = useState(false)
+  // Generated per instance, as on LabeledMoneyField.
+  const inputId = useId()
 
   return (
     // minWidth:0 lets 1fr grid tracks shrink below the number input's
     // intrinsic width, as on LabeledMoneyField.
     <div style={{ minWidth: 0 }}>
-      <FieldLabel size="sm">{label}</FieldLabel>
+      <FieldLabel size="sm" htmlFor={inputId}>
+        {label}
+      </FieldLabel>
       <div style={{ position: 'relative' }}>
         <input
+          id={inputId}
           type="number"
           min={0}
           className="no-spinner"
