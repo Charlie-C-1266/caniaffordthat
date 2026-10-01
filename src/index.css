@@ -1,16 +1,22 @@
 @import './styles/tokens.css';
 
 /*
- * Persistent-header layout, as custom properties rather than literals baked
- * into App.tsx's inline styles. The brand mark and the top-right controls are
+ * Responsive layout values, as custom properties rather than literals baked
+ * into components' inline styles — so a media query can restyle a whole
+ * cluster at once without the components needing to know a breakpoint exists.
+ * These are layout, not design-handoff values, which is why they live here
+ * rather than in tokens.css. Each section below keeps its defaults and its
+ * narrow-viewport overrides together.
+ *
+ * Both sections share the same 600px breakpoint but stay separate blocks, so
+ * each one's rationale sits next to the values it explains.
+ */
+
+/*
+ * Persistent-header layout. The brand mark and the top-right controls are
  * both `position: fixed` and anchored to opposite corners, so nothing stops
  * them growing into each other: once their combined content is wider than the
- * viewport they overlap instead of stacking. Keeping the sizes here lets the
- * media query below shrink both clusters at once, without the components
- * needing to know a breakpoint exists.
- *
- * These are layout, not design-handoff values, which is why they live here
- * rather than in tokens.css.
+ * viewport they overlap instead of stacking.
  */
 :root {
   --header-top-brand: 22px;
@@ -26,12 +32,12 @@
 }
 
 /*
- * Phone/tablet-portrait widths. The two clusters measure ~238px (brand) and
- * ~272px (controls) at the desktop sizes above, so they start colliding just
- * under 570px; 600px leaves a little headroom for font-rendering differences
- * across platforms. Dropping the wordmark (the swatch and Alpha badge still
- * identify the app), tightening the gutters and trimming the pill chrome buys
- * back enough room that the clusters clear each other down to 360px.
+ * The two clusters measure ~238px (brand) and ~272px (controls) at the desktop
+ * sizes above, so they start colliding just under 570px; 600px leaves a little
+ * headroom for font-rendering differences across platforms. Dropping the
+ * wordmark (the swatch and Alpha badge still identify the app), tightening the
+ * gutters and trimming the pill chrome buys back enough room that the clusters
+ * clear each other down to 360px.
  */
 @media (max-width: 600px) {
   :root {
@@ -43,6 +49,43 @@
     --pill-padding-block: 6px;
     --pill-padding-inline: 10px;
     --theme-toggle-size: 32px;
+  }
+}
+
+/*
+ * Goal-carousel geometry. The design's cover-flow spec is a 250px card stepped
+ * 268px from its neighbours, which needs roughly 1100px to show the focused
+ * card plus one card each side. Below that the cards have to shrink and close
+ * up, or the carousel simply doesn't fit — so the two figures live here,
+ * rather than as constants in GoalPickerStep.tsx.
+ */
+:root {
+  --goal-card-width: 250px;
+  --goal-card-step-x: 268px;
+  /* The prev / "Get started" / next row under the carousel. At these sizes it
+     measures 370px, which is wider than a 360px phone. */
+  --goal-nav-size: 48px;
+  --goal-controls-gap: 22px;
+  --goal-cta-min-width: 230px;
+  --goal-cta-padding-x: 30px;
+}
+
+/*
+ * A step of 268px would put the neighbouring cards' centres off-screen
+ * entirely at 360-420px wide (the stage is only ~280px across at 360px, once
+ * the step panel's 40px gutters are taken off), leaving a lone card and no way
+ * to tap a neighbour. 200/132 keeps the focused card comfortably inside the
+ * stage and both neighbours peeking, with their centres still within it so
+ * they stay tappable.
+ */
+@media (max-width: 600px) {
+  :root {
+    --goal-card-width: 200px;
+    --goal-card-step-x: 132px;
+    --goal-nav-size: 44px;
+    --goal-controls-gap: 10px;
+    --goal-cta-min-width: 170px;
+    --goal-cta-padding-x: 22px;
   }
 }
 
