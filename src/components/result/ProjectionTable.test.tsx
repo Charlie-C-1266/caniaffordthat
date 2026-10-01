@@ -25,7 +25,7 @@ function projectionOf(overrides: Partial<Projection> = {}): Projection {
   }
 }
 
-/** Every body row as `[month, date, value, percent]`, read back out of the rendered table. */
+/** Every body row as `[month, date, value, % of goal]`, read back out of the rendered table. */
 function rows(): string[][] {
   // Row 0 is the header row; the rest are the projection's points.
   return screen
@@ -57,9 +57,9 @@ describe('ProjectionTable', () => {
 
   it('rounds a fractional percentage rather than truncating it', () => {
     // 333/1000 rounds up to 33%, 666/1000 to 67% — a floor would give 66%.
-    render(<ProjectionTable projection={projectionOf({ points: [point(1, 333), point(2, 666)] })} />)
+    render(<ProjectionTable projection={projectionOf({ points: [point(0, 0), point(1, 333), point(2, 666)] })} />)
 
-    expect(rows().map((row) => row[3])).toEqual(['33%', '67%'])
+    expect(rows().map((row) => row[3])).toEqual(['0%', '33%', '67%'])
   })
 
   it('words a finance projection as "Repaid"', () => {
@@ -69,6 +69,9 @@ describe('ProjectionTable', () => {
     expect(screen.queryByRole('columnheader', { name: 'Saved' })).toBeNull()
   })
 
+  // A 0 target is unreachable from derive.ts/vehicle.ts (both only build a
+  // projection for a target above 0 — see the comment at the guard), so it's
+  // pinned down by rendering one directly rather than via a "realistic" scenario.
   it('renders 0% for every row when the target is 0, rather than NaN or Infinity', () => {
     // target === 0 would make value/target NaN (at month 0) or Infinity
     // (thereafter) without the guard on the "% of goal" cell.
