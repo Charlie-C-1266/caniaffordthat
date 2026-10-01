@@ -20,7 +20,17 @@ import { accentColorFor } from './lib/mode'
 /** Fixed top-right button row — both share this single positioning context rather than guessing pixel offsets against each other. */
 function TopRightControls({ onReset }: { onReset: () => void }) {
   return (
-    <div style={{ position: 'fixed', top: 20, right: 26, zIndex: 60, display: 'flex', gap: 10, alignItems: 'center' }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 'var(--header-top-controls)',
+        right: 'var(--header-gutter)',
+        zIndex: 60,
+        display: 'flex',
+        gap: 'var(--header-control-gap)',
+        alignItems: 'center',
+      }}
+    >
       <SourcesLink />
       <ThemeToggle />
       <StartOverButton onClick={onReset} />
@@ -30,9 +40,32 @@ function TopRightControls({ onReset }: { onReset: () => void }) {
 
 function BrandMark({ accentColor }: { accentColor: string }) {
   return (
-    <div style={{ position: 'fixed', top: 22, left: 26, zIndex: 60, display: 'flex', alignItems: 'center', gap: 9 }}>
-      <div style={{ width: 20, height: 20, borderRadius: 5, background: accentColor }} />
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Can I Afford That?</div>
+    <div
+      data-testid="brand-mark"
+      style={{
+        position: 'fixed',
+        top: 'var(--header-top-brand)',
+        left: 'var(--header-gutter)',
+        zIndex: 60,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--brand-gap)',
+      }}
+    >
+      <div style={{ width: 20, height: 20, borderRadius: 5, background: accentColor, flexShrink: 0 }} />
+      {/* Hidden below the narrow-viewport breakpoint (see index.css) so the
+          brand mark and the top-right controls can't grow into each other. */}
+      <div
+        style={{
+          display: 'var(--brand-wordmark-display)',
+          fontSize: 14,
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Can I Afford That?
+      </div>
       <AlphaBadge />
     </div>
   )

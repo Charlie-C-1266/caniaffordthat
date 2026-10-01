@@ -18,12 +18,13 @@ export function StartOverButton({ onClick }: { onClick: () => void }) {
         background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
         border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
-        fontSize: 12.5,
+        fontSize: 'var(--pill-font-size)',
         fontWeight: 600,
-        padding: '8px 14px',
+        padding: 'var(--pill-padding-block) var(--pill-padding-inline)',
         borderRadius: 20,
         cursor: 'pointer',
         fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
       }}
     >
       Start over

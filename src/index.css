@@ -1,5 +1,51 @@
 @import './styles/tokens.css';
 
+/*
+ * Persistent-header layout, as custom properties rather than literals baked
+ * into App.tsx's inline styles. The brand mark and the top-right controls are
+ * both `position: fixed` and anchored to opposite corners, so nothing stops
+ * them growing into each other: once their combined content is wider than the
+ * viewport they overlap instead of stacking. Keeping the sizes here lets the
+ * media query below shrink both clusters at once, without the components
+ * needing to know a breakpoint exists.
+ *
+ * These are layout, not design-handoff values, which is why they live here
+ * rather than in tokens.css.
+ */
+:root {
+  --header-top-brand: 22px;
+  --header-top-controls: 20px;
+  --header-gutter: 26px;
+  --header-control-gap: 10px;
+  --brand-gap: 9px;
+  --brand-wordmark-display: block;
+  --pill-font-size: 12.5px;
+  --pill-padding-block: 8px;
+  --pill-padding-inline: 14px;
+  --theme-toggle-size: 36px;
+}
+
+/*
+ * Phone/tablet-portrait widths. The two clusters measure ~238px (brand) and
+ * ~272px (controls) at the desktop sizes above, so they start colliding just
+ * under 570px; 600px leaves a little headroom for font-rendering differences
+ * across platforms. Dropping the wordmark (the swatch and Alpha badge still
+ * identify the app), tightening the gutters and trimming the pill chrome buys
+ * back enough room that the clusters clear each other down to 360px.
+ */
+@media (max-width: 600px) {
+  :root {
+    --header-gutter: 12px;
+    --header-control-gap: 6px;
+    --brand-gap: 7px;
+    --brand-wordmark-display: none;
+    --pill-font-size: 11.5px;
+    --pill-padding-block: 6px;
+    --pill-padding-inline: 10px;
+    --theme-toggle-size: 32px;
+  }
+}
+
 *,
 *::before,
 *::after {
