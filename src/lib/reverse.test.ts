@@ -38,8 +38,8 @@ describe('salaryFlip', () => {
     expect(flip.medianFullTimeSalary).toBe(median)
     expect(flip.vsMedian).toBe('about')
 
-    // And the band is inclusive of its edges: ±4% either side still reads
-    // 'about', so the boundary isn't knife-edge on the exact median.
+    // ±4% either side still reads 'about', so the test doesn't rest on the
+    // exact median.
     for (const factor of [0.96, 1.04]) {
       const edge = salaryFlip(netFromGross(median * factor) / 12, 2000)
       expect(edge.vsMedian, `gross at ${factor}× the median`).toBe('about')
