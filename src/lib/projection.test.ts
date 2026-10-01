@@ -40,6 +40,18 @@ describe('projection', () => {
       expect(p.points[1].dateLabel).toBe('August 2026')
       expect(p.points[2].dateLabel).toBe('September 2026')
     })
+
+    // The `|| 1` floor is unreachable from derive.ts/vehicle.ts (both already
+    // floor `months` at 1 — see the comment at the guard), so it's pinned down
+    // by calling in directly rather than via a "realistic" scenario.
+    it('falls back to a single charted month rather than an empty series when months is 0', () => {
+      const p = savingProjection(1000, 250, 0, 0)
+      expect(p.points).toHaveLength(2) // month 0 + the one fallback month
+      expect(p.points[1]).toMatchObject({ month: 1, value: 250 })
+      expect(p.points.every((pt) => Number.isFinite(pt.value))).toBe(true)
+      expect(p.months).toBe(0)
+      expect(p.hasOverflow).toBe(false)
+    })
   })
 
   describe('financeProjection', () => {
@@ -59,6 +71,15 @@ describe('projection', () => {
       const p = financeProjection(20000, 500, 0, 24)
       expect(p.points.at(-1)?.value).toBe(12000)
       expect((p.points.at(-1)?.value ?? 0) / p.target).toBeCloseTo(0.6, 6)
+    })
+
+    it('falls back to a single charted month rather than an empty series when months is 0', () => {
+      const p = financeProjection(1200, 100, 0, 0)
+      expect(p.points).toHaveLength(2) // month 0 + the one fallback month
+      expect(p.points[1]).toMatchObject({ month: 1, value: 100 })
+      expect(p.points.every((pt) => Number.isFinite(pt.value))).toBe(true)
+      expect(p.months).toBe(0)
+      expect(p.hasOverflow).toBe(false)
     })
   })
 })
