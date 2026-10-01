@@ -98,6 +98,12 @@ test.describe('goal carousel at narrow viewports', () => {
 
     // Full-size cards, stepped at the design's 268px: the focused card and its
     // neighbour sit 268px apart centre to centre.
+    //
+    // Don't drop this as redundant with the overflow checks above. The card
+    // transform is assembled as a calc() string out of custom properties
+    // (cardGeometry in GoalPickerStep.tsx), and a malformed calc() is dropped
+    // silently by CSS — no type error, no console warning, just an ignored
+    // transform. These two numbers are the only thing that would catch it.
     const focused = await page.getByRole('button', { name: 'Continue with Vehicle' }).boundingBox()
     const neighbour = await page.getByRole('button', { name: 'Focus Holiday' }).boundingBox()
     expect(focused!.width).toBe(250)
