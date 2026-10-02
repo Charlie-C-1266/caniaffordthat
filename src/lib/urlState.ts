@@ -1,5 +1,6 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
+import { isMoneyValue, sanitiseItemName } from './fields'
 import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
@@ -7,7 +8,9 @@ import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, 
 // used on load) both read these lists, so a new shared field is added in one
 // place and can't drift between the two sides.
 
-const STRING_FIELDS = [
+// Exported so the tests can hold every shared string field to the sanitising
+// rule below, and a field added here is covered without touching them.
+export const STRING_FIELDS = [
   'itemName',
   'itemPrice',
   'takeHome',
@@ -143,9 +146,17 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   const balloonMode = params.get('balloonMode')
   if (isBalloonMode(balloonMode)) state.balloonMode = balloonMode
 
+  // The string fields were previously copied verbatim, which let a link carry
+  // values the inputs themselves refuse: a negative price (`MoneyInput` clamps
+  // those to "0", so the field showed -500 while `num()` used 0 — exactly the
+  // divergence #30 closed), non-numeric junk, `1e999`, or an unbounded
+  // `itemName` that stretches the result headline. Each is now held to the
+  // same rule as the field that captures it, falling back to the default.
   for (const field of STRING_FIELDS) {
     const value = params.get(field)
-    if (value !== null) state[field] = value
+    if (value === null) continue
+    if (field === 'itemName') state[field] = sanitiseItemName(value)
+    else state[field] = isMoneyValue(value) ? value.trim() : DEFAULT_STATE[field]
   }
 
   for (const { key, min, max } of NUMBER_FIELDS) {
