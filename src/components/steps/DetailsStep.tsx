@@ -15,6 +15,7 @@ import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
+import { ITEM_NAME_MAX_LENGTH } from '../../lib/fields'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
@@ -200,6 +201,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                         placeholder={goal.namePlaceholder}
                         fontSize="var(--fs-input-sm)"
                         accentColor={accent}
+                        maxLength={ITEM_NAME_MAX_LENGTH}
                       />
                     </div>
                   )}
