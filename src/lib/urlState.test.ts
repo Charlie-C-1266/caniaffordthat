@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildShareParams, hydrateStateFromUrl, startOverUrl } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
+import { TERM_RANGES } from './vehicle'
 
 describe('hydrateStateFromUrl', () => {
   it('returns the defaults untouched when neither goalId nor itemPrice is present', () => {
@@ -78,7 +79,7 @@ describe('hydrateStateFromUrl', () => {
   })
 
   it('allows terms up to 84 months only for vehicle links — the bank-loan slider is the only UI that goes there', () => {
-    expect(hydrateStateFromUrl('?goalId=car&itemPrice=15000&term=84').term).toBe(84)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&itemPrice=15000&term=84').term).toBe(84)
     expect(hydrateStateFromUrl('?goalId=big&itemPrice=15000&term=84').term).toBe(60)
   })
 
@@ -188,6 +189,56 @@ describe('buildShareParams', () => {
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
     expect(restored.growth).toBe(8.9)
+  })
+})
+
+describe('hydrateStateFromUrl — vehicle finance term', () => {
+  // The term slider in VehiclePurchaseStep only ever offers TERM_RANGES[method],
+  // and `chooseMethod` re-clamps on every method switch, so the app itself can't
+  // produce an out-of-range pairing. A hand-edited (or stale) link can, and
+  // `deriveVehicleResult` would quote that deal — hence the clamp on hydration.
+  // Every expectation below reads the real TERM_RANGES rather than hard-coding
+  // bounds, so changing a range updates the tests with it.
+
+  it('clamps a term above the method maximum down to it', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=84').term).toBe(TERM_RANGES.pcp.max)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=hp&term=84').term).toBe(TERM_RANGES.hp.max)
+  })
+
+  it('clamps a term below the method minimum up to it', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=hp&term=3').term).toBe(TERM_RANGES.hp.min)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=1').term).toBe(TERM_RANGES.pcp.min)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&term=6').term).toBe(TERM_RANGES.loan.min)
+  })
+
+  it('leaves a term already inside its method range untouched', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&term=72').term).toBe(72)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=36').term).toBe(36)
+  })
+
+  it("keeps each method range's own endpoints", () => {
+    for (const method of ['pcp', 'hp', 'loan'] as const) {
+      const { min, max } = TERM_RANGES[method]
+      expect(hydrateStateFromUrl(`?goalId=car&vehicleMethod=${method}&term=${min}`).term).toBe(min)
+      expect(hydrateStateFromUrl(`?goalId=car&vehicleMethod=${method}&term=${max}`).term).toBe(max)
+    }
+  })
+
+  it("leaves a cash link's term as read — cash has no term range", () => {
+    // 84 is the generic NUMBER_FIELDS ceiling, which still applies.
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=cash&term=84').term).toBe(84)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=cash&term=3').term).toBe(3)
+  })
+
+  it('still caps non-vehicle links at 60 whatever vehicleMethod says', () => {
+    // A vehicleMethod param on a non-vehicle link must not unlock the wider range.
+    expect(hydrateStateFromUrl('?goalId=big&vehicleMethod=loan&itemPrice=15000&term=84').term).toBe(60)
+  })
+
+  it('clamps against the hydrated method, not the default one', () => {
+    // An invalid method falls back to the default (pcp), so the pcp range applies.
+    expect(DEFAULT_STATE.vehicleMethod).toBe('pcp')
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=lease&term=84').term).toBe(TERM_RANGES.pcp.max)
   })
 })
 
