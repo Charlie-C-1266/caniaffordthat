@@ -40,3 +40,29 @@ jobs:
 
       - name: E2E test
         run: npm run test:e2e
+
+  nginx:
+    name: Self-hosted nginx config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npx vite build
+
+      - name: Install nginx
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nginx-light
+
+      # Serves the real ./dist through the repository's own nginx.conf and
+      # asserts the cache, compression, security-header and 404 behaviour.
+      - name: Verify nginx.conf
+        run: bash scripts/verify-nginx.sh
