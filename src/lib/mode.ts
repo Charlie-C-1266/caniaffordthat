@@ -1,9 +1,9 @@
 import type { Mode } from '../state/types'
 
 // The two modes have distinct accents under the v2 re-theme (green for saving,
-// violet for finance — see tokens.css and design/adr/0003). The result screen
-// is the exception: its background is the green/red verdict colour, not the
-// mode accent (see design/adr/0007).
+// violet for finance — the token values live in tokens.css). The result screen
+// is the exception: its background is the green/red verdict colour rather than
+// the mode accent, so the affordable/not answer is what reads first there.
 
 /** The accent color for the active mode. */
 export function accentColorFor(mode: Mode): string {

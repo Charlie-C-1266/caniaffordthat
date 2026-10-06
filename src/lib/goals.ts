@@ -4,8 +4,8 @@ import type { IconName } from '../components/Icon'
 // The single source of truth for "tailored per goal". Every goal in the picker
 // carousel is one entry here; the Details step, hero teaser chips, and the copy
 // throughout all read from this — no goal-specific logic is hard-coded in the
-// components. Ported from the design prototype's goal config array (see
-// design/adr/0001 and design/glossary.md).
+// components. Ported from the design prototype's goal config array, field
+// names included, so the product vocabulary and the code stay in step.
 
 /** One goal in the picker carousel and the tailored copy/behaviour it drives. */
 export interface Goal {
@@ -36,7 +36,7 @@ export interface Goal {
   namePlaceholder?: string
   /** Heading above the price input, e.g. "How much is the car?". Absent for the price-less emergency fund. */
   priceHeadline?: string
-  /** Car: shows the "Deposit / part-exchange" field, which writes to `savings` (see design/adr/0005). */
+  /** Car: shows the "Deposit / part-exchange" field. It writes to `savings` because a deposit is money already put toward the goal — no separate field, so the maths stays one path. */
   deposit?: boolean
   /** Label for the deposit field, when shown. */
   depositLabel?: string
@@ -44,7 +44,7 @@ export interface Goal {
   seeds: Partial<Pick<CalculatorState, 'mode' | 'saveFlavor' | 'goalMonths' | 'term' | 'growth' | 'coverMonths'>>
 }
 
-// Carousel order (see design/adr/0006). The most common goals lead; the
+// Carousel order. The most common goals lead; the
 // emergency fund sits early so it's encouraged; "Big purchase" is the catch-all
 // (it absorbs weddings, home projects, and anything else). Mortgage still ships
 // disabled as "Soon" — its calculator isn't ready yet. Vehicle now has its own
