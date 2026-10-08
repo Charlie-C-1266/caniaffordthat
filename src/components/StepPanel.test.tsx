@@ -95,7 +95,7 @@ describe('StepPanel', () => {
 
     it('never invokes a wrapperRef that a caller passed by mistake', () => {
       // There is no wrapper to attach it to, so the prop is silently
-      // swallowed; this pins that as the known behavior rather than an
+      // swallowed; this pins that as the known behaviour rather than an
       // accident that looks like a working scroll target.
       const wrapperRef = vi.fn()
       render(
