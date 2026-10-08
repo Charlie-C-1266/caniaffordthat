@@ -20,7 +20,7 @@ function Harness({ initial = '' }: { initial?: string }) {
   return <MoneyInput value={value} onChange={setValue} {...SIZING} />
 }
 
-// Distinct, unmistakable colors: an assertion on one can't pass by coincidence
+// Distinct, unmistakable colours: an assertion on one can't pass by coincidence
 // if the focused/idle ternary is inverted or collapsed to a single branch.
 const ACCENT = '#ff0000'
 const IDLE = '#0000ff'
@@ -88,22 +88,22 @@ describe('MoneyInput', () => {
     expect(getInput().value).toBe('')
   })
 
-  // The `focused` state exists only to pick the underline color, so a flipped
+  // The `focused` state exists only to pick the underline colour, so a flipped
   // or collapsed ternary here is a silent visual regression on every price,
   // take-home and optional budget field.
-  describe('focus/blur underline color', () => {
-    it('starts on the idle color before any interaction', () => {
+  describe('focus/blur underline colour', () => {
+    it('starts on the idle colour before any interaction', () => {
       render(<MoneyInput value="" onChange={() => {}} {...UNDERLINE} />)
       expect(getInput().style.borderBottomColor).toBe(IDLE_RGB)
     })
 
-    it('switches the underline to the accent color on focus', () => {
+    it('switches the underline to the accent colour on focus', () => {
       render(<MoneyInput value="" onChange={() => {}} {...UNDERLINE} />)
       fireEvent.focus(getInput())
       expect(getInput().style.borderBottomColor).toBe(ACCENT_RGB)
     })
 
-    it('reverts the underline to the idle color on blur', () => {
+    it('reverts the underline to the idle colour on blur', () => {
       render(<MoneyInput value="" onChange={() => {}} {...UNDERLINE} />)
       fireEvent.focus(getInput())
       fireEvent.blur(getInput())
