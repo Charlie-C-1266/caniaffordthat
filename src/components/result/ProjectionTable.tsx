@@ -64,6 +64,12 @@ export function ProjectionTable({ projection }: ProjectionTableProps) {
               </th>
               <td style={{ ...cellStyle, textAlign: 'left', color: 'var(--text-secondary)' }}>{p.dateLabel}</td>
               <td style={{ ...cellStyle, textAlign: 'right' }}>{fmt(p.value)}</td>
+              {/* Purely defensive: every projection reaching this table has a
+                  target above 0 — derive.ts only projects when `target > 0`,
+                  and vehicle.ts only when the finance principal (the finance
+                  projection's target) is above 0. So the `: 0` arm is
+                  unreachable in production — ProjectionTable.test.tsx renders
+                  a 0 target directly to pin it down. */}
               <td style={{ ...cellStyle, textAlign: 'right', color: 'var(--text-secondary)' }}>
                 {target > 0 ? Math.round((p.value / target) * 100) : 0}%
               </td>

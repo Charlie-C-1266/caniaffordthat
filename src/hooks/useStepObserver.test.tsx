@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, render, screen, act } from '@testing-library/react'
 import { useStepObserver } from './useStepObserver'
 import { useCalculator } from '../state/calculatorContext'
 import { CalculatorProvider } from '../state/CalculatorProvider'
@@ -33,7 +33,11 @@ class FakeIntersectionObserver {
   }
 
   fireIntersecting(el: Element) {
-    this.callback([{ target: el, isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)
+    this.fire(el, true)
+  }
+
+  fire(el: Element, isIntersecting: boolean) {
+    this.callback([{ target: el, isIntersecting } as IntersectionObserverEntry], this as unknown as IntersectionObserver)
   }
 }
 
@@ -79,6 +83,56 @@ describe('useStepObserver', () => {
     expect(result.current.revealed[2]).toBe(true)
   })
 
+  it('ignores entries that are not intersecting (panel leaving the trigger zone)', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    const panelEl = document.createElement('div')
+
+    act(() => {
+      result.current.registerPanel(3)(panelEl)
+    })
+    act(() => {
+      FakeIntersectionObserver.instances[0]?.fire(panelEl, false)
+    })
+    expect(result.current.revealed[3]).toBeUndefined()
+  })
+
+  it('unobserves the previous element when an index is re-registered with a new one', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    const elA = document.createElement('div')
+    const elB = document.createElement('div')
+    const observer = () => FakeIntersectionObserver.instances[0]
+
+    act(() => {
+      result.current.registerPanel(2)(elA)
+    })
+    act(() => {
+      observer().fireIntersecting(elA)
+    })
+    expect(result.current.activeIndex).toBe(2)
+
+    act(() => {
+      result.current.registerPanel(2)(elB)
+    })
+    expect(observer().observed.has(elA)).toBe(false)
+    expect(observer().observed.has(elB)).toBe(true)
+
+    // Move focus to another step, then fire an intersection on the stale
+    // element: it must no longer reveal step 2.
+    const elOther = document.createElement('div')
+    act(() => {
+      result.current.registerPanel(1)(elOther)
+    })
+    act(() => {
+      observer().fireIntersecting(elOther)
+    })
+    expect(result.current.activeIndex).toBe(1)
+
+    act(() => {
+      observer().fireIntersecting(elA)
+    })
+    expect(result.current.activeIndex).toBe(1)
+  })
+
   it('returns the same ref callback for the same index across renders (stable identity)', () => {
     const { result, rerender } = renderHook(() => useHarness(), { wrapper })
     const first = result.current.registerPanel(1)
@@ -118,6 +172,25 @@ describe('useStepObserver', () => {
     })
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 900, behavior: 'smooth' })
+  })
+
+  it('observes panels registered via JSX refs before the observer effect runs', () => {
+    // In a real component tree, React attaches ref callbacks during commit,
+    // *before* effects run — so the observer's setup effect must pick up
+    // already-registered panels rather than relying on later registration.
+    function Panels() {
+      const { registerPanel } = useStepObserver()
+      return <div data-testid="panel-0" ref={registerPanel(0)} />
+    }
+    render(
+      <CalculatorProvider>
+        <Panels />
+      </CalculatorProvider>,
+    )
+
+    const instance = FakeIntersectionObserver.instances[0]
+    expect(instance.observed.size).toBe(1)
+    expect(instance.observed.has(screen.getByTestId('panel-0'))).toBe(true)
   })
 
   it('disconnects the observer on unmount', () => {

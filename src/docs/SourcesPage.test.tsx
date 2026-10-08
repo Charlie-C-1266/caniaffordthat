@@ -42,6 +42,23 @@ const outboundLinks = () => screen.getAllByRole('link').filter((a) => (a.getAttr
 /** Every anchor that opens a new browsing context, whatever its scheme. */
 const newTabLinks = () => screen.getAllByRole('link').filter((a) => a.getAttribute('target') === '_blank')
 
+// The published methodology pages, discovered from the multi-page build's HTML
+// entries (`methodology/<name>/index.html`, each served as a directory index at
+// `/methodology/<name>/`) rather than hard-coded here — so publishing a page
+// without listing it on the hub fails this test instead of shipping silently,
+// which is exactly how the salary page went missing.
+const publishedMethodologyHrefs = Object.keys(import.meta.glob('../../methodology/*/index.html')).map(
+  (path) => `/methodology/${path.split('/').at(-2)}/`,
+)
+
+/** The hrefs of the links inside the "full working, per calculator" list. */
+function methodologyHubHrefs() {
+  const heading = screen.getByRole('heading', { name: 'The full working, per calculator' })
+  const list = heading.parentElement?.querySelector('ul')
+  if (!list) throw new Error('the methodology section rendered no list')
+  return [...list.querySelectorAll('a')].map((anchor) => anchor.getAttribute('href'))
+}
+
 describe('SourcesPage', () => {
   it('renders its top-level heading and the page intro', () => {
     render(<SourcesPage />)
@@ -110,6 +127,29 @@ describe('SourcesPage', () => {
     const methodology = screen.getByRole('link', { name: 'How the vehicle calculator works' })
     expect(methodology.getAttribute('href')).toBe('/methodology/vehicle/')
     expect(methodology.getAttribute('target')).toBeNull()
+  })
+
+  it('lists every published methodology page in "The full working, per calculator"', () => {
+    render(<SourcesPage />)
+    // Sanity: the build really does publish more than one methodology page, so
+    // the comparison below can't pass vacuously against an empty list.
+    expect(publishedMethodologyHrefs.length).toBeGreaterThan(1)
+    expect(methodologyHubHrefs().toSorted()).toEqual(publishedMethodologyHrefs.toSorted())
+  })
+
+  it('links the salary methodology page, not just the vehicle one', () => {
+    render(<SourcesPage />)
+    const hrefs = methodologyHubHrefs()
+    expect(hrefs).toContain('/methodology/salary/')
+    expect(hrefs).toContain('/methodology/vehicle/')
+  })
+
+  it('gives the salary entry a label and a blurb describing what the page covers', () => {
+    render(<SourcesPage />)
+    const salaryLink = screen.getByRole('link', { name: 'How the required-salary calculator works' })
+    expect(salaryLink.getAttribute('href')).toBe('/methodology/salary/')
+    // The blurb sits alongside the link in the same list item.
+    expect(salaryLink.closest('li')?.textContent).toContain('take-home')
   })
 
   it('renders a source whose annotation is missing, without dropping its link', () => {
