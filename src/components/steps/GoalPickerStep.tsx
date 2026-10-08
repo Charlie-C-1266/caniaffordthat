@@ -37,10 +37,13 @@ function LandingPill() {
   )
 }
 
-const CARD_WIDTH = 250
-// Horizontal gap between adjacent cards' centers, from the design's cover-flow
-// spec: translateX(offset * 268px).
-const CARD_STEP_X = 268
+// Card width and the horizontal gap between adjacent cards' centers. The
+// design's cover-flow spec is 250px wide, stepped 268px apart, which needs
+// ~1100px of room for the focused card and one neighbour each side — so both
+// are read from custom properties that index.css steps down on narrow
+// viewports rather than being baked in here (see --goal-card-width).
+const CARD_WIDTH = 'var(--goal-card-width)'
+const CARD_STEP_X = 'var(--goal-card-step-x)'
 // Cards more than this many positions from center are faded out / non-interactive.
 const MAX_VISIBLE_OFFSET = 2
 // Delay after selecting a goal before scrolling to Details, so the card's
@@ -54,8 +57,11 @@ const AUTO_ROTATE_MS = 3200
 function cardGeometry(offset: number): CSSProperties {
   const ax = Math.abs(offset)
   const scale = Math.max(0.7, 1 - ax * 0.13)
+  // Written as an explicit +/- term rather than a signed multiplier, so the
+  // generated calc() never reads `+ -3 * ...`.
+  const step = offset === 0 ? '' : ` ${offset < 0 ? '-' : '+'} ${ax} * ${CARD_STEP_X}`
   return {
-    transform: `translateX(calc(-50% + ${offset * CARD_STEP_X}px)) scale(${scale})`,
+    transform: `translateX(calc(-50%${step})) scale(${scale})`,
     opacity: ax > MAX_VISIBLE_OFFSET ? 0 : 1 - ax * 0.32,
     zIndex: 20 - ax,
     pointerEvents: ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto',
@@ -189,8 +195,9 @@ function RoundButton({ icon, label, onClick }: RoundButtonProps) {
       onMouseLeave={() => setHovered(false)}
       aria-label={label}
       style={{
-        width: 48,
-        height: 48,
+        width: 'var(--goal-nav-size)',
+        height: 'var(--goal-nav-size)',
+        flexShrink: 0,
         borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
@@ -276,7 +283,22 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         </p>
 
         <div
-          style={{ position: 'relative', width: '100%', maxWidth: 1100, height: 360 }}
+          data-testid="goal-carousel"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 360,
+            // The cards are absolutely positioned off a centered rail, so at
+            // any viewport narrower than the full cover-flow spread they used
+            // to push `document.documentElement`'s scroll width past the
+            // window and put the *whole page* into horizontal scroll. Clipping
+            // here contains them. `clip` (not `hidden`) so the vertical axis
+            // can stay `visible`: the cards' drop shadows spill well past the
+            // 360px stage, and `hidden` on one axis would force the other to
+            // `auto` and cut them off.
+            overflowX: 'clip',
+            overflowY: 'visible',
+          }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -299,7 +321,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 26 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--goal-controls-gap)', marginTop: 26 }}>
           <RoundButton icon="chevron-left" label="Previous goal" onClick={() => move(-1)} />
           <StartButton goal={focused} onClick={() => select(focused)} />
           <RoundButton icon="chevron-right" label="Next goal" onClick={() => move(1)} />
@@ -347,12 +369,13 @@ function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        minWidth: 230,
+        minWidth: 'var(--goal-cta-min-width)',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        padding: '16px 30px',
+        padding: '16px var(--goal-cta-padding-x)',
+        whiteSpace: 'nowrap',
         borderRadius: 99,
         border: 'none',
         fontSize: 15.5,

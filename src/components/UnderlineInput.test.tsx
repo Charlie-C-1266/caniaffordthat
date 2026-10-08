@@ -18,7 +18,7 @@ function Harness({ initial = '' }: { initial?: string }) {
 describe('UnderlineInput', () => {
   afterEach(cleanup)
 
-  it('underlines with the default idle color before focus', () => {
+  it('underlines with the default idle colour before focus', () => {
     render(<UnderlineInput value="" onChange={() => {}} fontSize="28px" accentColor={ACCENT} />)
     expect(getInput().style.borderBottom).toContain('var(--input-underline)')
   })
@@ -30,8 +30,8 @@ describe('UnderlineInput', () => {
     expect(getInput().style.borderBottom).toContain(CUSTOM_IDLE)
   })
 
-  it('switches the underline to the accent color while focused, and back on blur', () => {
-    // A focus/blur pair wired backwards would show the unfocused color while
+  it('switches the underline to the accent colour while focused, and back on blur', () => {
+    // A focus/blur pair wired backwards would show the unfocused colour while
     // typing — visible to a user, invisible to every other test.
     render(<UnderlineInput value="" onChange={() => {}} fontSize="28px" accentColor={ACCENT} idleColor={CUSTOM_IDLE} />)
 

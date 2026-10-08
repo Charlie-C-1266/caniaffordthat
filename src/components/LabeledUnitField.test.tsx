@@ -26,20 +26,52 @@ function underline(): string {
 }
 
 /** A controlled harness, mirroring the vehicle flow's mileage / mpg / fuel-price fields. */
-function Harness({ initial = '' }: { initial?: string }) {
+function Harness({ label = 'Annual mileage', unit = 'miles', initial = '' }: { label?: string; unit?: string; initial?: string }) {
   const [value, setValue] = useState(initial)
-  return <LabeledUnitField label="Annual mileage" unit="miles" value={value} onChange={setValue} />
+  return <LabeledUnitField label={label} unit={unit} value={value} onChange={setValue} />
 }
 
 describe('LabeledUnitField', () => {
   afterEach(cleanup)
 
-  it('underlines with the neutral idle color before focus', () => {
+  it('associates its label with the unit input, so the field is reachable by its name', () => {
+    render(<Harness label="Fuel price" unit="p/litre" />)
+
+    const input = screen.getByLabelText('Fuel price')
+    expect(input.tagName).toBe('INPUT')
+    expect(input.getAttribute('type')).toBe('number')
+    // The unit suffix stays decoration beside the input, not part of its name.
+    expect(screen.getByText('p/litre')).toBeTruthy()
+  })
+
+  it('points the label at the input it actually wraps', () => {
+    const { container } = render(<Harness label="Annual mileage" unit="miles" />)
+
+    const label = container.querySelector('label')!
+    const input = container.querySelector('input')!
+    expect(label.getAttribute('for')).toBeTruthy()
+    expect(label.getAttribute('for')).toBe(input.id)
+  })
+
+  it('gives each instance its own id, so sibling running-cost fields stay distinct', () => {
+    const { container } = render(
+      <>
+        <Harness label="Annual mileage" unit="miles" />
+        <Harness label="Fuel economy" unit="mpg" />
+      </>,
+    )
+
+    const ids = Array.from(container.querySelectorAll('input')).map((input) => input.id)
+    expect(new Set(ids).size).toBe(2)
+    expect(screen.getByLabelText('Annual mileage')).not.toBe(screen.getByLabelText('Fuel economy'))
+  })
+
+  it('underlines with the neutral idle colour before focus', () => {
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} accentColor={ACCENT} />)
     expect(underline()).toContain('var(--input-underline)')
   })
 
-  it('switches the underline to the accent color while focused, and back on blur', () => {
+  it('switches the underline to the accent colour while focused, and back on blur', () => {
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} accentColor={ACCENT} />)
 
     fireEvent.focus(getInput())
@@ -52,7 +84,7 @@ describe('LabeledUnitField', () => {
 
   it('falls back to the neutral primary-text accent when none is given', () => {
     // Matches LabeledMoneyField, so the two sit together without one of them
-    // lighting up in a mode color the other does not have.
+    // lighting up in a mode colour the other does not have.
     render(<LabeledUnitField label="Annual mileage" unit="miles" value="" onChange={() => {}} />)
     fireEvent.focus(getInput())
     expect(underline()).toContain('var(--text-primary)')
