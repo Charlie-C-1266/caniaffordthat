@@ -29,16 +29,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
-
-      # Surfaces the coverage numbers on every run: the `text` reporter prints
-      # the per-file table straight into this job's log, so a reviewer can see
-      # a 0%-covered file without reproducing the run locally. Deliberately no
-      # `thresholds` in vite.config.ts — large parts of the app are mid-
-      # remediation, so this must not gate the build. A threshold gate is a
-      # follow-up once that backlog is closer to clear.
-      - name: Coverage
+      # One run does both jobs: it fails the build on a failing test exactly as
+      # `npm test` would, and the `text` reporter prints the per-file coverage
+      # table straight into this job's log, so a reviewer can see a 0%-covered
+      # file without reproducing the run locally. Deliberately no `thresholds`
+      # in vite.config.ts — large parts of the app are mid-remediation, so
+      # coverage must not gate the build. A threshold gate is a follow-up once
+      # that backlog is closer to clear.
+      - name: Test (with coverage)
         run: npm run test:coverage
 
       # The same run's `html` reporter output, kept browsable from the Actions
