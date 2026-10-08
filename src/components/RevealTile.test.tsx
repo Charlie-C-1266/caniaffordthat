@@ -59,9 +59,9 @@ describe('RevealTile', () => {
   })
 
   it('merges a caller-supplied style prop in alongside its own reveal styling', () => {
-    // Callers (StepPanel and friends) layer layout on top of the reveal; both
-    // must survive, so neither the spread nor the reveal styles may win
-    // outright.
+    // The step components pass layout styles alongside the reveal (StepPanel
+    // doesn't use RevealTile itself). A key the reveal doesn't set must land
+    // without displacing the reveal styling.
     const tile = renderTile(
       <RevealTile revealed={false} style={{ marginTop: 10 }}>
         content
