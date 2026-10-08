@@ -15,8 +15,13 @@ test.describe('sources & ethos page', () => {
     await expect(page.getByRole('link', { name: /GOV.UK — Vehicle tax rates/ })).toBeVisible()
     await expect(page.getByText(/restated as 40% of spare cash/)).toBeVisible()
 
-    // The per-calculator methodology pages are linked.
+    // The per-calculator methodology pages are linked — every published one, so
+    // a visitor landing here first can reach them all.
     await expect(page.getByRole('link', { name: 'How the vehicle calculator works' })).toHaveAttribute('href', '/methodology/vehicle/')
+    await expect(page.getByRole('link', { name: 'How the required-salary calculator works' })).toHaveAttribute(
+      'href',
+      '/methodology/salary/',
+    )
 
     // The helpful-reading list is seeded and framed as non-citations.
     await expect(page.getByRole('link', { name: 'MoneyHelper', exact: true })).toBeVisible()
