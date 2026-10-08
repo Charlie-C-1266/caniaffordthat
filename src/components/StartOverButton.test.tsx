@@ -62,6 +62,21 @@ describe('StartOverButton', () => {
     expect(button.style.background).toBe('var(--pill-bg-hover)')
   })
 
+  it('still hovers after a tap whose synthetic mouseenter never arrived', () => {
+    // If a tap's synthetic mouseenter never fires, its touch mark must not
+    // outlive the next mouseleave — otherwise it would swallow the following
+    // real mouse hover, and a hybrid touch-and-mouse device would get a pill
+    // that never lights up.
+    render(<StartOverButton onClick={vi.fn()} />)
+    const button = getButton()
+    fireEvent.touchStart(button)
+    fireEvent.touchEnd(button)
+    fireEvent.mouseLeave(button)
+
+    fireEvent.mouseEnter(button)
+    expect(button.style.background).toBe('var(--pill-bg-hover)')
+  })
+
   it('drops the hover background when focus leaves', () => {
     render(<StartOverButton onClick={vi.fn()} />)
     const button = getButton()
