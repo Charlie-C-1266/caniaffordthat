@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The four HTML entry points declared in vite.config.ts. Each <loc> must match
+  that page's canonical URL and og:url exactly, trailing slash included;
+  src/lib/seo.test.ts fails if a page is added, removed or renamed without
+  this file following it.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://caniaffordthat.co.uk/</loc>
+  </url>
+  <url>
+    <loc>https://caniaffordthat.co.uk/methodology/salary/</loc>
+  </url>
+  <url>
+    <loc>https://caniaffordthat.co.uk/methodology/vehicle/</loc>
+  </url>
+  <url>
+    <loc>https://caniaffordthat.co.uk/sources/</loc>
+  </url>
+</urlset>
