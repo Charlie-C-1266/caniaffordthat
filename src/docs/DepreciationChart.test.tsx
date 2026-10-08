@@ -56,6 +56,20 @@ describe('DepreciationChart', () => {
     const lastY = paths.map((d) => Number(d.split(' ').at(-1)!.split(',')[1]))
     expect(lastY[0]).toBeLessThan(lastY[1])
     expect(lastY[1]).toBeLessThan(lastY[2])
+
+    // Each curve spans the plot the gridlines mark out: age 0 on its left
+    // edge, ten years on its right. The gridlines' ends don't go through x()
+    // (the year ticks do), so a flipped or squashed age axis can't shift both
+    // together — and the in-bounds checks above would pass either way.
+    const gridline = container.querySelector('line')!
+    const plotLeft = Number(gridline.getAttribute('x1'))
+    const plotRight = Number(gridline.getAttribute('x2'))
+    expect(plotRight).toBeGreaterThan(plotLeft)
+    for (const d of paths) {
+      const xs = d.split(' ').map((command) => Number(command.slice(1).split(',')[0]))
+      expect(xs[0]).toBeCloseTo(plotLeft, 1)
+      expect(xs.at(-1)).toBeCloseTo(plotRight, 1)
+    }
   })
 
   it('labels the retention gridlines and the age axis ticks', () => {
