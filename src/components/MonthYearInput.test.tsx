@@ -25,6 +25,11 @@ function renderInput(onChange = vi.fn(), months = COMMITTED) {
 describe('MonthYearInput', () => {
   afterEach(cleanup)
 
+  it('renders the committed months as an MM-YYYY draft', () => {
+    renderInput()
+    expect(getInput().value).toBe(COMMITTED_DRAFT)
+  })
+
   it('commits a typed, valid, in-range MM-YYYY as the correct month count', () => {
     const onChange = renderInput()
     fireEvent.change(getInput(), { target: { value: TARGET_DRAFT } })
@@ -79,6 +84,21 @@ describe('MonthYearInput', () => {
     onChange.mockClear()
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(onChange).toHaveBeenCalledWith(TARGET)
+  })
+
+  it('commits on Enter only — any other key leaves committing to the change handler', () => {
+    const onChange = renderInput()
+    const input = getInput()
+    fireEvent.change(input, { target: { value: TARGET_DRAFT } })
+    onChange.mockClear()
+    // Keys that aren't Enter must fall through untouched: the draft is already
+    // committed by handleChange as it's typed, and re-committing here would fire
+    // a redundant onChange on every keystroke (including Tab out of the field).
+    for (const key of ['Tab', 'Escape', 'ArrowUp', '1']) {
+      fireEvent.keyDown(input, { key })
+    }
+    expect(onChange).not.toHaveBeenCalled()
+    expect(input.value).toBe(TARGET_DRAFT)
   })
 
   it('does not commit on Enter while the draft is partial', () => {
