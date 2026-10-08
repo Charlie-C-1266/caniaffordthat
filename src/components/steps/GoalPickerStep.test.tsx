@@ -10,7 +10,7 @@ import type { CalculatorState } from '../../state/types'
 // The carousel's pure helpers (`wrapIndex`, `circularOffset`, `seedFromGoal`)
 // are covered in lib/goals.test.ts; the component's own state wiring around
 // them had no coverage at all. What's tested here is the timing- and
-// internal-state-driven behavior e2e can't reach at this granularity: the
+// internal-state-driven behaviour e2e can't reach at this granularity: the
 // auto-rotate lifecycle (engage / hover / goal-picked / reduced-motion), the
 // teleport-on-wrap flag, focus-vs-select on a card click, and the delayed
 // scroll after a goal is selected.
@@ -94,8 +94,8 @@ const teleportingGoals = () => GOALS.filter((goal) => !cardFor(goal).style.trans
 const seamCrossers = (from: number, to: number) =>
   GOALS.filter((_, i) => Math.abs(circularOffset(i, to) - circularOffset(i, from)) > 1).map((goal) => goal.id)
 
-/** Whether card `i` is inside the faded-in band when `center` is focused. */
-const visibleAt = (i: number, center: number) => Math.abs(circularOffset(i, center)) <= MAX_VISIBLE_OFFSET
+/** Whether card `i` is inside the faded-in band when card `centre` is focused. */
+const visibleAt = (i: number, centre: number) => Math.abs(circularOffset(i, centre)) <= MAX_VISIBLE_OFFSET
 
 describe('GoalPickerStep', () => {
   beforeEach(() => {
