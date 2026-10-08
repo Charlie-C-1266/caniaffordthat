@@ -45,10 +45,10 @@ describe('ProgressRail', () => {
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(2)
   })
 
-  it('still reports the clicked index after the active dot moves — no stale closure across re-renders', () => {
-    // The per-dot handler closes over `index` from the .map(); a bug that
-    // captured the *active* index instead would pass the test above (active
-    // starts at 0) and silently mis-route every jump once the user scrolls.
+  it('still reports the clicked index after the active dot moves', () => {
+    // The test above pins routing on first render; this one re-checks it after
+    // a re-render has moved the active dot, which is the state the rail is in
+    // for real once the user starts scrolling through the steps.
     const onSelect = vi.fn()
 
     function Harness() {
@@ -97,7 +97,7 @@ describe('ProgressRail', () => {
     expect(container.querySelector('nav[aria-label="Step progress"]')).not.toBeNull()
   })
 
-  it('fills only the active dot with the accent color, leaving the others hollow', () => {
+  it('fills only the active dot with the accent colour, leaving the others hollow', () => {
     render(<ProgressRail activeIndex={1} labels={LABELS} accentColor="rgb(120, 200, 255)" onSelect={() => {}} />)
 
     const dotOf = (label: string) => screen.getByRole('button', { name: label }).firstElementChild as HTMLElement
