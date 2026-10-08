@@ -2,6 +2,8 @@ import { useEffect, useState, type KeyboardEvent } from 'react'
 import { formatMonthYearDraft, monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
 
 interface MonthYearInputProps {
+  /** `id` for the `<input>`, so the goal-date `<FieldLabel htmlFor>` can point at it. */
+  id?: string
   /** Committed value, in months from now. */
   months: number
   /** Earliest value that counts as valid, in months from now (the goal-date picker's floor is "next month"). */
@@ -19,7 +21,7 @@ interface MonthYearInputProps {
  * shape (see `formatMonthYearDraft`); it keeps its own draft text while
  * typing and only commits once it's a fully valid, in-range date.
  */
-export function MonthYearInput({ months, minMonths, accentColor, onChange }: MonthYearInputProps) {
+export function MonthYearInput({ id, months, minMonths, accentColor, onChange }: MonthYearInputProps) {
   const [draft, setDraft] = useState(() => monthYearFromMonths(months))
   const [focused, setFocused] = useState(false)
 
@@ -59,6 +61,7 @@ export function MonthYearInput({ months, minMonths, accentColor, onChange }: Mon
 
   return (
     <input
+      id={id}
       type="text"
       inputMode="numeric"
       placeholder="MM-YYYY"

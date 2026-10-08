@@ -116,3 +116,26 @@ describe('ResultActions copy feedback', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 })
+
+describe('ResultActions "Pick another goal"', () => {
+  beforeEach(() => mockCopy.mockReset())
+  afterEach(cleanup)
+
+  it('sends the user back to the goal picker at flow index 0', () => {
+    const scrollToIndex = vi.fn()
+    render(
+      <CalculatorProvider>
+        <ResultActions scrollToIndex={scrollToIndex} />
+      </CalculatorProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pick another goal' }))
+
+    // Index 0 is the goal picker in every flow — a hard-coded 0 rather than
+    // anything derived, so this pins the contract the prop's doc states.
+    expect(scrollToIndex).toHaveBeenCalledTimes(1)
+    expect(scrollToIndex).toHaveBeenCalledWith(0)
+    // Starting over is not a copy: the clipboard must stay untouched.
+    expect(mockCopy).not.toHaveBeenCalled()
+  })
+})

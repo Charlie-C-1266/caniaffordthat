@@ -128,4 +128,9 @@ describe('MonthYearInput', () => {
     fireEvent.blur(input)
     expect(input.value).toBe(TARGET_DRAFT)
   })
+
+  it('puts the id it is given on the input, so the goal-date FieldLabel can point at it', () => {
+    render(<MonthYearInput id="goal-date" months={COMMITTED} minMonths={MIN_MONTHS} accentColor="#4ade80" onChange={vi.fn()} />)
+    expect(getInput().id).toBe('goal-date')
+  })
 })
