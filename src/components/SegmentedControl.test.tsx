@@ -51,7 +51,7 @@ describe('SegmentedControl', () => {
   })
 
   // `size` branches layout only (flex, padding, borderRadius, width, font
-  // size) and never behavior, so a regression there is invisible to anything
+  // size) and never behaviour, so a regression there is invisible to anything
   // that only checks onChange. These pin both halves of that claim: the
   // interaction is identical, and the layout genuinely differs.
   describe('size', () => {

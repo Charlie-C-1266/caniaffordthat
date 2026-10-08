@@ -70,7 +70,7 @@ describe('SliderField', () => {
     // setting a range input to the value it already holds fires no change
     // event (React's value tracker dedupes it, as browsers do), so a parent
     // never sees a redundant call. Pinned here because the absence of a guard
-    // in the component is only safe while that platform behavior holds.
+    // in the component is only safe while that platform behaviour holds.
     const onChange = vi.fn()
     render(<SliderField {...PROPS} onChange={onChange} />)
     const slider = screen.getByRole<HTMLInputElement>('slider')
