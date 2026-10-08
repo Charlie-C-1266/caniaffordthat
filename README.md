@@ -54,6 +54,10 @@ git push -u origin feature/short-description
 Then open a PR into `dev`. CI (`.github/workflows/ci.yml` — typecheck, lint,
 test, build, e2e) must pass before merging.
 
+Dependency and GitHub Actions updates arrive on their own: Dependabot
+(`.github/dependabot.yml`) opens weekly PRs into `dev` for npm, the Dockerfile
+base images and the pinned actions, with minor and patch bumps grouped.
+
 ## Branching and releases
 
 Two long-lived branches:
