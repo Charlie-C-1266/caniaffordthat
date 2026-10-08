@@ -30,7 +30,23 @@ export function LabeledUnitField({ label, unit, value, onChange, onKeyDown, acce
       <FieldLabel size="sm" htmlFor={inputId}>
         {label}
       </FieldLabel>
-      <div style={{ position: 'relative' }}>
+      {/*
+        The unit sits in the flow beside the input rather than absolutely over
+        a fixed padding reservation: a flat gutter can't know how wide the
+        field ends up, and in a narrow grid track it could consume the whole
+        cell, leaving the typed value with zero px to render in. As a flex
+        row the gutter is exactly the unit's own width, and `minWidth: 0` lets
+        the input shrink without ever being squeezed out of existence.
+      */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+          paddingBottom: 7,
+          borderBottom: `var(--border-width-underline) solid ${focused ? accentColor : 'var(--input-underline)'}`,
+        }}
+      >
         <input
           id={inputId}
           type="number"
@@ -43,13 +59,13 @@ export function LabeledUnitField({ label, unit, value, onChange, onKeyDown, acce
           onBlur={() => setFocused(false)}
           placeholder="0"
           style={{
-            width: '100%',
+            flex: 1,
+            minWidth: 0,
             boxSizing: 'border-box',
-            padding: '0 56px 7px 0',
+            padding: 0,
             fontSize: 'var(--fs-body-lg)',
             fontWeight: 700,
             border: 'none',
-            borderBottom: `var(--border-width-underline) solid ${focused ? accentColor : 'var(--input-underline)'}`,
             background: 'transparent',
             color: 'var(--text-primary)',
             fontFamily: 'inherit',
@@ -58,9 +74,7 @@ export function LabeledUnitField({ label, unit, value, onChange, onKeyDown, acce
         />
         <span
           style={{
-            position: 'absolute',
-            right: 0,
-            bottom: 10,
+            flexShrink: 0,
             fontSize: 'var(--fs-prefix-sm)',
             fontWeight: 700,
             color: 'var(--text-tertiary-dim)',

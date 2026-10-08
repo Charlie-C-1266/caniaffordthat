@@ -46,6 +46,12 @@ function horizonLabel(months: number): string {
  * "goal reached", not a fractional overshoot).
  */
 export function savingProjection(target: number, contribution: number, growthPct: number, months: number): Projection {
+  // Purely defensive: every call site already floors `months` at 1 — derive.ts
+  // only projects when `target > 0`, so `monthsToSave` returns >= 1 there (its
+  // loop runs at least once) and its other branches pass `Math.max(1, ...)`;
+  // vehicle.ts passes `Math.max(1, state.term)`. So `months === 0` (the only
+  // value this `|| 1` catches, since a negative stays truthy) is unreachable
+  // in production — projection.test.ts calls in with 0 directly to pin it down.
   const cap = Math.min(months, CHART_MONTHS_CAP) || 1
   const i = growthPct / 100 / 12
   const points: ProjectionPoint[] = [{ month: 0, value: 0, dateLabel: addMonths(0) }]
@@ -64,6 +70,8 @@ export function savingProjection(target: number, contribution: number, growthPct
  * so the repaid amount honestly tops out below the principal.
  */
 export function financeProjection(principal: number, payment: number, growthPct: number, months: number): Projection {
+  // Defensive in the same way as savingProjection's `|| 1` above: derive.ts and
+  // vehicle.ts both pass a `months` already floored at 1, so this never fires.
   const cap = Math.min(months, CHART_MONTHS_CAP) || 1
   const i = growthPct / 100 / 12
   const points: ProjectionPoint[] = [{ month: 0, value: 0, dateLabel: addMonths(0) }]
