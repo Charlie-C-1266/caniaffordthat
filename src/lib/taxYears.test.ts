@@ -90,8 +90,10 @@ describe('CURRENT_TAX_YEAR', () => {
   })
 
   it('charges a higher marginal rate in each successive income-tax band', () => {
-    // Progressivity is an assumption baked into the reverse solver's
-    // monotonic search: a non-increasing rate would break it.
+    // UK income tax rises band by band, so a dip here is a swapped or mistyped
+    // rate from the April refresh. (Not something the reverse solver needs: its
+    // bisection only needs take-home to keep rising with gross, which NI's
+    // 8% → 2% step shows doesn't require rising rates.)
     const rates = CURRENT_TAX_YEAR.incomeTaxBands.map((band) => band.rate)
     expect(rates).toEqual(ascending(rates))
     expect(new Set(rates).size).toBe(rates.length)
