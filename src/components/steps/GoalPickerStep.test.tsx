@@ -90,7 +90,9 @@ const teleportingGoals = () => GOALS.filter((goal) => !cardFor(goal).style.trans
 // of the strip (offset +3, fully faded out) to the near edge of the other side,
 // or back. That card is the only one allowed to jump, and because one end of
 // its move is past the visible band it fades in or out in place rather than
-// flying across the stage.
+// flying across the stage. This only picks out the seam-crossers for
+// single-step moves: on a longer jump every card's offset changes by more than
+// one (see the multi-position test below and #156).
 const seamCrossers = (from: number, to: number) =>
   GOALS.filter((_, i) => Math.abs(circularOffset(i, to) - circularOffset(i, from)) > 1).map((goal) => goal.id)
 
@@ -306,13 +308,17 @@ describe('GoalPickerStep', () => {
       for (const id of teleportingGoals()) expect(watched).not.toContain(id)
     })
 
-    it('teleports every card on a jump of more than one position, since none of them moves by one', () => {
+    // Records current behaviour, not the intended one. The teleport rule flags
+    // any card whose offset changes by more than one, so a dot jump of two or
+    // more positions teleports every card and the carousel snaps instead of
+    // sliding. That's a bug (#156): once it's fixed, only the cards crossing
+    // the wrap seam should teleport here, and this test should say so.
+    it('currently teleports every card on a jump of more than one position (#156)', () => {
       renderPicker()
       // Two dots along — far enough that no card is making a single step.
       const target = INITIAL_CAROUSEL_INDEX + 2
       fireEvent.click(dotFor(GOALS[target]))
       expect(carouselIndex()).toBe(target)
-      expect(seamCrossers(INITIAL_CAROUSEL_INDEX, target)).toHaveLength(GOALS.length)
       expect(teleportingGoals()).toEqual(GOALS.map((goal) => goal.id))
     })
   })
