@@ -9,6 +9,8 @@ interface UnderlineInputProps {
   accentColor: string
   /** Border color while unfocused. Defaults to the neutral underline token. */
   idleColor?: string
+  /** Caps how much the field will accept, matching the cap hydration applies to the same value. */
+  maxLength?: number
 }
 
 /**
@@ -23,6 +25,7 @@ export function UnderlineInput({
   fontSize,
   accentColor,
   idleColor = 'var(--input-underline)',
+  maxLength,
 }: UnderlineInputProps) {
   const [focused, setFocused] = useState(false)
 
@@ -35,6 +38,7 @@ export function UnderlineInput({
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       placeholder={placeholder}
+      maxLength={maxLength}
       style={{
         width: '100%',
         boxSizing: 'border-box',

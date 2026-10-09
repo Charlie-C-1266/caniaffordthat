@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { buildShareParams, hydrateStateFromUrl, startOverUrl } from './urlState'
+import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
+import { ITEM_NAME_MAX_LENGTH } from './fields'
+import { TERM_RANGES } from './vehicle'
 
 describe('hydrateStateFromUrl', () => {
   it('returns the defaults untouched when neither goalId nor itemPrice is present', () => {
@@ -78,7 +80,7 @@ describe('hydrateStateFromUrl', () => {
   })
 
   it('allows terms up to 84 months only for vehicle links — the bank-loan slider is the only UI that goes there', () => {
-    expect(hydrateStateFromUrl('?goalId=car&itemPrice=15000&term=84').term).toBe(84)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&itemPrice=15000&term=84').term).toBe(84)
     expect(hydrateStateFromUrl('?goalId=big&itemPrice=15000&term=84').term).toBe(60)
   })
 
@@ -188,6 +190,143 @@ describe('buildShareParams', () => {
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
     expect(restored.growth).toBe(8.9)
+  })
+})
+
+describe('hydrateStateFromUrl — untrusted string fields', () => {
+  // The money fields were previously copied out of the query string verbatim,
+  // so a link could hold a value the inputs themselves refuse. The nastiest is
+  // a negative: MoneyInput clamps those to "0" precisely so the figure on
+  // screen can't disagree with the one num() feeds the maths, and a link
+  // bypassing that re-opened the divergence #30 closed.
+
+  // Every shared string field except the free-text title holds a money figure.
+  const MONEY_FIELDS = STRING_FIELDS.filter((field) => field !== 'itemName')
+
+  it('covers every money field in STRING_FIELDS', () => {
+    // Guards the loops below against silently passing on an empty list, and
+    // against itemName being dropped from the shared set.
+    expect(MONEY_FIELDS.length).toBe(STRING_FIELDS.length - 1)
+    expect(MONEY_FIELDS.length).toBeGreaterThan(10)
+    expect(STRING_FIELDS).toContain('itemName')
+  })
+
+  // Driven off STRING_FIELDS itself, so a newly shared field is covered here
+  // the moment it is added rather than quietly skipped.
+  const INVALID = ['-500', '-0.01', '-0', 'abc', '', '   ', 'NaN', 'Infinity', '1e999', '+500', '0x1F4', '500.']
+
+  for (const bad of INVALID) {
+    it(`falls back to the default for every money field given ${JSON.stringify(bad)}`, () => {
+      // Collected rather than asserted in the loop so a failure names the fields.
+      const trusted = MONEY_FIELDS.filter(
+        (field) => hydrateStateFromUrl(`?goalId=big&${field}=${encodeURIComponent(bad)}`)[field] !== DEFAULT_STATE[field],
+      )
+      expect(trusted).toEqual([])
+    })
+  }
+
+  const VALID = ['0', '1200', '1200.50', '.5', '1e308']
+
+  for (const good of VALID) {
+    it(`preserves ${JSON.stringify(good)} unchanged for every money field`, () => {
+      const mangled = MONEY_FIELDS.filter(
+        (field) => hydrateStateFromUrl(`?goalId=big&${field}=${encodeURIComponent(good)}`)[field] !== good,
+      )
+      expect(mangled).toEqual([])
+    })
+  }
+
+  it('shows £0 rather than a negative price, so the field and the maths agree', () => {
+    // The headline case from the issue.
+    const state = hydrateStateFromUrl('?goalId=big&itemPrice=-500&takeHome=2500')
+    expect(state.itemPrice).toBe(DEFAULT_STATE.itemPrice)
+    expect(state.takeHome).toBe('2500')
+  })
+
+  it('trims surrounding whitespace off an otherwise valid figure', () => {
+    // A number input cannot display " 1200 " — the browser blanks it — which
+    // would re-create the very display/maths divergence this closes.
+    expect(hydrateStateFromUrl('?goalId=big&itemPrice=%201200%20').itemPrice).toBe('1200')
+  })
+
+  it('caps an over-long itemName and leaves a normal one alone', () => {
+    const long = 'x'.repeat(ITEM_NAME_MAX_LENGTH + 50)
+    expect(hydrateStateFromUrl(`?goalId=big&itemName=${long}`).itemName).toHaveLength(ITEM_NAME_MAX_LENGTH)
+
+    const exact = 'y'.repeat(ITEM_NAME_MAX_LENGTH)
+    expect(hydrateStateFromUrl(`?goalId=big&itemName=${exact}`).itemName).toBe(exact)
+
+    expect(hydrateStateFromUrl('?goalId=big&itemName=').itemName).toBe('')
+    expect(hydrateStateFromUrl('?goalId=big&itemName=New+sofa').itemName).toBe('New sofa')
+  })
+
+  it('leaves a money field absent from the link at its default', () => {
+    // Absent and invalid both land on the default, but for different reasons —
+    // this pins that an absent field never goes through the sanitiser.
+    const state = hydrateStateFromUrl('?goalId=big&itemPrice=500')
+    expect(state.housing).toBe(DEFAULT_STATE.housing)
+    expect(state.itemName).toBe(DEFAULT_STATE.itemName)
+  })
+
+  it('still round-trips a state whose money fields are legitimately blank', () => {
+    // DEFAULT_STATE leaves itemPrice/takeHome/grossSalary as '', which
+    // buildShareParams writes as empty params. Those must come back as '' and
+    // not be mistaken for tampering.
+    const shared = { ...DEFAULT_STATE, goalId: 'emergency', takeHome: '2500' } satisfies typeof DEFAULT_STATE
+    const restored = hydrateStateFromUrl(`?${buildShareParams(shared).toString()}`)
+    // carouselIndex is re-derived from goalId by design rather than shared
+    // ('emergency' is 3rd in carousel order), so it is the one expected change.
+    expect(restored).toEqual({ ...shared, carouselIndex: 2 })
+  })
+})
+
+describe('hydrateStateFromUrl — vehicle finance term', () => {
+  // The term slider in VehiclePurchaseStep only ever offers TERM_RANGES[method],
+  // and `chooseMethod` re-clamps on every method switch, so the app itself can't
+  // produce an out-of-range pairing. A hand-edited (or stale) link can, and
+  // `deriveVehicleResult` would quote that deal — hence the clamp on hydration.
+  // Every expectation below reads the real TERM_RANGES rather than hard-coding
+  // bounds, so changing a range updates the tests with it.
+
+  it('clamps a term above the method maximum down to it', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=84').term).toBe(TERM_RANGES.pcp.max)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=hp&term=84').term).toBe(TERM_RANGES.hp.max)
+  })
+
+  it('clamps a term below the method minimum up to it', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=hp&term=3').term).toBe(TERM_RANGES.hp.min)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=1').term).toBe(TERM_RANGES.pcp.min)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&term=6').term).toBe(TERM_RANGES.loan.min)
+  })
+
+  it('leaves a term already inside its method range untouched', () => {
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=loan&term=72').term).toBe(72)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=pcp&term=36').term).toBe(36)
+  })
+
+  it("keeps each method range's own endpoints", () => {
+    for (const method of ['pcp', 'hp', 'loan'] as const) {
+      const { min, max } = TERM_RANGES[method]
+      expect(hydrateStateFromUrl(`?goalId=car&vehicleMethod=${method}&term=${min}`).term).toBe(min)
+      expect(hydrateStateFromUrl(`?goalId=car&vehicleMethod=${method}&term=${max}`).term).toBe(max)
+    }
+  })
+
+  it("leaves a cash link's term as read — cash has no term range", () => {
+    // 84 is the generic NUMBER_FIELDS ceiling, which still applies.
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=cash&term=84').term).toBe(84)
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=cash&term=3').term).toBe(3)
+  })
+
+  it('still caps non-vehicle links at 60 whatever vehicleMethod says', () => {
+    // A vehicleMethod param on a non-vehicle link must not unlock the wider range.
+    expect(hydrateStateFromUrl('?goalId=big&vehicleMethod=loan&itemPrice=15000&term=84').term).toBe(60)
+  })
+
+  it('clamps against the hydrated method, not the default one', () => {
+    // An invalid method falls back to the default (pcp), so the pcp range applies.
+    expect(DEFAULT_STATE.vehicleMethod).toBe('pcp')
+    expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=lease&term=84').term).toBe(TERM_RANGES.pcp.max)
   })
 })
 

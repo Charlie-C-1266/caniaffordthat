@@ -54,6 +54,13 @@ const ICONS = {
 /** A registered icon name — a compile error (not a silently blank icon) if a caller or the goal config typos one. */
 export type IconName = keyof typeof ICONS
 
+/**
+ * Every registered icon name, at runtime. `IconName` only exists at compile
+ * time, so this is what lets a test walk the whole registry (and check the
+ * goal config's names against it) instead of hand-listing the keys.
+ */
+export const ICON_NAMES = Object.keys(ICONS) as readonly IconName[]
+
 interface IconProps {
   name: IconName
   size?: number

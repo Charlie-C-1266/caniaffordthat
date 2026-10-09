@@ -173,7 +173,12 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
                 onKeyDown={handleEnterAdvance}
               />
             </div>
-            <div style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
+            {/* The chips row wraps in its own right: the outer row only wraps the
+                whole group below the field, so without flexWrap the three chips
+                stayed on one line and the last ran out past the tile's rounded
+                edge at phone widths (21px past it at 360px). At desktop widths
+                they still fit beside the field on a single row. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 2 }}>
               {MAINTENANCE_PRESETS.map((preset) => (
                 <PresetChip
                   key={preset.id}
@@ -191,7 +196,12 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
           </div>
 
           <SectionLabel>Insurance &amp; tax</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px', marginBottom: 12 }}>
+          {/* alignItems:'end' bottom-aligns the pair. "Road tax (VED) / year" plus
+              its InfoHint wraps onto one more line than "Insurance / year", and
+              top-aligned grid items left the two £ amounts 17px out of line with
+              each other. Aligning on the inputs rather than the labels keeps them
+              level whatever the labels wrap to. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px', marginBottom: 12, alignItems: 'end' }}>
             <LabeledMoneyField
               label="Insurance / year"
               value={state.insuranceAnnual}
