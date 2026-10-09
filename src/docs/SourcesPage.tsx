@@ -7,12 +7,23 @@ import { DataTable } from './article/DataTable'
 import { PageHeader } from './article/PageHeader'
 import { HELPFUL_LINKS, SOURCE_LIST } from '../lib/sources'
 
-/** A methodology page we've published, listed in "The full working, per calculator". */
+/**
+ * A methodology page we've published, listed in "The full working, per
+ * calculator". Every page with its own build entry in `vite.config.ts` belongs
+ * here — that's what makes it discoverable to someone who lands on `/sources/`
+ * first rather than reaching it from inside a calculator.
+ */
 const METHODOLOGY_PAGES = [
   {
     label: 'How the vehicle calculator works',
     href: '/methodology/vehicle/',
     blurb: 'Cash, PCP, HP and loan maths, the depreciation curve behind estimated balloons, fuel and road-tax figures.',
+  },
+  {
+    label: 'How the required-salary calculator works',
+    href: '/methodology/salary/',
+    blurb:
+      'The gross↔take-home engine behind "what salary would I need?": income-tax and National Insurance bands, the £100k allowance taper, and the UK median comparison.',
   },
 ]
 

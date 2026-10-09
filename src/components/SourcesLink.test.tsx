@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { SourcesLink } from './SourcesLink'
 
-// This pill is the only route to the annotated source list, and it has to open
-// in a new tab: the app holds the whole flow in memory, so navigating the
-// current tab away mid-flow would throw away everything typed so far. The
-// target/rel pair and the href are the things that must not drift.
+const getLink = () => screen.getByTestId('sources-link')
 
 describe('SourcesLink', () => {
   afterEach(() => {
@@ -14,38 +11,63 @@ describe('SourcesLink', () => {
     vi.restoreAllMocks()
   })
 
-  it('points at the sources page', () => {
+  it('links out to the sources page in a new tab, without leaking the referrer', () => {
     render(<SourcesLink />)
-
-    const link = screen.getByRole('link', { name: 'Our sources' })
+    const link = getLink()
     expect(link.getAttribute('href')).toBe('/sources/')
-  })
-
-  it('opens in a new tab so figures typed mid-flow survive', () => {
-    render(<SourcesLink />)
-
-    const link = screen.getByRole('link', { name: 'Our sources' })
     expect(link.getAttribute('target')).toBe('_blank')
-
-    // target="_blank" without both tokens hands the opened page a live
-    // window.opener handle and leaks the referrer.
-    const rel = link.getAttribute('rel') ?? ''
-    expect(rel).toContain('noopener')
-    expect(rel).toContain('noreferrer')
+    // A mid-flow click must not cost the user the figures they've typed, and
+    // noopener/noreferrer is the standard guard on a new-tab link.
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(link.textContent).toBe('Our sources')
   })
 
-  it('swaps to the hover background on pointer enter and back on leave', () => {
+  it('rests on the plain pill background', () => {
     render(<SourcesLink />)
+    expect(getLink().style.background).toBe('var(--pill-bg)')
+  })
 
-    const link = screen.getByRole('link', { name: 'Our sources' })
+  it('swaps to the hover background while moused over and back on leave', () => {
+    render(<SourcesLink />)
+    const link = getLink()
+    fireEvent.mouseEnter(link)
+    expect(link.style.background).toBe('var(--pill-bg-hover)')
+    fireEvent.mouseLeave(link)
     expect(link.style.background).toBe('var(--pill-bg)')
+  })
+
+  it('does not stick in the hover background after a touch tap', () => {
+    // A real tap fires touchstart/touchend and *then* a synthetic mouseenter,
+    // with no mouseleave until the user taps elsewhere — so replay that exact
+    // order. Anything that lights the pill up here would leave it looking
+    // stuck/broken on a phone.
+    render(<SourcesLink />)
+    const link = getLink()
+    fireEvent.touchStart(link)
+    fireEvent.touchEnd(link)
+    fireEvent.mouseEnter(link)
+    expect(link.style.background).toBe('var(--pill-bg)')
+  })
+
+  it('still hovers normally with a mouse after an earlier touch tap', () => {
+    // Hybrid touch-and-mouse devices must not lose hover permanently just
+    // because the pill was tapped once.
+    render(<SourcesLink />)
+    const link = getLink()
+    fireEvent.touchStart(link)
+    fireEvent.touchEnd(link)
+    fireEvent.mouseEnter(link)
+    fireEvent.mouseLeave(link)
 
     fireEvent.mouseEnter(link)
     expect(link.style.background).toBe('var(--pill-bg-hover)')
+  })
 
-    // Leaving restores the resting token. (Touch devices can strand the
-    // hovered style — that's #116's fix, deliberately not asserted here.)
-    fireEvent.mouseLeave(link)
+  it('drops the hover background when focus leaves', () => {
+    render(<SourcesLink />)
+    const link = getLink()
+    fireEvent.mouseEnter(link)
+    fireEvent.blur(link)
     expect(link.style.background).toBe('var(--pill-bg)')
   })
 

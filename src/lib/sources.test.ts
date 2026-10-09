@@ -75,4 +75,9 @@ describe('HELPFUL_LINKS', () => {
       expect(new URL(link.url).protocol).toBe('https:')
     }
   })
+
+  it('has no duplicate URLs — the same resource listed twice reads as an editing slip on a public page', () => {
+    const urls = HELPFUL_LINKS.map((link) => link.url)
+    expect(new Set(urls).size).toBe(urls.length)
+  })
 })
