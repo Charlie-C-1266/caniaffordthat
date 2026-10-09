@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { IndexHtmlTransformContext } from 'vite'
 import {
-  isCalculatorEntry,
   noscriptFallbackHtml,
   noscriptFallbackPlugin,
   noscriptFallbackTags,
@@ -17,53 +16,28 @@ import {
 /** The four HTML entries, as vite.config.ts lists them, by the path the plugin sees. */
 const ENTRY_PATHS = ['/index.html', '/methodology/vehicle/index.html', '/methodology/salary/index.html', '/sources/index.html'] as const
 
-describe('isCalculatorEntry', () => {
-  it('is true only for the calculator entry', () => {
-    expect(isCalculatorEntry('/index.html')).toBe(true)
-    expect(isCalculatorEntry('/sources/index.html')).toBe(false)
-    expect(isCalculatorEntry('/methodology/salary/index.html')).toBe(false)
-    expect(isCalculatorEntry('/methodology/vehicle/index.html')).toBe(false)
-  })
-
-  it("also handles the dev server's request paths", () => {
-    // In dev the plugin is handed '/' or '/sources/', not a filename.
-    expect(isCalculatorEntry('/')).toBe(true)
-    expect(isCalculatorEntry('/sources/')).toBe(false)
-    expect(isCalculatorEntry('/methodology/salary/')).toBe(false)
-  })
-})
-
 describe('noscriptFallbackHtml', () => {
-  it('gives every entry a visible heading and message', () => {
-    // Collected rather than asserted per entry so a failure names the pages.
-    const incomplete = ENTRY_PATHS.filter((path) => {
-      const html = noscriptFallbackHtml(path)
-      return (
-        !html.includes(`<h1>${NOSCRIPT_HEADING}</h1>`) ||
-        !html.includes(NOSCRIPT_MESSAGE) ||
-        !html.includes(`class="${NOSCRIPT_CLASS}"`) ||
-        !html.startsWith('<noscript>') ||
-        !html.endsWith('</noscript>')
-      )
-    })
-    expect(incomplete).toEqual([])
+  it('is a <noscript> block with a visible heading and message', () => {
+    const html = noscriptFallbackHtml()
+    expect(html.startsWith('<noscript>')).toBe(true)
+    expect(html.endsWith('</noscript>')).toBe(true)
+    expect(html).toContain(`class="${NOSCRIPT_CLASS}"`)
+    expect(html).toContain(`<h1>${NOSCRIPT_HEADING}</h1>`)
+    expect(html).toContain(NOSCRIPT_MESSAGE)
   })
 
-  it('offers the sources link on the calculator only, so it is not a dead end', () => {
-    expect(noscriptFallbackHtml('/index.html')).toContain('href="/sources/"')
-    // On the sources page itself that link would point at the current page.
-    const docsWithLink = ENTRY_PATHS.slice(1).filter((path) => noscriptFallbackHtml(path).includes('href="/sources/"'))
-    expect(docsWithLink).toEqual([])
+  it('speaks for whichever page it is on, not just the calculator', () => {
+    // The same copy shows on the sources and methodology pages.
+    expect(NOSCRIPT_MESSAGE).toMatch(/^This page needs JavaScript/)
+    expect(NOSCRIPT_MESSAGE).not.toContain('calculator')
   })
 
-  it('keeps the heading and message copy identical across all four entries', () => {
-    // The whole reason this is generated rather than hand-copied (cf. #41).
-    const bodies = ENTRY_PATHS.map((path) => noscriptFallbackHtml(path).replace(/\s*<p><a href="\/sources\/">[^<]*<\/a><\/p>/, ''))
-    expect(new Set(bodies).size).toBe(1)
+  it('carries no links, since every page it could point at needs JavaScript too', () => {
+    expect(noscriptFallbackHtml()).not.toContain('<a ')
   })
 
   it('carries its own styles, because no stylesheet loads without the bundle', () => {
-    const html = noscriptFallbackHtml('/index.html')
+    const html = noscriptFallbackHtml()
     expect(html).toContain('<style>')
     // Including the page background: with no bundle, body has none.
     expect(html).toContain('body {')
@@ -91,15 +65,11 @@ describe('NOSCRIPT_COLORS', () => {
   it('matches the dark theme tokens', () => {
     expect(NOSCRIPT_COLORS.dark.background).toBe(tokenValue(':root', '--bg-dark-1'))
     expect(NOSCRIPT_COLORS.dark.text).toBe(tokenValue(':root', '--text-primary'))
-    expect(NOSCRIPT_COLORS.dark.link).toBe(tokenValue(':root', '--accent-save'))
   })
 
   it('matches the light theme tokens', () => {
     expect(NOSCRIPT_COLORS.light.background).toBe(tokenValue(":root\\[data-theme='light'\\]", '--bg-dark-1'))
     expect(NOSCRIPT_COLORS.light.text).toBe(tokenValue(":root\\[data-theme='light'\\]", '--text-primary'))
-    // --accent-save is only 1.84:1 on the light background; --accent-save-text
-    // is the AA-passing variant, which is what a link needs.
-    expect(NOSCRIPT_COLORS.light.link).toBe(tokenValue(":root\\[data-theme='light'\\]", '--accent-save-text'))
   })
 })
 
@@ -119,13 +89,12 @@ describe('noscriptFallbackPlugin', () => {
     const injected = ENTRY_PATHS.map((path) =>
       handler('<!doctype html><html><head></head><body></body></html>', { path } as IndexHtmlTransformContext),
     )
-    expect(injected).toEqual(ENTRY_PATHS.map((path) => noscriptFallbackTags(path)))
+    // The same fallback on every entry — the reason it's generated rather than
+    // hand-copied (cf. #41).
+    expect(injected).toEqual(ENTRY_PATHS.map(() => noscriptFallbackTags()))
 
     // Prepended into the body, so the fallback is a no-JS visitor's first content.
-    const placements = ENTRY_PATHS.map((path) => {
-      const [tag] = noscriptFallbackTags(path)
-      return { tag: tag.tag, injectTo: tag.injectTo }
-    })
-    expect(placements).toEqual(ENTRY_PATHS.map(() => ({ tag: 'noscript', injectTo: 'body-prepend' })))
+    const [tag] = noscriptFallbackTags()
+    expect({ tag: tag.tag, injectTo: tag.injectTo }).toEqual({ tag: 'noscript', injectTo: 'body-prepend' })
   })
 })

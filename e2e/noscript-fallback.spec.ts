@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test'
 // Distinct from #35's error boundary, which covers a render error *after* the
 // bundle has run.
 
-const MESSAGE = /This calculator needs JavaScript to run/
+const MESSAGE = /This page needs JavaScript to run/
 const HEADING = 'Can I Afford That?'
 
 /** The four HTML entry points, as vite.config.ts lists them. */
@@ -55,16 +55,6 @@ test.describe('without JavaScript', () => {
     expect(colors.background).toBe('rgb(250, 249, 252)')
     expect(colors.text).toBe('rgb(27, 22, 51)')
     expect(colors.body).toBe('rgb(250, 249, 252)')
-  })
-
-  test('the sources link on the calculator page works with JavaScript off', async ({ page }) => {
-    await page.goto('/')
-
-    // Not a dead end: the one page a no-JS visitor can still usefully read.
-    await page.getByRole('link', { name: /how the numbers are worked out/ }).click()
-    await expect(page).toHaveURL(/\/sources\/$/)
-    // And the sources page's own fallback greets them there.
-    await expect(page.getByRole('heading', { name: HEADING })).toBeVisible()
   })
 
   test('the message is readable at 320px with no horizontal scroll', async ({ page }) => {

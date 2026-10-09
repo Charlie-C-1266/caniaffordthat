@@ -23,8 +23,8 @@ import type { HtmlTagDescriptor, Plugin } from 'vite'
  * that file and asserts they still match, so the copy cannot drift.
  */
 export const NOSCRIPT_COLORS = {
-  dark: { background: '#14121f', text: '#f5f3ff', link: '#2ed573' },
-  light: { background: '#faf9fc', text: '#1b1633', link: '#0f7a3f' },
+  dark: { background: '#14121f', text: '#f5f3ff' },
+  light: { background: '#faf9fc', text: '#1b1633' },
 } as const
 
 /** The class the fallback's wrapper carries — also how the e2e specs find it. */
@@ -32,22 +32,11 @@ export const NOSCRIPT_CLASS = 'noscript-fallback'
 
 /** The heading and sentence, identical on every page so the copy can't drift. */
 export const NOSCRIPT_HEADING = 'Can I Afford That?'
-export const NOSCRIPT_MESSAGE =
-  'This calculator needs JavaScript to run. Please enable it, or try a different browser, and the page will load.'
+// "This page", not "This calculator": the same copy shows on the sources and
+// methodology pages, which need JavaScript just as much.
+export const NOSCRIPT_MESSAGE = 'This page needs JavaScript to run. Please enable it, or try a different browser, and the page will load.'
 
 export const NOSCRIPT_FALLBACK_PLUGIN_NAME = 'inject-noscript-fallback'
-
-/**
- * Whether an HTML entry is the calculator itself rather than one of the docs
- * pages. Only the calculator offers the "Our sources" link, so the fallback
- * isn't a dead end there; on the sources page that link would point at itself.
- *
- * Matches both the dev server's request paths (`/`, `/sources/`) and the
- * build's entry filenames (`sources/index.html`).
- */
-export function isCalculatorEntry(path: string): boolean {
-  return !/(^|\/)(sources|methodology)\//.test(path)
-}
 
 /** The scoped stylesheet. Styles `body` too: with no bundle there is no stylesheet at all, so even the page background is this block's job. */
 function noscriptStyles(): string {
@@ -84,10 +73,6 @@ function noscriptStyles(): string {
       line-height: 1.5;
       overflow-wrap: break-word;
     }
-    .${NOSCRIPT_CLASS} a {
-      color: ${dark.link};
-      font-weight: 700;
-    }
     @media (prefers-color-scheme: light) {
       body {
         background: ${light.background};
@@ -96,42 +81,37 @@ function noscriptStyles(): string {
         background: ${light.background};
         color: ${light.text};
       }
-      .${NOSCRIPT_CLASS} a {
-        color: ${light.link};
-      }
     }
   `
 }
 
 /**
- * The fallback's body — everything inside the `<noscript>` element. One
- * source for both the injected tag and the test's expectations.
+ * The fallback's body — everything inside the `<noscript>` element, the same
+ * on every page. It deliberately carries no links: every page on the site is
+ * a React app too, so a link would only take a visitor without JavaScript to
+ * another copy of this message.
  */
-export function noscriptInnerHtml(path: string): string {
-  const sourcesLink = isCalculatorEntry(path)
-    ? `
-      <p><a href="/sources/">Read how the numbers are worked out</a></p>`
-    : ''
+export function noscriptInnerHtml(): string {
   return `
     <style>${noscriptStyles()}</style>
     <div class="${NOSCRIPT_CLASS}">
       <h1>${NOSCRIPT_HEADING}</h1>
-      <p>${NOSCRIPT_MESSAGE}</p>${sourcesLink}
+      <p>${NOSCRIPT_MESSAGE}</p>
     </div>
   `
 }
 
-/** The full `<noscript>` element for one entry, as it appears in the served HTML. */
-export function noscriptFallbackHtml(path: string): string {
-  return `<noscript>${noscriptInnerHtml(path)}</noscript>`
+/** The full `<noscript>` element, as it appears in every entry's served HTML. */
+export function noscriptFallbackHtml(): string {
+  return `<noscript>${noscriptInnerHtml()}</noscript>`
 }
 
-/** The tag descriptor injected into an entry — exported so the test asserts against exactly what ships. */
-export function noscriptFallbackTags(path: string): HtmlTagDescriptor[] {
+/** The tag descriptor injected into every entry — exported so the test asserts against exactly what ships. */
+export function noscriptFallbackTags(): HtmlTagDescriptor[] {
   return [
     {
       tag: 'noscript',
-      children: noscriptInnerHtml(path),
+      children: noscriptInnerHtml(),
       // Ahead of `#root`, so a no-JS visitor's content is the first thing in
       // the body rather than sitting after an empty mount point.
       injectTo: 'body-prepend',
@@ -148,7 +128,7 @@ export function noscriptFallbackPlugin(): Plugin {
     name: NOSCRIPT_FALLBACK_PLUGIN_NAME,
     transformIndexHtml: {
       order: 'pre',
-      handler: (_html, ctx) => noscriptFallbackTags(ctx.path),
+      handler: () => noscriptFallbackTags(),
     },
   }
 }
