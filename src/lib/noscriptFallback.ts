@@ -11,7 +11,7 @@ import type { HtmlTagDescriptor, Plugin } from 'vite'
 // (#41/themeBootstrap.ts): four hand-copied blocks drift.
 
 /**
- * The fallback's own colors, as literal values.
+ * The fallback's own colours, as literal values.
  *
  * It cannot use the `--bg-dark-1`/`--text-primary` custom properties: those
  * live in styles/tokens.css, which arrives with the bundle, and the whole

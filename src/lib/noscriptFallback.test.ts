@@ -75,7 +75,7 @@ describe('noscriptFallbackHtml', () => {
 })
 
 describe('NOSCRIPT_COLORS', () => {
-  // The fallback hard-codes its colors because tokens.css arrives with the
+  // The fallback hard-codes its colours because tokens.css arrives with the
   // bundle. This parses tokens.css and fails if those copies ever drift.
   const tokens = readFileSync(fileURLToPath(new URL('../styles/tokens.css', import.meta.url)), 'utf8')
 
