@@ -109,8 +109,8 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
 /**
  * Reconstructs state from a shared "Copy result link" URL. Hydration kicks in
  * when either `goalId` or `itemPrice` is present — `goalId` covers the
- * price-less emergency fund (see design/adr/0004), `itemPrice` keeps older
- * price-only links working. Enum and goal fields are validated rather than
+ * price-less emergency fund (which would otherwise never hydrate, having no
+ * price to key on), `itemPrice` keeps older price-only links working. Enum and goal fields are validated rather than
  * trusted, since a query string is user-controllable input.
  */
 export function hydrateStateFromUrl(search: string): CalculatorState {

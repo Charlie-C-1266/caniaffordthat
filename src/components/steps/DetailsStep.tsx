@@ -81,7 +81,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
   const emergencyTarget = state.coverMonths * essentials
 
   // MoneyHelper recommends 3-6 months of essential outgoings, aiming for at
-  // least 3 (see design/adr/0010). Tell the user where their choice sits.
+  // least 3 (SOURCES.emergencySavings). Tell the user where their choice sits.
   const withinRecommendedBand = state.coverMonths >= 3 && state.coverMonths <= 6
   const coverBandText =
     state.coverMonths < 3

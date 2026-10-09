@@ -81,8 +81,9 @@ export interface DerivedResult {
  * should show the "fill these in first" fallback in that case.
  */
 export function deriveResult(state: CalculatorState): DerivedResult | null {
-  // The emergency fund has no price: its target is a multiple of essential
-  // monthly spending, and it's always a saving goal (see design/adr/0004).
+  // The emergency fund has no price: its target is derived from essential
+  // monthly spending x coverMonths, and it is always a saving goal — you
+  // cannot finance a cash buffer, so the mode toggle never applies to it.
   const isEmergency = goalById(state.goalId)?.emergency === true
   const isFinance = !isEmergency && state.mode === 'monthly'
   // The emergency fund is save-only but honours the same duration/goal-date
