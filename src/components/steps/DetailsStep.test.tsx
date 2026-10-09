@@ -4,6 +4,7 @@ import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { DetailsStep } from './DetailsStep'
 import { CalculatorProvider } from '../../state/CalculatorProvider'
 import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
+import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 
 // `coverBandText` is a live three-way branch driven straight off the "Months
 // of cover" slider, so these tests drive that slider rather than poking the
@@ -136,11 +137,9 @@ function priceField(): HTMLInputElement {
   return screen.getAllByRole('spinbutton')[0] as HTMLInputElement
 }
 
-/** The input belonging to a FieldLabel, found by that label's text (the labels aren't yet programmatically associated — see #91). */
+/** The input a money field's label names. #94 linked each label to its input, so it is found by accessible name. */
 function fieldUnderLabel(label: string): HTMLInputElement {
-  const input = screen.getByText(label).parentElement?.querySelector('input')
-  if (!input) throw new Error(`No input found under the "${label}" label`)
-  return input
+  return screen.getByLabelText<HTMLInputElement>(label)
 }
 
 /** Lets the debounce timer run to completion. */
@@ -430,5 +429,20 @@ describe('DetailsStep emergency-fund essentials grid', () => {
 
     // 3 months x £950 of essentials — the figure the summary quotes.
     expect(screen.getByText(/£2,850/)).toBeTruthy()
+  })
+
+  it('labels every essentials field from the shared outgoing-field list, each wired to its own key', () => {
+    // lib/budget.ts is the one source of these labels, shared with the Budget
+    // step's grid (held to it in BudgetStep.test.tsx). A label hard-coded here
+    // instead would let the two grids drift apart — the divergence budget.ts
+    // was extracted to stop. Found by accessible name, so the label must
+    // genuinely belong to the input it names.
+    renderEmergencyDetails(3)
+
+    const miswired = OUTGOING_FIELD_KEYS.filter((key) => {
+      fireEvent.change(screen.getByLabelText(OUTGOING_FIELD_LABELS[key]), { target: { value: '123' } })
+      return calculator?.state[key] !== '123'
+    })
+    expect(miswired).toEqual([])
   })
 })
