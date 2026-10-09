@@ -47,4 +47,40 @@ describe('SliderField', () => {
     expect(slider.step).toBe('1')
     expect(slider.value).toBe('3')
   })
+
+  it('coerces every reported value to a number, including "0" and a fractional step', () => {
+    // The string→number coercion is what a native range input hands React for
+    // free in a browser but a jsdom change event does not, so both the
+    // falsy-but-valid "0" and a non-integer step need pinning explicitly.
+    const onChange = vi.fn()
+    render(<SliderField {...PROPS} min={0} step={0.5} onChange={onChange} />)
+    const slider = screen.getByRole('slider')
+
+    fireEvent.change(slider, { target: { value: '0' } })
+    expect(onChange).toHaveBeenLastCalledWith(0)
+    expect(onChange.mock.lastCall?.[0]).toBeTypeOf('number')
+
+    fireEvent.change(slider, { target: { value: '4.5' } })
+    expect(onChange).toHaveBeenLastCalledWith(4.5)
+  })
+
+  it('never reports a change to the value it already holds — the platform, not a guard in the component, is why', () => {
+    // The source has no value-equality check, so on paper re-selecting the
+    // current value would call onChange redundantly. In practice it cannot:
+    // setting a range input to the value it already holds fires no change
+    // event (React's value tracker dedupes it, as browsers do), so a parent
+    // never sees a redundant call. Pinned here because the absence of a guard
+    // in the component is only safe while that platform behaviour holds.
+    const onChange = vi.fn()
+    render(<SliderField {...PROPS} onChange={onChange} />)
+    const slider = screen.getByRole<HTMLInputElement>('slider')
+
+    fireEvent.change(slider, { target: { value: String(PROPS.value) } })
+    fireEvent(slider, new Event('change', { bubbles: true }))
+    expect(onChange).not.toHaveBeenCalled()
+
+    // Not an inert handler: a genuinely different value still gets through.
+    fireEvent.change(slider, { target: { value: '7' } })
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(7)
+  })
 })
