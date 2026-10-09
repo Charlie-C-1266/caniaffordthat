@@ -48,7 +48,8 @@ export interface TaxYear {
 // the personal allowance). The 20% band is the £37,700 basic-rate band; the
 // 40% band runs up to £125,140, the point at which the allowance is fully
 // tapered and the 45% additional rate begins (see taperThreshold below).
-const TAX_YEAR_2026_27: TaxYear = {
+/** The current year's table. Exported so a data-integrity test can assert `CURRENT_TAX_YEAR` still points at the year it claims to. */
+export const TAX_YEAR_2026_27: TaxYear = {
   id: '2026-27',
   label: '2026/27',
   personalAllowance: 12570,

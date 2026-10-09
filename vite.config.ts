@@ -3,12 +3,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { themeBootstrapPlugin } from './src/lib/themeBootstrap.ts'
+import { noscriptFallbackPlugin } from './src/lib/noscriptFallback.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
   // themeBootstrapPlugin injects the pre-paint theme script into every HTML
   // entry below, replacing the four hand-copied inline <script> blocks.
-  plugins: [react(), themeBootstrapPlugin()],
+  // noscriptFallbackPlugin does the same for the no-JavaScript fallback, so
+  // neither has to be kept in step across the four entries by hand.
+  plugins: [react(), themeBootstrapPlugin(), noscriptFallbackPlugin()],
   build: {
     rollupOptions: {
       // Multi-page build: the calculator plus the methodology page(s). Each
