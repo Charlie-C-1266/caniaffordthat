@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -53,11 +54,15 @@ function ToggleButton({ label, active, accentColor, onClick }: ToggleButtonProps
 
 function GoalDateInput({ accentColor }: { accentColor: string }) {
   const { state, setField } = useCalculator()
+  // Pairs the standalone FieldLabel with the masked date input, which the
+  // Labeled* wrappers do for themselves.
+  const inputId = useId()
 
   return (
     <div>
-      <FieldLabel>Goal date (MM-YYYY)</FieldLabel>
+      <FieldLabel htmlFor={inputId}>Goal date (MM-YYYY)</FieldLabel>
       <MonthYearInput
+        id={inputId}
         months={state.goalMonths}
         minMonths={1}
         accentColor={accentColor}

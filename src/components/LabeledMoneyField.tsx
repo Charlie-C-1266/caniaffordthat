@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import { useId, type KeyboardEvent, type ReactNode } from 'react'
 import { FieldLabel } from './FieldLabel'
 import { MoneyInput } from './MoneyInput'
 
@@ -28,13 +28,20 @@ export function LabeledMoneyField({
   accentColor = 'var(--text-primary)',
 }: LabeledMoneyFieldProps) {
   const grid = variant === 'grid'
+  // Generated rather than a caller prop: every one of the nine call sites
+  // needs the label/input pair associated, and a per-instance useId() can't
+  // collide the way a hand-written id repeated across steps could.
+  const inputId = useId()
   return (
     // minWidth:0 lets 1fr grid tracks shrink below the number input's
     // intrinsic width — without it a two-column grid refuses to narrow and
     // overflows the viewport on small screens. Harmless on standalone fields.
     <div style={{ minWidth: 0 }}>
-      <FieldLabel size={grid ? 'sm' : 'md'}>{label}</FieldLabel>
+      <FieldLabel size={grid ? 'sm' : 'md'} htmlFor={inputId}>
+        {label}
+      </FieldLabel>
       <MoneyInput
+        id={inputId}
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
