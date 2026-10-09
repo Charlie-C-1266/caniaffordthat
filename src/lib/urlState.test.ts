@@ -213,7 +213,7 @@ describe('hydrateStateFromUrl — untrusted string fields', () => {
 
   // Driven off STRING_FIELDS itself, so a newly shared field is covered here
   // the moment it is added rather than quietly skipped.
-  const INVALID = ['-500', '-0.01', '-0', 'abc', '', '   ', 'NaN', 'Infinity', '1e999']
+  const INVALID = ['-500', '-0.01', '-0', 'abc', '', '   ', 'NaN', 'Infinity', '1e999', '+500', '0x1F4', '500.']
 
   for (const bad of INVALID) {
     it(`falls back to the default for every money field given ${JSON.stringify(bad)}`, () => {

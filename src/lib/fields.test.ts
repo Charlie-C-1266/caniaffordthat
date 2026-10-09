@@ -36,6 +36,16 @@ describe('isMoneyValue', () => {
     expect(['abc', '12abc', '£1200', '1,200'].filter(isMoneyValue)).toEqual([])
   })
 
+  it('rejects figures Number() reads but the number input cannot display', () => {
+    // Each of these is 500 to Number(), and blank in an <input type="number">,
+    // so a link carrying one would show an empty field while the maths used it.
+    expect(['+500', '0x1F4', '0b11', '0o7', '500.', '5e', '1_000'].filter(isMoneyValue)).toEqual([])
+  })
+
+  it('accepts the exponent forms the number input does display', () => {
+    expect(['1e3', '1E3', '2.5e+2', '1e-2'].filter((value) => !isMoneyValue(value))).toEqual([])
+  })
+
   it('rejects non-finite values', () => {
     expect(['NaN', 'Infinity', '-Infinity', '1e999'].filter(isMoneyValue)).toEqual([])
   })
@@ -66,8 +76,22 @@ describe('sanitiseItemName', () => {
 
   it('strips control characters', () => {
     expect(sanitiseItemName('New\u0000 kit\u001Fchen\u007F')).toBe('New kitchen')
-    // C1 range, and a right-to-left override that would reorder the headline.
+    // C1 range.
     expect(sanitiseItemName('Sofa\u0085\u009F')).toBe('Sofa')
+  })
+
+  it('strips bidirectional-text controls, which would reorder the line', () => {
+    // An unclosed right-to-left override in the title reverses how the £
+    // figure after it in the same line reads.
+    expect(sanitiseItemName('\u202Ekitchen')).toBe('kitchen')
+    expect(sanitiseItemName('a\u202Ab\u202Bc\u202Cd\u202De')).toBe('abcde')
+    expect(sanitiseItemName('a\u2066b\u2067c\u2068d\u2069e')).toBe('abcde')
+    expect(sanitiseItemName('a\u200Eb\u200Fc\u061Cd')).toBe('abcd')
+  })
+
+  it('keeps the zero-width joiner that multi-part emoji need', () => {
+    const family = '👨\u200D👩\u200D👧'
+    expect(sanitiseItemName(family)).toBe(family)
   })
 
   it('keeps the characters a real title needs', () => {
