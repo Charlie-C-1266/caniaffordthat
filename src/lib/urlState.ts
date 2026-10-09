@@ -1,6 +1,7 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
 import { isMoneyValue, sanitiseItemName } from './fields'
+import { TERM_RANGES } from './vehicle'
 import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
@@ -168,6 +169,16 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // other flow's term slider stops at 60, so a crafted non-vehicle link can't
   // smuggle in a term the UI couldn't have produced.
   if (!goal?.vehicle) state.term = Math.min(60, state.term)
+  // The same reasoning, one level finer, inside the vehicle flow: the term
+  // slider only ever offers the active method's own `TERM_RANGES`, so a link
+  // must not be able to load a deal the UI could never have produced (an
+  // 84-month PCP, a 3-month HP) and have `deriveVehicleResult` quote it.
+  // `cash` has no term range, and `chooseMethod` clamps again on the way back
+  // to a finance method, so a cash link's term is left as read.
+  else if (state.vehicleMethod !== 'cash') {
+    const { min, max } = TERM_RANGES[state.vehicleMethod]
+    state.term = Math.min(max, Math.max(min, state.term))
+  }
 
   return state
 }

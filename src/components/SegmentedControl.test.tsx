@@ -49,4 +49,47 @@ describe('SegmentedControl', () => {
     expect(active.style.background).not.toBe('transparent')
     expect(inactive.style.background).toBe('transparent')
   })
+
+  // `size` branches layout only (flex, padding, borderRadius, width, font
+  // size) and never behaviour, so a regression there is invisible to anything
+  // that only checks onChange. These pin both halves of that claim: the
+  // interaction is identical, and the layout genuinely differs.
+  describe('size', () => {
+    it('reports the clicked option the same way at the compact size', () => {
+      const onChange = vi.fn()
+      render(<SegmentedControl options={OPTIONS} value="save" onChange={onChange} size="sm" />)
+      fireEvent.click(screen.getByRole('button', { name: 'Pay monthly' }))
+      expect(onChange).toHaveBeenCalledExactlyOnceWith('monthly')
+    })
+
+    it('marks the selected option pressed the same way at the compact size', () => {
+      render(<SegmentedControl options={OPTIONS} value="monthly" onChange={vi.fn()} size="sm" />)
+      expect(screen.getByRole('button', { name: 'Pay monthly' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Save up' }).getAttribute('aria-pressed')).toBe('false')
+    })
+
+    it('reports the already-selected option at the compact size too', () => {
+      const onChange = vi.fn()
+      render(<SegmentedControl options={OPTIONS} value="save" onChange={onChange} size="sm" />)
+      fireEvent.click(screen.getByRole('button', { name: 'Save up' }))
+      expect(onChange).toHaveBeenCalledExactlyOnceWith('save')
+    })
+
+    it("lays out full-width equal segments at the default 'md' size", () => {
+      const { container } = render(<SegmentedControl options={OPTIONS} value="save" onChange={vi.fn()} />)
+      const pill = container.firstElementChild as HTMLElement
+      // No width cap: the md pill fills its container.
+      expect(pill.style.width).toBe('')
+      // Each segment flexes to an equal share (jsdom expands `flex: 1` to its
+      // longhand, so read the grow factor rather than the shorthand).
+      expect(screen.getByRole('button', { name: 'Save up' }).style.flexGrow).toBe('1')
+    })
+
+    it("shrinks to its content at the 'sm' size, with segments no longer flexing", () => {
+      const { container } = render(<SegmentedControl options={OPTIONS} value="save" onChange={vi.fn()} size="sm" />)
+      const pill = container.firstElementChild as HTMLElement
+      expect(pill.style.width).toBe('fit-content')
+      expect(screen.getByRole('button', { name: 'Save up' }).style.flexGrow).toBe('')
+    })
+  })
 })

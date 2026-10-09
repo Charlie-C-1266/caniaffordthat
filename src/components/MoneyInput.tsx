@@ -9,6 +9,8 @@ import { isNegativeMoney } from '../lib/fields'
 const clampNegative = (raw: string): string => (isNegativeMoney(raw) ? '0' : raw)
 
 interface MoneyInputProps {
+  /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. Optional: the bare hero fields don't use one. */
+  id?: string
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
@@ -32,6 +34,7 @@ interface MoneyInputProps {
  * six optional budget fields.
  */
 export function MoneyInput({
+  id,
   value,
   onChange,
   onKeyDown,
@@ -63,6 +66,7 @@ export function MoneyInput({
         £
       </span>
       <input
+        id={id}
         type="number"
         min={0}
         value={value}
