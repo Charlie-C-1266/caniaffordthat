@@ -176,11 +176,9 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             {/* The chips row wraps in its own right: the outer row only wraps the
                 whole group below the field, so without flexWrap the three chips
                 stayed on one line and the last ran out past the tile's rounded
-                edge at phone widths (21px past it at 360px). flexGrow lets the
-                group use the whole line once it has wrapped below the field, so
-                the chips pack two-up rather than stacking one per row; at desktop
-                widths they still fit beside the field on a single row. */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 2, flexGrow: 1 }}>
+                edge at phone widths (21px past it at 360px). At desktop widths
+                they still fit beside the field on a single row. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 2 }}>
               {MAINTENANCE_PRESETS.map((preset) => (
                 <PresetChip
                   key={preset.id}
