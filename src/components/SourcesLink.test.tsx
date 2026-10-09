@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { SourcesLink } from './SourcesLink'
 
 const getLink = () => screen.getByTestId('sources-link')
 
 describe('SourcesLink', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
 
   it('links out to the sources page in a new tab, without leaking the referrer', () => {
     render(<SourcesLink />)
@@ -66,5 +69,26 @@ describe('SourcesLink', () => {
     fireEvent.mouseEnter(link)
     fireEvent.blur(link)
     expect(link.style.background).toBe('var(--pill-bg)')
+  })
+
+  it('renders with no props and keeps the pill border token', () => {
+    render(<SourcesLink />)
+
+    const link = screen.getByRole('link', { name: 'Our sources' })
+    expect(link.style.border).toBe('1px solid var(--pill-border)')
+    expect(link.style.textDecoration).toBe('none')
+  })
+
+  it('renders without logging a console error or warning', () => {
+    // React reports key/prop/nesting mistakes through console.error
+    // rather than by throwing, so a clean render is worth asserting:
+    // the pill would still appear with a warning behind it.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<SourcesLink />)
+
+    expect(error).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
   })
 })

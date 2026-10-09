@@ -3,12 +3,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { themeBootstrapPlugin } from './src/lib/themeBootstrap.ts'
+import { noscriptFallbackPlugin } from './src/lib/noscriptFallback.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
   // themeBootstrapPlugin injects the pre-paint theme script into every HTML
   // entry below, replacing the four hand-copied inline <script> blocks.
-  plugins: [react(), themeBootstrapPlugin()],
+  // noscriptFallbackPlugin does the same for the no-JavaScript fallback, so
+  // neither has to be kept in step across the four entries by hand.
+  plugins: [react(), themeBootstrapPlugin(), noscriptFallbackPlugin()],
   build: {
     rollupOptions: {
       // Multi-page build: the calculator plus the methodology page(s). Each
@@ -31,7 +34,16 @@ export default defineConfig({
       // Report on the app source only; measure every source file (not just the
       // imported ones) so untested files show up as 0% rather than vanishing.
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/main.tsx', 'src/**/*.d.ts'],
+      // Excluded: the tests themselves, type-only declarations, and the
+      // per-page bootstrap entry points. An entry point is `createRoot(...)
+      // .render(<Page />)` glue with no logic of its own and nothing worth
+      // asserting; the pages it mounts are tested directly. Measuring them
+      // only parks a permanent 0% row in the CI coverage table, where it
+      // sits among the real gaps and makes a genuinely untested file harder
+      // to spot. `src/docs/*-main.tsx` covers the three docs pages' entries
+      // (sources, salary, vehicle) by the naming convention they share, so a
+      // fourth docs page is excluded without touching this list.
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx', 'src/docs/*-main.tsx'],
       reporter: ['text', 'html'],
     },
   },

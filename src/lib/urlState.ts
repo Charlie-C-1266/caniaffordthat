@@ -1,5 +1,7 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
+import { isMoneyValue, sanitiseItemName } from './fields'
+import { TERM_RANGES } from './vehicle'
 import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
@@ -7,7 +9,9 @@ import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, 
 // used on load) both read these lists, so a new shared field is added in one
 // place and can't drift between the two sides.
 
-const STRING_FIELDS = [
+// Exported so the tests can hold every shared string field to the sanitising
+// rule below, and a field added here is covered without touching them.
+export const STRING_FIELDS = [
   'itemName',
   'itemPrice',
   'takeHome',
@@ -105,8 +109,8 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
 /**
  * Reconstructs state from a shared "Copy result link" URL. Hydration kicks in
  * when either `goalId` or `itemPrice` is present — `goalId` covers the
- * price-less emergency fund (see design/adr/0004), `itemPrice` keeps older
- * price-only links working. Enum and goal fields are validated rather than
+ * price-less emergency fund (which would otherwise never hydrate, having no
+ * price to key on), `itemPrice` keeps older price-only links working. Enum and goal fields are validated rather than
  * trusted, since a query string is user-controllable input.
  */
 export function hydrateStateFromUrl(search: string): CalculatorState {
@@ -143,9 +147,17 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   const balloonMode = params.get('balloonMode')
   if (isBalloonMode(balloonMode)) state.balloonMode = balloonMode
 
+  // The string fields were previously copied verbatim, which let a link carry
+  // values the inputs themselves refuse: a negative price (`MoneyInput` clamps
+  // those to "0", so the field showed -500 while `num()` used 0 — exactly the
+  // divergence #30 closed), non-numeric junk, `1e999`, or an unbounded
+  // `itemName` that stretches the result headline. Each is now held to the
+  // same rule as the field that captures it, falling back to the default.
   for (const field of STRING_FIELDS) {
     const value = params.get(field)
-    if (value !== null) state[field] = value
+    if (value === null) continue
+    if (field === 'itemName') state[field] = sanitiseItemName(value)
+    else state[field] = isMoneyValue(value) ? value.trim() : DEFAULT_STATE[field]
   }
 
   for (const { key, min, max } of NUMBER_FIELDS) {
@@ -157,6 +169,16 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // other flow's term slider stops at 60, so a crafted non-vehicle link can't
   // smuggle in a term the UI couldn't have produced.
   if (!goal?.vehicle) state.term = Math.min(60, state.term)
+  // The same reasoning, one level finer, inside the vehicle flow: the term
+  // slider only ever offers the active method's own `TERM_RANGES`, so a link
+  // must not be able to load a deal the UI could never have produced (an
+  // 84-month PCP, a 3-month HP) and have `deriveVehicleResult` quote it.
+  // `cash` has no term range, and `chooseMethod` clamps again on the way back
+  // to a finance method, so a cash link's term is left as read.
+  else if (state.vehicleMethod !== 'cash') {
+    const { min, max } = TERM_RANGES[state.vehicleMethod]
+    state.term = Math.min(max, Math.max(min, state.term))
+  }
 
   return state
 }
