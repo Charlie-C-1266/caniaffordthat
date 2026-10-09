@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test'
 
 // The emergency fund is the one goal with no price: its target is derived from
 // cover-months x essential spend, and those essentials are captured in the
-// Details step rather than Budget (see design/adr/0004). This pins that path.
+// Details step rather than Budget, so the fund has everything it needs before
+// the Budget step is reached. This pins that path.
 test.describe('emergency fund', () => {
   test('derives a target from essentials in Details and reaches a result without a price', async ({ page }) => {
     await page.goto('/')

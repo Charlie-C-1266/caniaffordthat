@@ -81,3 +81,17 @@ describe('HELPFUL_LINKS', () => {
     expect(new Set(urls).size).toBe(urls.length)
   })
 })
+
+describe('the two registries together', () => {
+  // The likelier slip than a within-list duplicate: the same page landing in
+  // both lists, which neither per-registry check above notices. It's plausible
+  // precisely because a page we cite is often also worth reading — but the
+  // sources & ethos page renders the two lists as separate tables ("what we use
+  // it for" vs "why it's worth a look"), so one URL in both shows up twice on
+  // the same page. Cite the specific page under sources; point at the site, or
+  // its hub, under helpful reading.
+  it('never lists the same URL as both a cited source and helpful reading', () => {
+    const urls = [...SOURCE_LIST, ...HELPFUL_LINKS].map((entry) => entry.url)
+    expect(new Set(urls).size).toBe(urls.length)
+  })
+})

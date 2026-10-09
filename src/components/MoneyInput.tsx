@@ -1,10 +1,12 @@
 import { useState, type KeyboardEvent } from 'react'
+import { isNegativeMoney } from '../lib/fields'
 
 // `min={0}` only affects the browser's validity styling — a typed or pasted
 // negative still lands in the value, and num() would then silently floor it
 // to 0 downstream, leaving the displayed figure disagreeing with the one the
-// calculations use. Clamp to "0" here so the two can never diverge.
-const clampNegative = (raw: string): string => (raw.startsWith('-') || Number(raw) < 0 ? '0' : raw)
+// calculations use. Clamp to "0" here so the two can never diverge. The rule
+// itself lives in lib/fields so a shared link is held to the same standard.
+const clampNegative = (raw: string): string => (isNegativeMoney(raw) ? '0' : raw)
 
 interface MoneyInputProps {
   /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. Optional: the bare hero fields don't use one. */
