@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { Icon } from './Icon'
 import { useTheme } from '../hooks/useTheme'
+import { usePillHover } from '../hooks/usePillHover'
 
 /**
  * The persistent light/dark toggle — a bare icon button (not a third
@@ -8,10 +8,13 @@ import { useTheme } from '../hooks/useTheme'
  * clicking it does, without crowding the top-right controls further. Shows
  * the icon for the theme you'd *switch to* (moon while light, sun while
  * dark), the more common icon-toggle convention.
+ *
+ * Shares its touch-safe hover handling with the two pills beside it: see
+ * usePillHover for why a tap must not leave this lit (#116, #158).
  */
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
-  const [hovered, setHovered] = useState(false)
+  const { hovered, hoverHandlers } = usePillHover()
   const switchTo = theme === 'light' ? 'dark' : 'light'
 
   return (
@@ -20,8 +23,7 @@ export function ThemeToggle() {
       data-testid="theme-toggle"
       aria-label={`Switch to ${switchTo} theme`}
       onClick={toggleTheme}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      {...hoverHandlers}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

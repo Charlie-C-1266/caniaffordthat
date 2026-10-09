@@ -94,6 +94,67 @@ describe('ThemeToggle', () => {
     expect(label()).toBe('Switch to light theme')
   })
 
+  it('does not stick in the hover background after a touch tap, and still flips the theme', () => {
+    // Same event order a real tap produces: touchstart/touchend, then a
+    // synthetic mouseenter, and no mouseleave. Before #158 this left the
+    // toggle lit in --pill-bg-hover until the user tapped elsewhere, so it
+    // read as a stuck button beside two pills that behaved correctly.
+    startIn('light')
+    render(<ThemeToggle />)
+    const button = getToggle()
+
+    fireEvent.touchStart(button)
+    fireEvent.touchEnd(button)
+    fireEvent.mouseEnter(button)
+    fireEvent.click(button)
+
+    expect(button.style.background).toBe('var(--pill-bg)')
+    // The tap still does its job — the hover fix must not swallow the click.
+    expect(label()).toBe('Switch to light theme')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
+  })
+
+  it('still hovers normally with a mouse after an earlier touch tap', () => {
+    startIn('light')
+    render(<ThemeToggle />)
+    const button = getToggle()
+
+    fireEvent.touchStart(button)
+    fireEvent.touchEnd(button)
+    fireEvent.mouseEnter(button)
+    fireEvent.mouseLeave(button)
+
+    fireEvent.mouseEnter(button)
+    expect(button.style.background).toBe('var(--pill-bg-hover)')
+  })
+
+  it('still hovers after a tap whose synthetic mouseenter never arrived', () => {
+    // If a tap's synthetic mouseenter never fires, its touch mark must not
+    // outlive the next mouseleave — otherwise it would swallow the following
+    // real mouse hover, and a hybrid touch-and-mouse device would get a
+    // toggle that never lights up.
+    startIn('light')
+    render(<ThemeToggle />)
+    const button = getToggle()
+
+    fireEvent.touchStart(button)
+    fireEvent.touchEnd(button)
+    fireEvent.mouseLeave(button)
+
+    fireEvent.mouseEnter(button)
+    expect(button.style.background).toBe('var(--pill-bg-hover)')
+  })
+
+  it('drops the hover background when focus leaves', () => {
+    startIn('light')
+    render(<ThemeToggle />)
+    const button = getToggle()
+
+    fireEvent.mouseEnter(button)
+    fireEvent.blur(button)
+    expect(button.style.background).toBe('var(--pill-bg)')
+  })
+
   it('swaps to the hover background while hovered and back on leave, without touching the icon or label', () => {
     startIn('light')
     render(<ThemeToggle />)
