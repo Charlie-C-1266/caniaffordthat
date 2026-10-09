@@ -25,6 +25,11 @@ function renderInput(onChange = vi.fn(), months = COMMITTED) {
 describe('MonthYearInput', () => {
   afterEach(cleanup)
 
+  it('renders the committed months as an MM-YYYY draft', () => {
+    renderInput()
+    expect(getInput().value).toBe(COMMITTED_DRAFT)
+  })
+
   it('commits a typed, valid, in-range MM-YYYY as the correct month count', () => {
     const onChange = renderInput()
     fireEvent.change(getInput(), { target: { value: TARGET_DRAFT } })
@@ -81,6 +86,21 @@ describe('MonthYearInput', () => {
     expect(onChange).toHaveBeenCalledWith(TARGET)
   })
 
+  it('commits on Enter only — any other key leaves committing to the change handler', () => {
+    const onChange = renderInput()
+    const input = getInput()
+    fireEvent.change(input, { target: { value: TARGET_DRAFT } })
+    onChange.mockClear()
+    // Keys that aren't Enter must fall through untouched: the draft is already
+    // committed by handleChange as it's typed, and re-committing here would fire
+    // a redundant onChange on every keystroke (including Tab out of the field).
+    for (const key of ['Tab', 'Escape', 'ArrowUp', '1']) {
+      fireEvent.keyDown(input, { key })
+    }
+    expect(onChange).not.toHaveBeenCalled()
+    expect(input.value).toBe(TARGET_DRAFT)
+  })
+
   it('does not commit on Enter while the draft is partial', () => {
     const onChange = renderInput()
     const input = getInput()
@@ -107,5 +127,10 @@ describe('MonthYearInput', () => {
     // Once focus leaves, the field re-syncs to the (new) committed value.
     fireEvent.blur(input)
     expect(input.value).toBe(TARGET_DRAFT)
+  })
+
+  it('puts the id it is given on the input, so the goal-date FieldLabel can point at it', () => {
+    render(<MonthYearInput id="goal-date" months={COMMITTED} minMonths={MIN_MONTHS} accentColor="#4ade80" onChange={vi.fn()} />)
+    expect(getInput().id).toBe('goal-date')
   })
 })

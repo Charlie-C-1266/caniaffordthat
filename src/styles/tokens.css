@@ -1,7 +1,7 @@
 /*
- * Design tokens transcribed from the design handoff
- * (design/design_handoff_scrolly_affordability_calculator/README.md).
- * Values here are the literal spec — do not "round" or reinterpret them.
+ * Design tokens transcribed from the original scrolly-calculator design
+ * handoff. This file is the spec of record for those values: they were taken
+ * from the handoff verbatim, so do not "round" or reinterpret them here.
  */
 :root {
   /* Colors — backgrounds */
@@ -17,7 +17,7 @@
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
   --text-disabled: rgba(245, 243, 255, 0.45);
 
-  /* Colors — accent (v2 goal-based re-theme, see design/adr/0003). Green is
+  /* Colors — accent (v2 goal-based re-theme). Green is
      the primary/brand + "saving up" accent; violet is "paying monthly". The
      result screen now paints its background the active mode's accent, so the
      verdict (affordable/not) is carried by the small pill icon, not the whole

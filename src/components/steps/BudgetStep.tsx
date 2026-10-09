@@ -40,10 +40,11 @@ type BudgetFieldKey = OutgoingFieldKey | 'savings'
 
 /**
  * The Budget step — take-home pay plus monthly outgoings. Which fields show
- * depends on the goal (see design/adr/0004-0005): the emergency fund already
- * captured its essentials in Details (so here it only needs take-home + what's
- * set aside), and the car captured its deposit in Details (so its "already
- * saved" field is hidden here). No pause-based auto-advance — with several
+ * depends on the goal, because two goals already collect money fields on the
+ * Details step and must not ask for them twice: the emergency fund captured
+ * its essentials there (so here it only needs take-home + what's set aside),
+ * and the car captured its deposit there (so its "already saved" field is
+ * hidden here). No pause-based auto-advance — with several
  * fields on screen a debounce firing mid-check-through yanks people away
  * before they've looked.
  */

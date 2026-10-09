@@ -27,13 +27,48 @@ const getLabel = (container: HTMLElement): HTMLLabelElement => {
 }
 
 /** A controlled harness, mirroring how every real call site owns the value in state. */
-function Harness({ initial = '' }: { initial?: string }) {
+function Harness({ label = 'Rent or mortgage', variant, initial = '' }: { label?: string; variant?: 'grid' | 'single'; initial?: string }) {
   const [value, setValue] = useState(initial)
-  return <LabeledMoneyField label="Rent or mortgage" value={value} onChange={setValue} />
+  return <LabeledMoneyField label={label} value={value} onChange={setValue} variant={variant} />
 }
 
 describe('LabeledMoneyField', () => {
   afterEach(cleanup)
+
+  // getByLabelText only resolves when the <label> and <input> are genuinely
+  // associated (htmlFor/id), so these fail on the visual-adjacency-only
+  // markup this field used to render (#91).
+  it('associates its label with the money input, so the field is reachable by its name', () => {
+    render(<Harness label="Housing (rent/mortgage)" />)
+
+    const input = screen.getByLabelText('Housing (rent/mortgage)')
+    expect(input.tagName).toBe('INPUT')
+    expect(input.getAttribute('type')).toBe('number')
+  })
+
+  it('points the label at the input it actually wraps, in both variants', () => {
+    const { container } = render(<Harness label="Housing (rent/mortgage)" variant="single" />)
+
+    const label = container.querySelector('label')!
+    const input = container.querySelector('input')!
+    expect(label.getAttribute('for')).toBeTruthy()
+    expect(label.getAttribute('for')).toBe(input.id)
+  })
+
+  it('gives each instance its own id, so sibling grid fields stay distinct', () => {
+    const { container } = render(
+      <>
+        <Harness label="Housing (rent/mortgage)" />
+        <Harness label="Groceries" />
+      </>,
+    )
+
+    const ids = Array.from(container.querySelectorAll('input')).map((input) => input.id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+    // And each name still resolves to its own input.
+    expect(screen.getByLabelText('Housing (rent/mortgage)')).not.toBe(screen.getByLabelText('Groceries'))
+  })
 
   it('renders its label and the current value', () => {
     const { container } = render(<LabeledMoneyField label="Rent or mortgage" value="1250" onChange={() => {}} />)
