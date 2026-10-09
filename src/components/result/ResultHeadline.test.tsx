@@ -3,8 +3,9 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ResultHeadline } from './ResultHeadline'
 
-// Every result the user sees is headed by this component, and it is the page's
-// only `h1` — so a refactor that demoted the headline to a `div`, swapped the
+// Every result the user sees is headed by this component's `h1` (the result
+// step's heading, as each step has its own) — so a refactor that demoted the
+// headline to a `div`, swapped the
 // eyebrow and sub-line, or dropped the caller-supplied eyebrow colour (the one
 // thing that differs between a "Yes" and a "No") would still pass the cards'
 // own tests. These assert on the rendered text, the element roles and the
@@ -58,8 +59,9 @@ describe('ResultHeadline', () => {
   it('renders exactly one h1', () => {
     render(<ResultHeadline eyebrow="YES" eyebrowColor="var(--accent-savings)" headline="£240" subheadline="sub" />)
 
-    // The page has exactly one h1 and this is it; a second would be an
-    // accessibility regression.
+    // The headline is the component's only heading: promoting the eyebrow or
+    // sub-line to one too would split a single result into several top-level
+    // headings for a screen reader.
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
