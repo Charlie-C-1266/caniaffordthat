@@ -97,6 +97,20 @@ expect_status() {
 }
 
 # Asserts a response header matches a regex.
+expect_no_header() {
+  local label=$1 path=$2 header=$3
+  local got
+  # `|| true`: an absent header is the passing case here, and grep's exit 1
+  # for "no match" would otherwise end the script under `set -e -o pipefail`.
+  got="$(curl -sS -D - -o /dev/null "$BASE$path" |
+    tr -d '\r' | { grep -i "^$header:" || true; } | head -1 | sed "s/^[^:]*: *//")"
+  if [[ -z $got ]]; then
+    pass "$label (no $header)"
+  else
+    fail "$label" "$path: expected no $header, got '$got'"
+  fi
+}
+
 expect_header() {
   local label=$1 path=$2 header=$3 regex=$4
   shift 4
@@ -145,6 +159,10 @@ expect_status 'unknown path' /does-not-exist 404
 expect_status 'unknown script' /nope.js 404
 expect_status 'typo under a real directory' /sources/typo 404
 expect_status 'missing hashed asset' /assets/does-not-exist.js 404
+# A 404 must never be cached: under /assets/ it would be pinned as immutable
+# for a year, and elsewhere it would hide a page published later.
+expect_no_header 'a missing hashed asset is not cached' /assets/does-not-exist.js Cache-Control
+expect_no_header 'an unknown path is not cached' /does-not-exist Cache-Control
 
 echo
 echo "== cache headers =="
