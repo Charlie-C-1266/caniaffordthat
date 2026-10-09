@@ -220,7 +220,7 @@ describe('BudgetStep', () => {
       expect(calculator?.state.grossSalary).toBe('')
     })
 
-    it('writes what has already been saved toward the goal', () => {
+    it('writes what has already been saved towards the goal', () => {
       renderForGoal('holiday')
 
       fireEvent.change(fieldInput(SAVINGS_LABEL), { target: { value: '3200' } })
