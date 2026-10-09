@@ -224,10 +224,13 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
   // Track the previous focus so we can tell which card crossed the wrap seam
   // this step and let it teleport instead of flying across the stage.
+  // `jump` is how far the focus moved, the short way round — the distance
+  // every card's offset shifts by, unless it wrapped.
   const prevIndexRef = useRef(state.carouselIndex)
   const indexRef = useRef(state.carouselIndex)
   indexRef.current = state.carouselIndex
   const prevIndex = prevIndexRef.current
+  const jump = circularOffset(state.carouselIndex, prevIndex)
   useEffect(() => {
     prevIndexRef.current = state.carouselIndex
   }, [state.carouselIndex])
@@ -311,7 +314,13 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
                   key={goal.id}
                   goal={goal}
                   offset={offset}
-                  teleport={Math.abs(offset - prevOffset) > 1}
+                  // A card that didn't wrap shifts by exactly the jump, the
+                  // other way to the focus; a seam-crosser's shift is that
+                  // ± GOALS.length. So anything but `-jump` crossed the seam
+                  // and should re-appear on the other side rather than fly
+                  // across. Comparing against the jump rather than against 1
+                  // keeps multi-position dot clicks sliding (#156).
+                  teleport={offset - prevOffset !== -jump}
                   focused={i === state.carouselIndex}
                   onFocus={() => goTo(i)}
                   onSelect={() => select(goal)}
