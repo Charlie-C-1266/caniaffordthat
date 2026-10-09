@@ -90,11 +90,15 @@ const teleportingGoals = () => GOALS.filter((goal) => !cardFor(goal).style.trans
 // of the strip (offset +3, fully faded out) to the near edge of the other side,
 // or back. That card is the only one allowed to jump, and because one end of
 // its move is past the visible band it fades in or out in place rather than
-// flying across the stage. This only picks out the seam-crossers for
-// single-step moves: on a longer jump every card's offset changes by more than
-// one (see the multi-position test below and #156).
-const seamCrossers = (from: number, to: number) =>
-  GOALS.filter((_, i) => Math.abs(circularOffset(i, to) - circularOffset(i, from)) > 1).map((goal) => goal.id)
+// flying across the stage.
+//
+// Derived independently of the component (#156): a card that stays put
+// relative to the strip shifts by exactly the jump, the other way to the
+// focus, so anything else wrapped. Works for any jump size, not just one.
+const seamCrossers = (from: number, to: number) => {
+  const jump = circularOffset(to, from)
+  return GOALS.filter((_, i) => circularOffset(i, to) - circularOffset(i, from) !== -jump).map((goal) => goal.id)
+}
 
 /** Whether card `i` is inside the faded-in band when card `centre` is focused. */
 const visibleAt = (i: number, centre: number) => Math.abs(circularOffset(i, centre)) <= MAX_VISIBLE_OFFSET
@@ -308,18 +312,48 @@ describe('GoalPickerStep', () => {
       for (const id of teleportingGoals()) expect(watched).not.toContain(id)
     })
 
-    // Records current behaviour, not the intended one. The teleport rule flags
-    // any card whose offset changes by more than one, so a dot jump of two or
-    // more positions teleports every card and the carousel snaps instead of
-    // sliding. That's a bug (#156): once it's fixed, only the cards crossing
-    // the wrap seam should teleport here, and this test should say so.
-    it('currently teleports every card on a jump of more than one position (#156)', () => {
+    it('teleports only the seam-crossers on a jump of more than one position (#156)', () => {
       renderPicker()
       // Two dots along — far enough that no card is making a single step.
       const target = INITIAL_CAROUSEL_INDEX + 2
       fireEvent.click(dotFor(GOALS[target]))
       expect(carouselIndex()).toBe(target)
-      expect(teleportingGoals()).toEqual(GOALS.map((goal) => goal.id))
+
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, target)
+      // The bug this replaces: every card teleported, so nothing slid. The
+      // count is asserted so a fix that simply never teleports would fail too.
+      expect(crossing).toHaveLength(2)
+      expect(crossing.length).toBeLessThan(GOALS.length)
+      expect(teleportingGoals()).toEqual(crossing)
+    })
+
+    it('slides the card gaining focus and the one losing it on a multi-position jump (#156)', () => {
+      // The user-visible half of #156, and what the issue measured: the card
+      // arriving at centre stage has to travel there. Note this is a weaker
+      // claim than "nothing visible at both ends teleports", which holds for
+      // single steps only — on a two-step jump the card at the far faded edge
+      // (offset -2) wraps to the opposite edge (+2) and is visible, dimly, at
+      // both ends. Sliding it would drag it straight through the focused
+      // card, so teleporting it is right.
+      renderPicker()
+      const target = INITIAL_CAROUSEL_INDEX + 2
+      fireEvent.click(dotFor(GOALS[target]))
+
+      expect(teleportingGoals()).not.toContain(GOALS[target].id)
+      expect(teleportingGoals()).not.toContain(GOALS[INITIAL_CAROUSEL_INDEX].id)
+    })
+
+    it('teleports only the seam-crossers on a backwards multi-position jump too', () => {
+      // Backwards over the seam is the other direction `jump` has to get
+      // right: `circularOffset` returns a negative jump here.
+      renderPicker()
+      const target = LAST_INDEX - 1
+      fireEvent.click(dotFor(GOALS[target]))
+      expect(carouselIndex()).toBe(target)
+
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, target)
+      expect(crossing.length).toBeLessThan(GOALS.length)
+      expect(teleportingGoals()).toEqual(crossing)
     })
   })
 })
