@@ -35,9 +35,9 @@ test.describe('top-right controls after a real tap', () => {
     expect(await background(toggle)).toBe('var(--pill-bg)')
   })
 
-  test('the sources link does not stick either — the toggle now matches its neighbours', async ({ page }) => {
-    // The parity this is really about: before #158 a tap left the toggle on
-    // --pill-bg-hover while the pill beside it came back to --pill-bg.
+  test('the sources link beside it does not stick after a tap gesture either', async ({ page }) => {
+    // The toggle's neighbour, fixed in #119: with both now on usePillHover,
+    // neither is left lit after a tap.
     await page.goto('/')
 
     const link = page.getByRole('link', { name: 'Our sources' })
@@ -48,6 +48,5 @@ test.describe('top-right controls after a real tap', () => {
     await link.dispatchEvent('mouseenter')
 
     expect(await background(link)).toBe('var(--pill-bg)')
-    expect(await background(page.getByTestId('theme-toggle'))).toBe('var(--pill-bg)')
   })
 })
