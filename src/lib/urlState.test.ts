@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { buildShareParams, hydrateStateFromUrl, startOverUrl } from './urlState'
+import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
+import { ITEM_NAME_MAX_LENGTH } from './fields'
 import { TERM_RANGES } from './vehicle'
 
 describe('hydrateStateFromUrl', () => {
@@ -189,6 +190,93 @@ describe('buildShareParams', () => {
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
     expect(restored.growth).toBe(8.9)
+  })
+})
+
+describe('hydrateStateFromUrl — untrusted string fields', () => {
+  // The money fields were previously copied out of the query string verbatim,
+  // so a link could hold a value the inputs themselves refuse. The nastiest is
+  // a negative: MoneyInput clamps those to "0" precisely so the figure on
+  // screen can't disagree with the one num() feeds the maths, and a link
+  // bypassing that re-opened the divergence #30 closed.
+
+  // Every shared string field except the free-text title holds a money figure.
+  const MONEY_FIELDS = STRING_FIELDS.filter((field) => field !== 'itemName')
+
+  it('covers every money field in STRING_FIELDS', () => {
+    // Guards the loops below against silently passing on an empty list, and
+    // against itemName being dropped from the shared set.
+    expect(MONEY_FIELDS.length).toBe(STRING_FIELDS.length - 1)
+    expect(MONEY_FIELDS.length).toBeGreaterThan(10)
+    expect(STRING_FIELDS).toContain('itemName')
+  })
+
+  // Driven off STRING_FIELDS itself, so a newly shared field is covered here
+  // the moment it is added rather than quietly skipped.
+  const INVALID = ['-500', '-0.01', '-0', 'abc', '', '   ', 'NaN', 'Infinity', '1e999', '+500', '0x1F4', '500.']
+
+  for (const bad of INVALID) {
+    it(`falls back to the default for every money field given ${JSON.stringify(bad)}`, () => {
+      // Collected rather than asserted in the loop so a failure names the fields.
+      const trusted = MONEY_FIELDS.filter(
+        (field) => hydrateStateFromUrl(`?goalId=big&${field}=${encodeURIComponent(bad)}`)[field] !== DEFAULT_STATE[field],
+      )
+      expect(trusted).toEqual([])
+    })
+  }
+
+  const VALID = ['0', '1200', '1200.50', '.5', '1e308']
+
+  for (const good of VALID) {
+    it(`preserves ${JSON.stringify(good)} unchanged for every money field`, () => {
+      const mangled = MONEY_FIELDS.filter(
+        (field) => hydrateStateFromUrl(`?goalId=big&${field}=${encodeURIComponent(good)}`)[field] !== good,
+      )
+      expect(mangled).toEqual([])
+    })
+  }
+
+  it('shows £0 rather than a negative price, so the field and the maths agree', () => {
+    // The headline case from the issue.
+    const state = hydrateStateFromUrl('?goalId=big&itemPrice=-500&takeHome=2500')
+    expect(state.itemPrice).toBe(DEFAULT_STATE.itemPrice)
+    expect(state.takeHome).toBe('2500')
+  })
+
+  it('trims surrounding whitespace off an otherwise valid figure', () => {
+    // A number input cannot display " 1200 " — the browser blanks it — which
+    // would re-create the very display/maths divergence this closes.
+    expect(hydrateStateFromUrl('?goalId=big&itemPrice=%201200%20').itemPrice).toBe('1200')
+  })
+
+  it('caps an over-long itemName and leaves a normal one alone', () => {
+    const long = 'x'.repeat(ITEM_NAME_MAX_LENGTH + 50)
+    expect(hydrateStateFromUrl(`?goalId=big&itemName=${long}`).itemName).toHaveLength(ITEM_NAME_MAX_LENGTH)
+
+    const exact = 'y'.repeat(ITEM_NAME_MAX_LENGTH)
+    expect(hydrateStateFromUrl(`?goalId=big&itemName=${exact}`).itemName).toBe(exact)
+
+    expect(hydrateStateFromUrl('?goalId=big&itemName=').itemName).toBe('')
+    expect(hydrateStateFromUrl('?goalId=big&itemName=New+sofa').itemName).toBe('New sofa')
+  })
+
+  it('leaves a money field absent from the link at its default', () => {
+    // Absent and invalid both land on the default, but for different reasons —
+    // this pins that an absent field never goes through the sanitiser.
+    const state = hydrateStateFromUrl('?goalId=big&itemPrice=500')
+    expect(state.housing).toBe(DEFAULT_STATE.housing)
+    expect(state.itemName).toBe(DEFAULT_STATE.itemName)
+  })
+
+  it('still round-trips a state whose money fields are legitimately blank', () => {
+    // DEFAULT_STATE leaves itemPrice/takeHome/grossSalary as '', which
+    // buildShareParams writes as empty params. Those must come back as '' and
+    // not be mistaken for tampering.
+    const shared = { ...DEFAULT_STATE, goalId: 'emergency', takeHome: '2500' } satisfies typeof DEFAULT_STATE
+    const restored = hydrateStateFromUrl(`?${buildShareParams(shared).toString()}`)
+    // carouselIndex is re-derived from goalId by design rather than shared
+    // ('emergency' is 3rd in carousel order), so it is the one expected change.
+    expect(restored).toEqual({ ...shared, carouselIndex: 2 })
   })
 })
 
