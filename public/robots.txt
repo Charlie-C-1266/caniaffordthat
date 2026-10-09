@@ -1,0 +1,11 @@
+# Can I Afford That? — a static, client-side site with nothing private in it,
+# so every page is open to crawlers.
+User-agent: *
+Allow: /
+
+# Shared result links hang ?... state params off "/" (see src/lib/urlState.ts),
+# which makes an unbounded number of crawlable variants of the home page. Each
+# page declares a <link rel="canonical"> with no query string, so those variants
+# fold back into "/" rather than being indexed separately.
+
+Sitemap: https://caniaffordthat.co.uk/sitemap.xml
