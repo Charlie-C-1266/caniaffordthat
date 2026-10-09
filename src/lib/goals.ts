@@ -36,7 +36,7 @@ export interface Goal {
   namePlaceholder?: string
   /** Heading above the price input, e.g. "How much is the car?". Absent for the price-less emergency fund. */
   priceHeadline?: string
-  /** Car: shows the "Deposit / part-exchange" field. It writes to `savings` because a deposit is money already put toward the goal — no separate field, so the maths stays one path. */
+  /** Car: shows the "Deposit / part-exchange" field. It writes to `savings`, the same value as Budget's "Already saved" field — which Budget hides for the car, so the one figure is entered once rather than appearing, and silently changing, in two steps. */
   deposit?: boolean
   /** Label for the deposit field, when shown. */
   depositLabel?: string

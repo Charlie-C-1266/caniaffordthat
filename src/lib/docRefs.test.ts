@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join, dirname, basename, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Comments used to point readers at `design/adr/*` and `design/glossary.md`,
-// documents that have never been in this repository — so the rationale they
-// promised was unreachable for anyone reading the code. Those pointers are
-// now inline statements of the decision. This guard stops the pattern coming
-// back: any `design/…` path written in the source has to resolve to a file
-// that actually exists, or the suite fails.
+// Comments used to point readers at `design/adr/*` and `design/glossary.md`.
+// `design/` is gitignored, so those documents only ever existed on the
+// author's machine — the rationale they promised was unreachable for anyone
+// reading the repository. Those pointers are now inline statements of the
+// decision. This guard stops the pattern coming back: any `design/…` path
+// written in the source has to resolve to a file git actually tracks, or the
+// suite fails.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -52,17 +54,25 @@ function expandDocRef(ref: string): string[] {
 }
 
 /**
- * Whether a reference resolves to something on disk. An exact path wins;
- * failing that, a numeric ADR stub like `design/adr/0004` resolves to any
- * sibling whose name starts with it (`0004-emergency-fund.md`).
+ * Every file git tracks, as repo-relative paths. References resolve against
+ * these rather than the disk: a gitignored local file (the `design/` folder on
+ * the author's machine) exists there but nowhere a reader of the repository
+ * can see it, so on disk it would pass locally and fail in CI.
  */
-function docRefResolves(ref: string, root: string = REPO_ROOT): boolean {
-  const target = join(root, ref)
-  if (existsSync(target)) return true
-  const parent = dirname(target)
-  if (!existsSync(parent) || !statSync(parent).isDirectory()) return false
-  const prefix = basename(target)
-  return readdirSync(parent).some((entry) => entry.startsWith(prefix))
+function trackedFiles(): ReadonlySet<string> {
+  const listing = execFileSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, encoding: 'utf8' })
+  return new Set(listing.split('\0').filter(Boolean))
+}
+
+/**
+ * Whether a reference resolves to a tracked file. An exact path wins; failing
+ * that, a numeric ADR stub like `design/adr/0004` resolves to any tracked path
+ * that starts with it (`design/adr/0004-emergency-fund.md`).
+ */
+function docRefResolves(ref: string, tracked: ReadonlySet<string>): boolean {
+  if (tracked.has(ref)) return true
+  for (const path of tracked) if (path.startsWith(ref)) return true
+  return false
 }
 
 /** Every scannable file under the given tree. */
@@ -112,29 +122,40 @@ describe('expandDocRef', () => {
 })
 
 describe('docRefResolves', () => {
-  it('rejects a reference whose file is not in the repository (positive control)', () => {
-    // The exact shape the comments used to carry. If this ever passes, the
+  // A fixed file list rather than the real repository, so the answer is the
+  // same on every machine whatever happens to be on its disk.
+  const TRACKED = new Set(['src/lib/goals.ts', 'design/adr/0004-emergency-fund.md'])
+
+  it('rejects a reference whose file is not tracked (positive control)', () => {
+    // The exact shapes the comments used to carry. If this ever passes, the
     // scanner has stopped detecting dead references and the guard is useless.
-    expect(docRefResolves('design/adr/0001')).toBe(false)
-    expect(docRefResolves('design/glossary.md')).toBe(false)
-    expect(docRefResolves('design/design_handoff_scrolly_affordability_calculator/README.md')).toBe(false)
+    expect(docRefResolves('design/adr/0001', TRACKED)).toBe(false)
+    expect(docRefResolves('design/glossary.md', TRACKED)).toBe(false)
+    expect(docRefResolves('design/design_handoff_scrolly_affordability_calculator/README.md', TRACKED)).toBe(false)
   })
 
-  it('accepts a path that does exist, including a prefix-matched stub', () => {
-    expect(docRefResolves('src/lib/goals.ts')).toBe(true)
-    // `src/lib/goals` is not a file, but a sibling starts with it.
-    expect(docRefResolves('src/lib/goals')).toBe(true)
+  it('accepts a tracked path, including a prefix-matched ADR stub', () => {
+    expect(docRefResolves('src/lib/goals.ts', TRACKED)).toBe(true)
+    expect(docRefResolves('design/adr/0004', TRACKED)).toBe(true)
+  })
+
+  it('resolves against what git tracks, not what happens to be on disk', () => {
+    const tracked = trackedFiles()
+    expect(docRefResolves('src/lib/goals.ts', tracked)).toBe(true)
+    // `design/` is gitignored: even where it exists locally, it isn't tracked.
+    expect(docRefResolves('design/adr/0001', tracked)).toBe(false)
   })
 })
 
 describe('design references in the source', () => {
-  it('every design/… path written in src and e2e resolves to a real file', () => {
+  it('every design/… path written in src and e2e resolves to a tracked file', () => {
+    const tracked = trackedFiles()
     const dangling: string[] = []
     for (const dir of SCANNED_DIRS) {
       for (const file of filesUnder(join(REPO_ROOT, dir))) {
         for (const ref of extractDocRefs(readFileSync(file, 'utf8'))) {
           for (const expanded of expandDocRef(ref)) {
-            if (!docRefResolves(expanded)) dangling.push(`${relative(REPO_ROOT, file)} → ${expanded}`)
+            if (!docRefResolves(expanded, tracked)) dangling.push(`${relative(REPO_ROOT, file)} → ${expanded}`)
           }
         }
       }
