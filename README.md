@@ -29,6 +29,17 @@ docker compose up -d --build
 This serves on <http://localhost:4321>. Change the left half of the port mapping
 in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken.
 
+The container's nginx config (`nginx.conf`) gzips text responses, caches
+Vite's hashed `/assets/` for a year while holding HTML at `no-cache`, sends
+`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and a
+`frame-ancestors` CSP, and returns a real 404 for unknown paths rather than
+serving the calculator. To check all of that against a build:
+
+```bash
+npm run build
+scripts/verify-nginx.sh      # needs nginx on PATH; CI runs this too
+```
+
 To produce a static build you can serve from any static host:
 
 ```bash
