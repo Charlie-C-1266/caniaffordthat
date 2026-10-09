@@ -8,6 +8,13 @@ FLAVOR_SUGGESTIONS: false
 PRINT_ALPACA: false
 PRINT_APPLY_FIXES_TIPS: false
 
+# Results are read from the CI check and the uploaded megalinter-reports
+# artifact, so MegaLinter doesn't comment on PRs. Its comment reporter looks
+# the PR up through the GitHub API, which the workflow's read-only token
+# (`permissions: contents: read`) isn't allowed to do in a private repo: the
+# 403 failed the whole job even with every linter passing.
+GITHUB_COMMENT_REPORTER: false
+
 # Whitelist: only these descriptors run. Everything owned by the native
 # toolchain (TypeScript, JavaScript, JSX, CSS, JSON, HTML) stays off, as do
 # spell-check and copy-paste detection.
@@ -26,7 +33,7 @@ DISABLE_LINTERS:
   - YAML_PRETTIER
   - YAML_V8R
   - MARKDOWN_MARKDOWN_LINK_CHECK
-  - MARKDOWN_MARKDOWN_TABLE_FORMATTING
+  - MARKDOWN_MARKDOWN_TABLE_FORMATTER
   - REPOSITORY_CHECKOV
   - REPOSITORY_DEVSKIM
   - REPOSITORY_DUSTILOCK
