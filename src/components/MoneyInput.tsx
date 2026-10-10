@@ -9,8 +9,14 @@ import { isNegativeMoney } from '../lib/fields'
 const clampNegative = (raw: string): string => (isNegativeMoney(raw) ? '0' : raw)
 
 interface MoneyInputProps {
-  /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. Optional: the bare hero fields don't use one. */
+  /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. */
   id?: string
+  /**
+   * `id` of an element that names this input, for a field whose visible
+   * question is a heading rather than a `<label>` — the Details step's price,
+   * named by the goal's `priceHeadline`. Use instead of `id`, not as well.
+   */
+  ariaLabelledBy?: string
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
@@ -35,6 +41,7 @@ interface MoneyInputProps {
  */
 export function MoneyInput({
   id,
+  ariaLabelledBy,
   value,
   onChange,
   onKeyDown,
@@ -67,6 +74,7 @@ export function MoneyInput({
       </span>
       <input
         id={id}
+        aria-labelledby={ariaLabelledBy}
         type="number"
         min={0}
         value={value}

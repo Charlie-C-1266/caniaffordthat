@@ -64,9 +64,11 @@ const renderForGoal = (goalId: GoalId, state: Partial<CalculatorState> = {}) =>
   renderBudgetStep({ goalId, itemPrice: '18000', takeHome: '2600', ...state })
 
 /**
- * The money input belonging to a field label. FieldLabel renders a bare
- * `<label>` with no `htmlFor`, so there's no accessible name to query by —
- * the input is found through the wrapper the two share instead.
+ * The money input belonging to a field label, found through the wrapper the
+ * two share. Kept as-is for the fields whose labels this file already drove
+ * structurally; replacing these helpers with `getByLabelText` across the
+ * suite is #166's job. The income field, which this step labels properly, is
+ * queried by its accessible name in the block at the end of this file.
  */
 function fieldInput(labelText: string): HTMLInputElement {
   const [label] = screen.getAllByText((_, element) => element?.tagName === 'LABEL' && (element.textContent ?? '').startsWith(labelText))
@@ -406,6 +408,44 @@ describe('BudgetStep', () => {
       fireEvent.keyDown(fieldInput(SAVINGS_LABEL), { key: 'Enter' })
 
       expect(advanced).toEqual([STEP_INDEX + 1])
+    })
+  })
+
+  // #167: the step's most important field had no accessible name at all —
+  // the visible FieldLabel above it was not linked to the input, so a screen
+  // reader announced it as a bare "spin button". These query the way a screen
+  // reader resolves a name, so they fail on the unlinked markup.
+  describe('the income field is named by its visible label', () => {
+    it('take-home mode names it "Take-home pay / month"', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      const field = screen.getByRole('spinbutton', { name: 'Take-home pay / month' })
+      expect(field).toBe(screen.getByLabelText('Take-home pay / month'))
+    })
+
+    it('salary mode names the same field "Annual salary (before tax)"', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      expect(screen.getByRole('spinbutton', { name: 'Annual salary (before tax)' })).toBeDefined()
+      // The other label belongs to an input that isn't rendered in this mode.
+      expect(screen.queryByLabelText('Take-home pay / month')).toBeNull()
+    })
+
+    it('names the input that actually takes the value', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      fireEvent.change(screen.getByLabelText('Take-home pay / month'), { target: { value: '2450' } })
+
+      expect(calculator?.state.takeHome).toBe('2450')
+    })
+
+    it('gives the label a for that resolves to the input, not a dangling id', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      const field = screen.getByLabelText('Take-home pay / month')
+      const label = document.querySelector('label[for]')
+      expect(label?.getAttribute('for')).toBe(field.id)
+      expect(field.id).not.toBe('')
     })
   })
 })
