@@ -12,6 +12,7 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off",
     "vitest/require-mock-type-parameters": "off",
-    "jsx-a11y/prefer-tag-over-role": "off"
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "no-underscore-dangle": ["warn", { "allow": ["__ON_VERCEL__"] }]
   }
 }
