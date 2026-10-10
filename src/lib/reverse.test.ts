@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { salaryFlip } from './reverse'
 import { grossFromNet, marginalNetRate, netFromGross } from './salary'
 import { CURRENT_TAX_YEAR } from './taxYears'
+import type { TaxYear } from './taxYears'
 
 describe('salaryFlip', () => {
   it('reports the gross behind the required take-home and the gap to current pay', () => {
@@ -78,5 +79,74 @@ describe('salaryFlip', () => {
       expect(flip.salaryPerTakeHome).toBeGreaterThan(0)
       expect(Number.isFinite(flip.salaryPerTakeHome)).toBe(true)
     }
+  })
+
+  // The 0.95 / 1.05 cut-offs themselves, either side. The band is open at
+  // both ends (`ratio > 1.05` / `ratio < 0.95`), so the boundary values
+  // themselves read 'about' and only a hair past them flips the verdict.
+  it('puts the vsMedian boundaries on the "about" side and flips just past them', () => {
+    const median = CURRENT_TAX_YEAR.medianFullTimeSalary
+    const atRatio = (factor: number) => salaryFlip(netFromGross(median * factor) / 12, 2000).vsMedian
+
+    expect(atRatio(0.95), 'exactly 0.95× the median').toBe('about')
+    expect(atRatio(1.05), 'exactly 1.05× the median').toBe('about')
+    expect(atRatio(0.93), 'below the lower cut-off').toBe('below')
+    expect(atRatio(1.07), 'above the upper cut-off').toBe('above')
+  })
+
+  it('treats an exactly zero gap as already enough', () => {
+    // alreadyEnough is `grossGap <= 0`, so the boundary belongs to "enough":
+    // someone earning precisely the required figure can afford the plan.
+    const monthly = netFromGross(45000) / 12
+    const flip = salaryFlip(monthly, monthly)
+
+    expect(flip.grossGap).toBeCloseTo(0, 6)
+    expect(flip.alreadyEnough).toBe(true)
+    expect(flip.takeHomeMonthlyGap).toBeCloseTo(0, 6)
+  })
+
+  it('floors a negative current take-home at zero rather than inverting it', () => {
+    // currentTakeHomeMonthly is clamped with Math.max(0, …), so a nonsense
+    // negative figure reads as "earns nothing", not as negative gross.
+    const flip = salaryFlip(2000, -500)
+
+    expect(flip.currentGross).toBe(0)
+    expect(flip.grossGap).toBe(flip.requiredGross)
+    expect(flip.alreadyEnough).toBe(false)
+    expect(Number.isFinite(flip.grossGap)).toBe(true)
+  })
+
+  // The other side of the band sweep above: the sweep proves the fallback is
+  // unreachable with *today's* table, and this proves the fallback itself
+  // behaves if a future table ever reaches it. `year` is a parameter for
+  // exactly this reason, matching every function in ./salary.
+  it('falls back to 0 salaryPerTakeHome under a table with no take-home to gain', () => {
+    // A 100% flat rate: every extra £1 of gross is taken, so the marginal
+    // kept fraction is 0 and 1 / marginal would be Infinity.
+    const confiscatory: TaxYear = {
+      id: 'test-100',
+      label: '100% flat (test only)',
+      personalAllowance: 0,
+      taperThreshold: Infinity,
+      taperRate: 0,
+      incomeTaxBands: [{ upTo: Infinity, rate: 1 }],
+      niBands: [{ upTo: Infinity, rate: 0 }],
+      medianFullTimeSalary: 30000,
+    }
+
+    expect(marginalNetRate(100000, confiscatory)).toBe(0)
+
+    const flip = salaryFlip(2000, 1000, confiscatory)
+
+    expect(flip.salaryPerTakeHome).toBe(0)
+    // And nothing downstream becomes Infinity or NaN.
+    expect(Number.isFinite(flip.salaryPerTakeHome)).toBe(true)
+    expect(Number.isFinite(flip.requiredGross)).toBe(true)
+    expect(Number.isFinite(flip.grossGap)).toBe(true)
+    expect(Number.isNaN(flip.requiredGross)).toBe(false)
+  })
+
+  it('uses the current tax year when no table is passed', () => {
+    expect(salaryFlip(2000, 1000)).toEqual(salaryFlip(2000, 1000, CURRENT_TAX_YEAR))
   })
 })

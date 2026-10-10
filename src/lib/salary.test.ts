@@ -8,6 +8,7 @@ import {
   inAllowanceTaper,
   monthlyTakeHomeFromGross,
 } from './salary'
+import type { TaxYear } from './taxYears'
 
 // Golden figures hand-computed from the 2026/27 rest-of-UK rules in taxYears.ts
 // (PA £12,570 tapering over £100k; tax 20/40/45 at £50,270/£125,140; NI 8/2 at
@@ -47,6 +48,57 @@ describe('grossFromNet', () => {
   it('returns 0 for a non-positive take-home', () => {
     expect(grossFromNet(0)).toBe(0)
     expect(grossFromNet(-100)).toBe(0)
+  })
+
+  // The defensive ceiling-growth loop. `hi` starts at net * 2 + 200000, which
+  // brackets any target under the real UK table (gross is never more than
+  // ~1.9x net), so the loop body never runs with the shipped figures. A table
+  // with a punitive rate does need it, and without the loop the bisection
+  // would return the un-bracketing ceiling and understate the gross badly.
+  it('grows its ceiling until it brackets the target under a punitive table', () => {
+    // 99% flat rate, no allowance: gross is 100x net, far outside the
+    // starting bracket for any meaningful target.
+    const punitive: TaxYear = {
+      id: 'test-99',
+      label: '99% flat (test only)',
+      personalAllowance: 0,
+      taperThreshold: Infinity,
+      taperRate: 0,
+      incomeTaxBands: [{ upTo: Infinity, rate: 0.99 }],
+      niBands: [{ upTo: Infinity, rate: 0 }],
+      medianFullTimeSalary: 30000,
+    }
+
+    // Sanity-check the premise: the starting ceiling really is too low here,
+    // so this exercises the loop rather than passing vacuously.
+    const target = 50000
+    const startingCeiling = target * 2 + 200000
+    expect(netFromGross(startingCeiling, punitive)).toBeLessThan(target)
+
+    const gross = grossFromNet(target, punitive)
+    expect(gross).toBeCloseTo(target * 100, 0)
+    expect(netFromGross(gross, punitive)).toBeCloseTo(target, 0)
+  })
+
+  it('terminates with a finite answer even when no gross can reach the target', () => {
+    // 100% flat: take-home is 0 at every gross, so the ceiling can never
+    // bracket the target and the loop runs to its 64-iteration guard. The
+    // guard is what stops this looping forever or returning Infinity/NaN.
+    const confiscatory: TaxYear = {
+      id: 'test-100',
+      label: '100% flat (test only)',
+      personalAllowance: 0,
+      taperThreshold: Infinity,
+      taperRate: 0,
+      incomeTaxBands: [{ upTo: Infinity, rate: 1 }],
+      niBands: [{ upTo: Infinity, rate: 0 }],
+      medianFullTimeSalary: 30000,
+    }
+
+    const gross = grossFromNet(1000, confiscatory)
+    expect(Number.isFinite(gross)).toBe(true)
+    expect(Number.isNaN(gross)).toBe(false)
+    expect(gross).toBeGreaterThan(0)
   })
 })
 
