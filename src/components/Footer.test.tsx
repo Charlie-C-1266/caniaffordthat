@@ -9,7 +9,13 @@ import { Footer } from './Footer'
 // mistyped mailto would ship unnoticed. These tests assert on the rendered
 // copy and the href, not on the markup around them.
 
-/** The feedback address, duplicated in the docs pages and README — see the PR note. */
+/**
+ * The feedback address, written out as a literal on purpose. The app now
+ * builds it from `lib/contact`'s CONTACT_EMAIL, so importing the constant
+ * here would make this test agree with itself no matter what the constant
+ * said. Spelling it out keeps this an independent check on the address and
+ * the subject that actually reach the rendered link.
+ */
 const FEEDBACK_EMAIL = 'hello@caniaffordthat.co.uk'
 
 describe('Footer', () => {

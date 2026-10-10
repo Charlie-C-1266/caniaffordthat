@@ -7,6 +7,7 @@ import { Formula } from './article/Formula'
 import { DataTable } from './article/DataTable'
 import { Num } from './article/Num'
 import { PageHeader } from './article/PageHeader'
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
 import { fmt } from '../lib/calculations'
 import { incomeTaxOn, nationalInsuranceOn, netFromGross, grossFromNet, marginalNetRate } from '../lib/salary'
 import { CURRENT_TAX_YEAR } from '../lib/taxYears'
@@ -255,8 +256,7 @@ export function SalaryMethodologyPage() {
           </P>
           <P>
             Spotted something wrong, or a rate that's moved? Email{' '}
-            <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Salary%20methodology">hello@caniaffordthat.co.uk</ExternalLink> —
-            corrections are very welcome.
+            <ExternalLink href={contactMailto('Salary methodology')}>{CONTACT_EMAIL}</ExternalLink> — corrections are very welcome.
           </P>
         </Section>
       </main>
