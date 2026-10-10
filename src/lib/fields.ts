@@ -77,7 +77,10 @@ const isBidiControl = (code: number) =>
 export function sanitiseItemName(raw: string): string {
   return Array.from(raw)
     .filter((char) => {
-      const code = char.codePointAt(0) ?? 0
+      // Non-null rather than `?? 0`: Array.from splits into code points, so
+      // every `char` is a non-empty string and codePointAt(0) is always
+      // defined. The old fallback was unreachable by construction.
+      const code = char.codePointAt(0)!
       return code > 0x1f && code !== 0x7f && !(code >= 0x80 && code <= 0x9f) && !isBidiControl(code)
     })
     .slice(0, ITEM_NAME_MAX_LENGTH)

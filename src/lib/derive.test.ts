@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { deriveResult, spareCashOf } from './derive'
+import { deriveResult, spareCashOf, spareCashFitSub, SPARE_CASH_COMFORTABLE_RATIO, SPARE_CASH_TIGHT_RATIO } from './derive'
 import { DEFAULT_STATE } from '../state/defaults'
 import type { CalculatorState } from '../state/types'
 
@@ -371,5 +371,187 @@ describe('deriveResult', () => {
       )
       expect(result?.requiredTakeHomeMonthly).toBeNull()
     })
+  })
+})
+
+// The branches that only appear when a plan can't work, or when a figure lands
+// exactly on a boundary. All of these were previously unexercised.
+describe('spareCashFitSub', () => {
+  it('reports the shortfall when the commitment exceeds spare cash', () => {
+    expect(spareCashFitSub(800, 500)).toContain('more than your spare cash')
+  })
+
+  it('handles zero spare cash without dividing by it', () => {
+    // The ratio falls back to Infinity rather than 0/0 = NaN, and the
+    // over-budget branch answers first, so the copy never shows "NaN".
+    const copy = spareCashFitSub(300, 0)
+    expect(copy).toContain('more than your spare cash')
+    expect(copy).not.toMatch(/NaN|Infinity/)
+  })
+
+  it('still answers when both the commitment and spare cash are zero', () => {
+    // 0 > 0 is false, so this reaches the ratio — which is Infinity, not NaN —
+    // and lands on the tightest band rather than producing broken copy.
+    const copy = spareCashFitSub(0, 0)
+    expect(copy).not.toMatch(/NaN|Infinity/)
+    expect(copy.length).toBeGreaterThan(0)
+  })
+
+  it('puts each ratio boundary in the band that includes it', () => {
+    const spare = 1000
+    // The bands are `<=`, so a figure exactly on a cut-off takes the
+    // friendlier description.
+    expect(spareCashFitSub(spare * SPARE_CASH_COMFORTABLE_RATIO, spare)).toContain('comfortably')
+    expect(spareCashFitSub(spare * SPARE_CASH_TIGHT_RATIO, spare)).toContain('a good chunk')
+    expect(spareCashFitSub(spare * 0.9, spare)).toContain("it's tight")
+  })
+})
+
+describe('deriveResult — infeasible and boundary plans', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 6, 15))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** A duration plan saving nothing each month, so the target is never reached. */
+  const savingNothing = (overrides: Partial<CalculatorState> = {}) =>
+    makeState({
+      goalId: 'holiday',
+      mode: 'save',
+      saveFlavor: 'duration',
+      itemPrice: '4000',
+      takeHome: '2000',
+      rateMode: 'amount',
+      monthlyAmount: '0',
+      ...overrides,
+    })
+
+  it('marks a duration plan saving £0/month infeasible, with no headline and no Infinity', () => {
+    const result = deriveResult(savingNothing())
+
+    expect(result).not.toBeNull()
+    expect(result?.isFeasible).toBe(false)
+    expect(result?.isAffordable).toBe(false)
+    // `!isFeasible` picks the empty headline rather than "Infinity months".
+    expect(result?.headline).toBe('')
+    expect(result?.subheadline).toBe('')
+    expect(result?.verdictSub).toContain('Increase how much you save')
+    for (const text of [result?.headline, result?.subheadline, result?.verdictSub, result?.verdictText]) {
+      expect(text).not.toMatch(/NaN|Infinity/)
+    }
+  })
+
+  it('leaves the projection off an infeasible plan', () => {
+    expect(deriveResult(savingNothing())?.projection).toBeNull()
+  })
+
+  it('marks an emergency fund with no spare cash infeasible and suggests a first milestone', () => {
+    // Take-home exactly equals outgoings, so spare cash is £0 and the
+    // share-of-spare-cash contribution is £0 — the fund is never reached.
+    const result = deriveResult(
+      makeState({
+        goalId: 'emergency',
+        mode: 'save',
+        saveFlavor: 'duration',
+        takeHome: '1000',
+        housing: '1000',
+        coverMonths: 3,
+      }),
+    )
+
+    expect(result).not.toBeNull()
+    expect(result?.isFeasible).toBe(false)
+    expect(result?.isAffordable).toBe(false)
+    // emergencyCopy's `if (c.isFeasible)` is skipped, so both stay empty.
+    expect(result?.headline).toBe('')
+    expect(result?.subheadline).toBe('')
+    expect(result?.verdictSub).toContain('solid first milestone')
+    expect(result?.verdictText).toBe('This one will take time.')
+    expect(result?.verdictSub).not.toMatch(/NaN|Infinity/)
+  })
+
+  it('says "1 month" in the singular when the plan takes exactly one month', () => {
+    // Saving the whole target in one go: months === 1, the singular side of
+    // monthsLabel, which every other test's multi-month plan skips.
+    const result = deriveResult(
+      makeState({
+        goalId: 'holiday',
+        mode: 'save',
+        saveFlavor: 'duration',
+        itemPrice: '1000',
+        takeHome: '2000',
+        rateMode: 'amount',
+        monthlyAmount: '1000',
+      }),
+    )
+
+    expect(result?.isFeasible).toBe(true)
+    expect(result?.headline).toContain('1 month')
+    expect(result?.headline).not.toContain('1 months')
+  })
+
+  it('says "1 month" in the singular for the emergency fund too', () => {
+    const result = deriveResult(
+      makeState({
+        goalId: 'emergency',
+        mode: 'save',
+        saveFlavor: 'duration',
+        takeHome: '2000',
+        housing: '500',
+        coverMonths: 1,
+        rateMode: 'amount',
+        monthlyAmount: '500',
+      }),
+    )
+
+    expect(result?.isFeasible).toBe(true)
+    expect(result?.headline).toContain('1 month')
+    expect(result?.headline).not.toContain('1 months')
+  })
+
+  it('says you can afford it now when savings already cover the price', () => {
+    // target = max(0, price - savings) = 0, so monthsToSave returns 0 and the
+    // duration headline takes its "already there" branch instead of naming a
+    // date. Nothing is left to save, so no projection either.
+    const result = deriveResult(
+      makeState({
+        goalId: 'holiday',
+        mode: 'save',
+        saveFlavor: 'duration',
+        itemPrice: '1000',
+        savings: '1500',
+        takeHome: '2000',
+        rateMode: 'amount',
+        monthlyAmount: '200',
+      }),
+    )
+
+    expect(result?.isFeasible).toBe(true)
+    expect(result?.isAffordable).toBe(true)
+    expect(result?.headline).toBe('You can afford it now')
+    expect(result?.projection).toBeNull()
+  })
+
+  it('survives a very large price without producing NaN or Infinity copy', () => {
+    const result = deriveResult(
+      makeState({
+        goalId: 'holiday',
+        mode: 'save',
+        saveFlavor: 'duration',
+        itemPrice: '1e15',
+        takeHome: '2000',
+        rateMode: 'amount',
+        monthlyAmount: '100',
+      }),
+    )
+
+    expect(result).not.toBeNull()
+    for (const text of [result?.headline, result?.subheadline, result?.verdictSub, result?.verdictText]) {
+      expect(text).not.toMatch(/NaN/)
+    }
   })
 })

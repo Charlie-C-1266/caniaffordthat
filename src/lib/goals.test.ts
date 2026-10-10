@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { GOALS, INITIAL_CAROUSEL_INDEX, circularOffset, goalById, seedFromGoal, wrapIndex } from './goals'
+import type { GoalId } from '../state/types'
 
 describe('GOALS config', () => {
   it('lists the six goals with the coming-soon Mortgage last', () => {
@@ -61,6 +62,18 @@ describe('goalById', () => {
   it('finds a known goal and returns null otherwise', () => {
     expect(goalById('car')?.name).toBe('Vehicle')
     expect(goalById(null)).toBeNull()
+  })
+
+  // The `?? null` fallback: the compiler rejects an unknown id, but a stale
+  // shared link or a renamed goal can still hand one over at runtime, and the
+  // callers all branch on null rather than expecting a throw.
+  it('returns null for an id that is not in GOALS', () => {
+    expect(goalById('not-a-goal' as GoalId)).toBeNull()
+    expect(goalById('' as GoalId)).toBeNull()
+  })
+
+  it('returns the same object identity as the entry in GOALS', () => {
+    expect(goalById('holiday')).toBe(GOALS.find((goal) => goal.id === 'holiday'))
   })
 })
 
