@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Icon, type IconName } from '../Icon'
+import { prefersReducedMotion } from '../../lib/motion'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -256,7 +257,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
   useEffect(() => {
     if (engaged || hovered || state.goalId !== null) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (prefersReducedMotion()) return
     const timer = setInterval(() => {
       setField('carouselIndex', wrapIndex(indexRef.current + 1))
     }, AUTO_ROTATE_MS)

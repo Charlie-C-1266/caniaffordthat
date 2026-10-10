@@ -252,3 +252,24 @@
   --shadow-card-focused: 0 22px 56px rgba(46, 213, 115, 0.18);
   --shadow-popover: 0 10px 26px rgba(27, 22, 51, 0.16);
 }
+
+/*
+ * Reduced motion (WCAG 2.3.3). The step reveal slides each tile up 56px and
+ * fades it in over --duration-reveal, which is 2s — long enough to cause
+ * discomfort for someone with a vestibular disorder, on every step. Collapsing
+ * the duration leaves the reveal in place: the tile still appears, and still
+ * via RevealTile's `revealed` flag, just without the slide or the fade.
+ *
+ * 0.01ms rather than 0s so the transition still fires its `transitionend`,
+ * which anything listening for the reveal to finish depends on.
+ *
+ * Last in the file on purpose: `:root` here carries the same specificity as
+ * the `:root` block above, so source order is what makes this win. The
+ * step-to-step scroll is the other half of this and can't be done in CSS —
+ * see lib/motion.ts and useStepObserver.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-reveal: 0.01ms;
+  }
+}

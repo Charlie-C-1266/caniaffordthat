@@ -174,6 +174,44 @@ describe('useStepObserver', () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 900, behavior: 'smooth' })
   })
 
+  // WCAG 2.3.3: someone who has asked their OS for less motion should not get
+  // a smooth scroll on every step jump. jsdom has no matchMedia, so the two
+  // tests above exercise the no-preference path by default; these two install
+  // one for each answer.
+  it('scrollToIndex jumps instantly when the OS asks for reduced motion', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    const wrapperEl = elementAtOffsetTop(300)
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }) as MediaQueryList),
+    )
+
+    act(() => {
+      result.current.registerWrapper(2)(wrapperEl)
+      result.current.scrollToIndex(2)
+    })
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: 'auto' })
+  })
+
+  it('scrollToIndex still scrolls smoothly when no motion preference is set', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    const wrapperEl = elementAtOffsetTop(300)
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({ matches: false }) as MediaQueryList),
+    )
+
+    act(() => {
+      result.current.registerWrapper(2)(wrapperEl)
+      result.current.scrollToIndex(2)
+    })
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: 'smooth' })
+  })
+
   it('observes panels registered via JSX refs before the observer effect runs', () => {
     // In a real component tree, React attaches ref callbacks during commit,
     // *before* effects run — so the observer's setup effect must pick up
