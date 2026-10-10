@@ -5,6 +5,7 @@ import { Paragraph as P } from './article/Paragraph'
 import { Strong } from './article/Strong'
 import { DataTable } from './article/DataTable'
 import { PageHeader } from './article/PageHeader'
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
 import { HELPFUL_LINKS, SOURCE_LIST } from '../lib/sources'
 
 /**
@@ -138,10 +139,7 @@ export function SourcesPage() {
           />
           <P>
             This list will grow. Got a resource that belongs here? Email{' '}
-            <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Helpful%20reading%20suggestion">
-              hello@caniaffordthat.co.uk
-            </ExternalLink>{' '}
-            — suggestions are very welcome.
+            <ExternalLink href={contactMailto('Helpful reading suggestion')}>{CONTACT_EMAIL}</ExternalLink> — suggestions are very welcome.
           </P>
         </Section>
       </main>

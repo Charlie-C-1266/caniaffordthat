@@ -1,3 +1,5 @@
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
+
 /** Shown after the result step — leads with the alpha notice, then the estimates-only / not-financial-advice disclaimer and a feedback link. */
 export function Footer() {
   return (
@@ -37,11 +39,8 @@ export function Footer() {
         <br />
         <br />
         Found a bug, or got an idea for something you'd like to see? Email{' '}
-        <a
-          href="mailto:hello@caniaffordthat.co.uk?subject=Can%20I%20Afford%20That%3F%20feedback"
-          style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
-        >
-          hello@caniaffordthat.co.uk
+        <a href={contactMailto('Can I Afford That? feedback')} style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>
+          {CONTACT_EMAIL}
         </a>{' '}
         — we'd love to hear from you.
       </p>
