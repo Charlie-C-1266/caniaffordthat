@@ -205,9 +205,9 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                       />
                     </div>
                   )}
-                  <h1 style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 20px' }}>
+                  <h2 style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 20px' }}>
                     {goal.priceHeadline}
-                  </h1>
+                  </h2>
                   <MoneyInput
                     value={state.itemPrice}
                     onChange={handlePriceChange}

@@ -52,6 +52,11 @@ function railLabels(): string[] {
     .map((button) => button.getAttribute('aria-label') ?? '')
 }
 
+/** Every heading on the page, as [level, text] pairs in document order. */
+function headingOutline(): [number, string][] {
+  return screen.getAllByRole('heading').map((heading) => [Number(heading.tagName.slice(1)), heading.textContent?.trim() ?? ''])
+}
+
 /** Index of the step the rail marks as current. */
 function activeRailIndex(): number {
   const rail = screen.getByRole('navigation', { name: 'Step progress' })
@@ -143,6 +148,79 @@ describe('App', () => {
         }
       })
     }
+  })
+
+  // The calculator is one scrolling page, so its heading outline has to read
+  // as one: a single h1 naming the page, with each step's question as an h2
+  // under it. Before #168 every step rendered its own h1 — five of them in a
+  // holiday flow with a result showing — which a screen reader navigating by
+  // headings presents as a flat list of unrelated top-level headings.
+  describe('heading structure', () => {
+    const goalIds = [null, ...GOALS.map((goal) => goal.id)]
+    const LANDING_QUESTION = 'What are you saving for?'
+
+    for (const goalId of goalIds) {
+      it(`has exactly one h1, the landing question, for ${goalId ?? 'no goal'}`, () => {
+        renderApp()
+        act(() => calculator?.setField('goalId', goalId))
+
+        const outline = headingOutline()
+        expect(outline.filter(([level]) => level === 1)).toEqual([[1, LANDING_QUESTION]])
+        // Not just "one h1" — nothing may sit at a level that skips one, or
+        // the outline has a hole in it.
+        expect(outline.every(([level]) => level <= 2)).toBe(true)
+      })
+    }
+
+    it('keeps every step question, and the result headline, at level 2', () => {
+      renderApp()
+      // A full save flow with a result showing — the case the issue measured,
+      // where five separate h1s used to appear.
+      act(() =>
+        calculator?.setFields({
+          goalId: 'holiday',
+          itemPrice: '4000',
+          takeHome: '2600',
+        }),
+      )
+
+      // Queried by accessible name rather than tag soup, because that is what
+      // a screen reader announces.
+      expect(screen.getByRole('heading', { level: 2, name: 'How much is the trip?' })).toBeTruthy()
+      // The next two are matched loosely rather than spelled out, because
+      // both carry a soft line break the name computation keeps verbatim: the
+      // Budget copy has a U+2028 LINE SEPARATOR mid-sentence, and the Plan
+      // question a <br>, which jsdom does not treat as whitespace. A real
+      // browser normalises both, and e2e/heading-structure.spec.ts pins the
+      // clean names there.
+      expect(screen.getByRole('heading', { level: 2, name: /What's coming in,\s*and going out\?/ })).toBeTruthy()
+      expect(screen.getByRole('heading', { level: 2, name: /How do you want\s*to plan it\?/ })).toBeTruthy()
+      // The result headline is a figure, so it is matched by shape rather
+      // than spelled out — the copy is ResultHeadline's business.
+      expect(screen.getByRole('heading', { level: 2, name: /months? —/ })).toBeTruthy()
+
+      // Four questions where there were four separate h1s before, under the
+      // one h1 that remains.
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(4)
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    })
+
+    it("keeps the vehicle flow's two bespoke questions at level 2 as well", () => {
+      renderApp()
+      act(() => calculator?.setFields({ goalId: 'car', itemPrice: '18000', takeHome: '2600' }))
+
+      expect(screen.getByRole('heading', { level: 2, name: 'How are you buying it?' })).toBeTruthy()
+      expect(screen.getByRole('heading', { level: 2, name: 'What will it cost to keep on the road?' })).toBeTruthy()
+      expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(1)
+    })
+
+    it('keeps the finance variant of the Plan step at level 2', () => {
+      renderApp()
+      act(() => calculator?.setFields({ goalId: 'big', mode: 'monthly', itemPrice: '1200', takeHome: '2000' }))
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Term and rate?' })).toBeTruthy()
+      expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(1)
+    })
   })
 
   describe('"Start over"', () => {

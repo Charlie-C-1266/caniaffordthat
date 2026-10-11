@@ -312,7 +312,7 @@ describe('DetailsStep standard-goal path', () => {
 
       for (const [goalId, headline] of Object.entries(headlines)) {
         renderStandardDetails(goalId as 'car')
-        expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(headline)
+        expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(headline)
         cleanup()
         calculator = null
       }

@@ -115,7 +115,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={680} padding="40px 48px">
           <Eyebrow color={accent}>Step {index} — Running costs</Eyebrow>
-          <h1
+          <h2
             style={{
               fontSize: 'var(--fs-h1-sm)',
               lineHeight: 1.15,
@@ -125,7 +125,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             }}
           >
             What will it cost to keep on the road?
-          </h1>
+          </h2>
 
           <SectionLabel>Fuel</SectionLabel>
           {/*

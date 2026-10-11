@@ -325,13 +325,13 @@ describe('BudgetStep', () => {
     it('drops the outgoings half for the emergency fund, which is not asked for any', () => {
       renderForGoal('emergency')
 
-      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe("What's coming in?")
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("What's coming in?")
     })
 
     it('asks about both halves for every other goal', () => {
       renderForGoal('holiday')
 
-      expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(BOTH_HALVES_HEADING)
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(BOTH_HALVES_HEADING)
     })
   })
 
@@ -341,7 +341,7 @@ describe('BudgetStep', () => {
       // can leave it that way; the step must still be usable.
       renderBudgetStep({ goalId: null, takeHome: '2600' })
 
-      expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(BOTH_HALVES_HEADING)
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(BOTH_HALVES_HEADING)
       for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(hasField(label)).toBe(true)
       expect(hasField(SAVINGS_LABEL)).toBe(true)
       expect(hasField(VEHICLE_TRANSPORT_LABEL)).toBe(false)
