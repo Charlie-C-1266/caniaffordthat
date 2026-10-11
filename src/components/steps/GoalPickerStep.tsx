@@ -247,11 +247,22 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
     focus(index)
   }
 
+  // The pending post-selection scroll, held so it can be cancelled — see
+  // select() below, and the unmount cleanup under the auto-rotate effect.
+  const selectScrollTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
   const select = (goal: Goal) => {
     if (goal.soon) return
     setEngaged(true)
     setFields(seedFromGoal(goal))
-    setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
+    // At most one pending scroll. Two selections inside the delay — the
+    // focused card clicked twice, or Enter pressed twice — would otherwise
+    // each schedule one, and the second could land after the user has
+    // already scrolled on or started over, yanking the page to the wrong
+    // step. Cleared after the `soon` guard above, so a "Soon" goal neither
+    // schedules a scroll nor cancels one already pending.
+    clearTimeout(selectScrollTimer.current)
+    selectScrollTimer.current = setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
 
   useEffect(() => {
@@ -262,6 +273,11 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
     }, AUTO_ROTATE_MS)
     return () => clearInterval(timer)
   }, [engaged, hovered, state.goalId, setField])
+
+  // Unmounting inside the selection delay would otherwise still run the
+  // scroll against refs the hook has already torn down. Same pattern as
+  // ResultActions' revert timer.
+  useEffect(() => () => clearTimeout(selectScrollTimer.current), [])
 
   return (
     <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>

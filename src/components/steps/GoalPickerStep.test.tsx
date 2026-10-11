@@ -276,6 +276,120 @@ describe('GoalPickerStep', () => {
     })
   })
 
+  describe('the pending scroll after a selection', () => {
+    it('schedules exactly one scroll when the focused card is clicked twice inside the delay', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+
+      // Focus it, then select it twice in quick succession — a double-click
+      // on the focused card, or an impatient second press.
+      fireEvent.click(cardFor(HOLIDAY))
+      fireEvent.click(cardFor(HOLIDAY))
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      fireEvent.click(cardFor(HOLIDAY))
+
+      // Only one timer is ever pending, so the clock holds a single scroll
+      // rather than one per click.
+      expect(vi.getTimerCount()).toBe(1)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+
+      // And nothing fires later either — a second scroll landing after the
+      // user has moved on is the bug this guards.
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).toHaveBeenCalledTimes(1)
+    })
+
+    it('schedules exactly one scroll when Enter is pressed twice on the focused card', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(HOLIDAY))
+
+      // A keyboard user holding Enter: the browser fires a click per
+      // keypress, which is the path the issue names alongside a double-click.
+      const card = cardFor(HOLIDAY)
+      fireEvent.keyDown(card, { key: 'Enter' })
+      fireEvent.click(card)
+      fireEvent.keyDown(card, { key: 'Enter' })
+      fireEvent.click(card)
+
+      expect(vi.getTimerCount()).toBe(1)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('restarts the delay from the second selection, not the first', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(screen.getByRole('button', { name: `Get started with ${CAR.name}` }))
+
+      // 1ms before the first click's deadline, pick a different goal.
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      fireEvent.click(dotFor(HOLIDAY))
+      fireEvent.click(cardFor(HOLIDAY))
+      expect(calculator?.state.goalId).toBe(HOLIDAY.id)
+
+      // The first click's deadline passes without a scroll: its timer was
+      // replaced, not left to fire a beat early.
+      advanceBy(1)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+
+      // A full delay after the *second* click, and then exactly one scroll.
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('leaves no scroll pending when the step unmounts inside the delay', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(CAR))
+      expect(vi.getTimerCount()).toBe(1)
+
+      cleanup()
+      // Cleared on unmount, so the callback never runs against refs the hook
+      // has already torn down.
+      expect(vi.getTimerCount()).toBe(0)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+
+    it('does not cancel a pending scroll when a "Soon" goal is interacted with', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(CAR))
+      expect(vi.getTimerCount()).toBe(1)
+
+      // A "Soon" card that isn't focused is not disabled — clicking it
+      // focuses it, which is a real path a user can take inside the delay.
+      fireEvent.click(cardFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      // Now focused, both its card and the CTA are disabled, so `select` is
+      // unreachable for it at all — the `soon` guard is defence in depth, and
+      // the clear sits after it so the guard keeps that property.
+      expect(cardFor(MORTGAGE).hasAttribute('disabled')).toBe(true)
+      fireEvent.click(cardFor(MORTGAGE))
+      fireEvent.click(screen.getByRole('button', { name: 'Coming soon' }))
+
+      // The car's scroll still lands, and the goal is still the car.
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('schedules no scroll at all when only a "Soon" goal is reached for', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(dotFor(MORTGAGE))
+      fireEvent.click(cardFor(MORTGAGE))
+      fireEvent.click(screen.getByRole('button', { name: 'Coming soon' }))
+
+      expect(vi.getTimerCount()).toBe(0)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+  })
+
   describe('the teleport-on-wrap flag', () => {
     it('leaves every card animating before anything has moved', () => {
       renderPicker()
