@@ -68,6 +68,19 @@ const cardFor = (goal: Goal) =>
 const dotFor = (goal: Goal) => screen.getByRole('button', { name: `Go to ${goal.name}` })
 const arrow = (label: 'Previous goal' | 'Next goal') => screen.getByRole('button', { name: label })
 
+/** The landing CTA. A "Soon" goal's is named by its visible text, since it deliberately carries no aria-label. */
+const ctaFor = (goal: Goal) => screen.getByRole('button', { name: goal.soon ? 'Coming soon' : `Get started with ${goal.name}` })
+
+/** The inline `background` an arrow drives off its own hover state. */
+const arrowBackground = (label: 'Previous goal' | 'Next goal') => arrow(label).style.background
+/** The inline `transform` the CTA drives off its own hover state. */
+const ctaTransform = (goal: Goal) => ctaFor(goal).style.transform
+
+const ARROW_RESTING = 'var(--tile-bg)'
+const ARROW_HOVERED = 'var(--surface-selected)'
+const CTA_RESTING = 'translateY(0)'
+const CTA_LIFTED = 'translateY(-2px)'
+
 /** The stage div carrying the hover handlers — two levels up from any card. */
 function carouselStage(): HTMLElement {
   const stage = cardFor(CAR).parentElement?.parentElement
@@ -354,6 +367,153 @@ describe('GoalPickerStep', () => {
       const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, target)
       expect(crossing.length).toBeLessThan(GOALS.length)
       expect(teleportingGoals()).toEqual(crossing)
+    })
+  })
+  // The two sets of hover handlers in this file (#179). Each one's state only
+  // shows up as an inline style, so these assert the style the user would see
+  // rather than the component's internal flag — and that hovering never
+  // interferes with the click the control exists for.
+  describe('the carousel arrows', () => {
+    it('lights up while hovered and goes back to its resting background on leave', () => {
+      renderPicker()
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+
+      fireEvent.mouseOver(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.mouseOut(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+    })
+
+    it('lights up again on a second hover, rather than latching after the first', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Previous goal'))
+      fireEvent.mouseOut(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+
+      fireEvent.mouseOver(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.mouseOut(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+    })
+
+    it('hovering one arrow leaves the other alone', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Next goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+    })
+
+    it('still moves the carousel when clicked mid-hover — the hover must not swallow the click', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Next goal'))
+      fireEvent.click(arrow('Next goal'))
+
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+      // And it stays lit, since the pointer hasn't left.
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('wraps rather than clamping: previous from the first goal lands on the last', () => {
+      renderPicker()
+      fireEvent.click(dotFor(CAR))
+      expect(carouselIndex()).toBe(0)
+
+      fireEvent.click(arrow('Previous goal'))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+    })
+
+    it('wraps rather than clamping: next from the last goal lands on the first', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      fireEvent.click(arrow('Next goal'))
+      expect(carouselIndex()).toBe(0)
+    })
+  })
+
+  describe('the "Get started" CTA', () => {
+    it('names the focused goal for screen readers, while its visible text stays put', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      expect(cta.getAttribute('aria-label')).toBe(`Get started with ${CAR.name}`)
+      expect(cta.textContent).toContain('Get started')
+      expect(cta.hasAttribute('disabled')).toBe(false)
+    })
+
+    it('lifts while hovered and settles back on leave', () => {
+      renderPicker()
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+
+      fireEvent.mouseOver(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+
+      fireEvent.mouseOut(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+    })
+
+    it('lifts again on a second hover', () => {
+      renderPicker()
+      fireEvent.mouseOver(ctaFor(CAR))
+      fireEvent.mouseOut(ctaFor(CAR))
+      fireEvent.mouseOver(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+    })
+
+    it('still selects the goal when clicked mid-hover', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.mouseOver(ctaFor(CAR))
+      fireEvent.click(ctaFor(CAR))
+
+      expect(calculator?.state.goalId).toBe(CAR.id)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('carries no aria-label for a "Soon" goal, so its visible text is the whole name', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+
+      const cta = ctaFor(MORTGAGE)
+      expect(cta.hasAttribute('aria-label')).toBe(false)
+      expect(cta.textContent).toBe('Coming soon')
+      expect(cta.hasAttribute('disabled')).toBe(true)
+    })
+
+    it('does not lift when hovered while disabled — nothing suggests it can be pressed', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+
+      fireEvent.mouseOver(ctaFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+      expect(ctaFor(MORTGAGE).style.cursor).toBe('not-allowed')
+
+      fireEvent.mouseOut(ctaFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+    })
+
+    it('is a focusable native button, so Enter and Space activate it', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      // Keyboard activation is the browser's own for a <button>, which jsdom
+      // doesn't synthesise — e2e/core-flow.spec.ts presses the keys for real.
+      // What's worth pinning here is that it stays a plain focusable button
+      // rather than becoming a div with a click handler.
+      expect(cta.tagName).toBe('BUTTON')
+      expect(cta.getAttribute('type')).toBe('button')
+      cta.focus()
+      expect(document.activeElement).toBe(cta)
+    })
+
+    it('is not focusable while disabled', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      const cta = ctaFor(MORTGAGE)
+      cta.focus()
+      expect(document.activeElement).not.toBe(cta)
     })
   })
 })
