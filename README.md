@@ -51,6 +51,25 @@ where the `VERCEL` environment variable is set. A self-hosted or local build
 never mounts them, so it makes no requests to `/_vercel/` and reports nothing
 anywhere.
 
+## Testing
+
+```bash
+npm test            # unit tests (Vitest)
+npm run test:e2e    # browser tests (Playwright) — starts its own dev server
+```
+
+`npm run test:e2e` normally starts the dev server itself. Set `E2E_BASE_URL` to
+run the same suite against a server that's already up — a preview build, a
+staging deployment, anything reachable over http(s) — and no server is started:
+
+```bash
+E2E_BASE_URL=http://localhost:4173 npx playwright test   # e.g. against `npm run preview`
+```
+
+It must be an absolute `http://` or `https://` origin, such as
+`https://staging.example.com`, with no path: the tests navigate with paths
+from the site root, so a path in the URL would be ignored.
+
 ## Found a bug?
 
 Please [raise an issue](../../issues) or email **<hello@caniaffordthat.co.uk>** —
