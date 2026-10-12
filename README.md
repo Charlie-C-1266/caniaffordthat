@@ -40,6 +40,19 @@ npm run build
 scripts/verify-nginx.sh      # needs nginx on PATH; CI runs this too
 ```
 
+`verify-nginx.sh` is mostly a harness: it boots `nginx.conf` against `./dist`
+and hands the URL to `scripts/verify-headers.sh`, which holds the assertions
+and takes a base URL of its own. (It adds one nginx-only check, that a direct
+request for `/404.html` is a 404.) So the same expectations can be checked
+against a running deployment, and a CDN's header policy can't quietly drift
+away from `nginx.conf`:
+
+```bash
+scripts/verify-headers.sh https://staging.example.com
+```
+
+HSTS is only asserted when the base URL is `https`.
+
 To produce a static build you can serve from any static host:
 
 ```bash
