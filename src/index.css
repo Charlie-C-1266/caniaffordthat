@@ -146,3 +146,25 @@ body {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+/*
+ * Visually-hidden text: removed from the visual layout but kept in the
+ * accessibility tree, for status messages and names that only screen-reader
+ * users need. The 1px-with-clip technique rather than `display: none` or
+ * `visibility: hidden`, both of which take the element out of the
+ * accessibility tree entirely — so a live region using them is never
+ * announced. `white-space: nowrap` stops a long message being wrapped into
+ * the 1px box, which some engines then report as empty.
+ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
