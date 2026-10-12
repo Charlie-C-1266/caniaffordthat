@@ -66,7 +66,9 @@ staging deployment, anything reachable over http(s) — and no server is started
 E2E_BASE_URL=http://localhost:4173 npx playwright test   # e.g. against `npm run preview`
 ```
 
-It must be an absolute `http://` or `https://` URL; a trailing slash is fine.
+It must be an absolute `http://` or `https://` origin, such as
+`https://staging.example.com`, with no path: the tests navigate with paths
+from the site root, so a path in the URL would be ignored.
 
 ## Found a bug?
 

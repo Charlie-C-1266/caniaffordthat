@@ -28,9 +28,15 @@ export interface E2ETarget {
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:'])
 
 /**
- * Normalise a base URL: a trailing slash is dropped so that joining a path
- * can't produce `//`, and anything that isn't an absolute http(s) URL is
- * rejected with a message naming the variable and the offending value.
+ * Reduce a base URL to its origin, rejecting anything that isn't an absolute
+ * http(s) URL with a message naming the variable and the offending value.
+ *
+ * Only an origin is accepted, not a path. Every spec navigates with a
+ * root-relative path (`page.goto('/sources/')`), and Playwright resolves that
+ * against the base URL the way a browser resolves a link, so a path in the
+ * base URL is silently dropped: `https://example.com/preview` would quietly
+ * test `https://example.com/` instead. Refusing it is better than a green run
+ * against the wrong site.
  */
 function normaliseBaseUrl(value: string): string {
   let url: URL
@@ -42,7 +48,12 @@ function normaliseBaseUrl(value: string): string {
   if (!ALLOWED_PROTOCOLS.has(url.protocol)) {
     throw new Error(`${E2E_BASE_URL_ENV} must use http:// or https:// — got ${JSON.stringify(value)}`)
   }
-  return value.trim().replace(/\/+$/, '')
+  if (url.pathname !== '/' || url.search !== '' || url.hash !== '') {
+    throw new Error(
+      `${E2E_BASE_URL_ENV} must be an origin only (scheme, host and optional port), because the specs navigate with root-relative paths — got ${JSON.stringify(value)}`,
+    )
+  }
+  return url.origin
 }
 
 /**

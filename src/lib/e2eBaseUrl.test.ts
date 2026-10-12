@@ -30,18 +30,26 @@ describe('resolveE2ETarget', () => {
     })
   })
 
-  it('accepts a plain http URL with a port and a path', () => {
+  it('accepts a plain http URL with a port', () => {
     expect(resolveE2ETarget('http://127.0.0.1:4322')).toEqual({ baseURL: 'http://127.0.0.1:4322', startDevServer: false })
-    expect(resolveE2ETarget('https://example.com/preview')).toEqual({
-      baseURL: 'https://example.com/preview',
-      startDevServer: false,
-    })
   })
 
-  it('normalises trailing slashes away, so joining a path cannot produce //', () => {
+  it('reduces the URL to its origin, so a trailing slash makes no difference', () => {
     expect(resolveE2ETarget('https://example.com/').baseURL).toBe('https://example.com')
-    expect(resolveE2ETarget('https://example.com///').baseURL).toBe('https://example.com')
-    expect(resolveE2ETarget('https://example.com/preview/').baseURL).toBe('https://example.com/preview')
+    expect(resolveE2ETarget('HTTPS://Example.COM:443/').baseURL).toBe('https://example.com')
+  })
+
+  // The specs all navigate with root-relative paths, which replace any path
+  // in the base URL, so a run "against" https://example.com/preview would
+  // really test https://example.com/ and could pass against the wrong site.
+  it.each([
+    'https://example.com/preview',
+    'https://example.com/preview/',
+    'https://example.com///',
+    'https://example.com/?x=1',
+    'https://example.com/#top',
+  ])('rejects %s rather than silently ignoring its path, query or fragment', (raw) => {
+    expect(() => resolveE2ETarget(raw)).toThrow('origin only')
   })
 
   it('trims surrounding whitespace, which a shell export easily leaves behind', () => {
