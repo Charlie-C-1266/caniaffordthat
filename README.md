@@ -48,8 +48,8 @@ npm run build   # outputs to dist/
 
 Vercel's Speed Insights and Analytics are only mounted in builds made on Vercel,
 where the `VERCEL` environment variable is set. A self-hosted or local build
-leaves them out entirely, so it makes no requests to `/_vercel/` and reports
-nothing anywhere.
+never mounts them, so it makes no requests to `/_vercel/` and reports nothing
+anywhere.
 
 ## Found a bug?
 

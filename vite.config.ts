@@ -15,8 +15,9 @@ export default defineConfig({
   // Vercel's Speed Insights and Analytics scripts live under /_vercel/, a path
   // only Vercel's edge serves. Gate them on Vercel's own build-time `VERCEL`
   // variable so the self-hosted Docker/nginx build and `vite preview` don't
-  // fetch two scripts that 404 on every page load. A `define` (not a runtime
-  // lookup) so the branch in components/VercelInsights.tsx folds away.
+  // fetch two scripts that 404 on every page load. A `define` rather than an
+  // import.meta.env value, because those arrive as strings and the string
+  // 'false' is truthy (see src/vite-env.d.ts).
   define: { __ON_VERCEL__: JSON.stringify(Boolean(process.env.VERCEL)) },
   build: {
     rollupOptions: {

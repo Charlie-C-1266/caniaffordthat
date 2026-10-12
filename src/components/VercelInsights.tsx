@@ -5,9 +5,10 @@ import { Analytics } from '@vercel/analytics/react'
  * Whether this bundle was built on Vercel.
  *
  * Replaced at build time by Vite's `define` (see vite.config.ts), which reads
- * Vercel's own `VERCEL` environment variable. A compile-time literal rather
- * than a runtime lookup, so the branch below folds away in the build and no
- * deploy has to remember to set a `VITE_`-prefixed variable.
+ * Vercel's own `VERCEL` environment variable, so no deploy has to remember to
+ * set a `VITE_`-prefixed variable. The two Vercel packages are still bundled
+ * either way — the `enabled` prop below stops the minifier proving the branch
+ * dead — but off Vercel they're never mounted, so nothing is fetched.
  */
 export const ON_VERCEL: boolean = __ON_VERCEL__
 
