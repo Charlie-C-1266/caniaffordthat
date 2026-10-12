@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { salaryFlip } from './reverse'
 import { grossFromNet, marginalNetRate, netFromGross } from './salary'
-import { CURRENT_TAX_YEAR } from './taxYears'
-import type { TaxYear } from './taxYears'
+import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 
 describe('salaryFlip', () => {
   it('reports the gross behind the required take-home and the gap to current pay', () => {

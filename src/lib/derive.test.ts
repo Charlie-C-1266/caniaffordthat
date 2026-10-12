@@ -551,7 +551,7 @@ describe('deriveResult — infeasible and boundary plans', () => {
 
     expect(result).not.toBeNull()
     for (const text of [result?.headline, result?.subheadline, result?.verdictSub, result?.verdictText]) {
-      expect(text).not.toMatch(/NaN/)
+      expect(text).not.toMatch(/NaN|Infinity/)
     }
   })
 })

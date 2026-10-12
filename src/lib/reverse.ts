@@ -1,6 +1,5 @@
 import { grossFromNet, marginalNetRate, inAllowanceTaper } from './salary'
-import { CURRENT_TAX_YEAR } from './taxYears'
-import type { TaxYear } from './taxYears'
+import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 
 // The "flip it" story: given the monthly take-home a plan needs to be
 // affordable (computed per-mode in derive.ts / vehicle.ts), work out the gross
