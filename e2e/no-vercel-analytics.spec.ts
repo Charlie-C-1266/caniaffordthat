@@ -9,6 +9,11 @@ import { test, expect } from '@playwright/test'
 // non-Vercel build (no VERCEL environment variable), so they pin the gate shut
 // exactly where the bug was. The open side is covered by
 // src/components/VercelInsights.test.tsx.
+//
+// When E2E_BASE_URL points the suite at a deployment instead, that deployment
+// may be on Vercel, where both scripts are meant to load. Vercel stamps every
+// response with an `x-vercel-id` header, so these skip there rather than
+// failing on the very behaviour the gate exists to allow.
 
 /** Every page of the site: the calculator plus the three docs pages. */
 const PAGES = ['/', '/sources/', '/methodology/salary/', '/methodology/vehicle/']
@@ -37,7 +42,8 @@ for (const path of PAGES) {
       }
     })
 
-    await page.goto(path)
+    const response = await page.goto(path)
+    test.skip(response?.headers()['x-vercel-id'] !== undefined, 'a Vercel deployment, where the analytics scripts are meant to load')
     // The analytics components inject their <script> on mount, so wait for the
     // app to render rather than asserting against an empty network log.
     await page.waitForLoadState('load')

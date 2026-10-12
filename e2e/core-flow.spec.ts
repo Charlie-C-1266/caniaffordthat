@@ -34,6 +34,30 @@ test.describe('core flow', () => {
     await expect(page.getByPlaceholder('e.g. Wedding, new kitchen, sofa')).toBeVisible()
   })
 
+  test('the "Get started" CTA can be activated from the keyboard', async ({ page }) => {
+    // The CTA is a plain <button>, so Enter and Space are the browser's own
+    // activation. Its unit tests pin that it stays one; this presses the keys
+    // for real, which jsdom can't do.
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Go to Big purchase' }).click()
+
+    const cta = page.getByRole('button', { name: 'Get started with Big purchase', exact: true })
+    await cta.focus()
+    await expect(cta).toBeFocused()
+    await cta.press('Enter')
+    await expect(page.getByPlaceholder('e.g. Wedding, new kitchen, sofa')).toBeVisible()
+  })
+
+  test('Space activates the "Get started" CTA too', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Go to Holiday' }).click()
+
+    const cta = page.getByRole('button', { name: 'Get started with Holiday', exact: true })
+    await cta.focus()
+    await cta.press(' ')
+    await expect(page.getByPlaceholder('e.g. Two weeks in Italy')).toBeVisible()
+  })
+
   test('Mortgage is shown as coming soon and cannot be chosen', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Go to Mortgage' }).click()

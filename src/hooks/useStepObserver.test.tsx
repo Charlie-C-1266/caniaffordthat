@@ -51,6 +51,18 @@ function useHarness() {
   return { ...observerApi, activeIndex: state.activeIndex, revealed: state.revealed }
 }
 
+/**
+ * Step 0 registered with no element and step 1 with a real node. React calls
+ * a ref callback with null when its element goes away, so this is the shape
+ * `panelEls` has when a step has been detached before the observer's setup
+ * effect runs.
+ */
+function PartlyDetachedPanels() {
+  const { registerPanel } = useStepObserver()
+  registerPanel(0)(null)
+  return <div data-testid="panel-1" ref={registerPanel(1)} />
+}
+
 function elementAtOffsetTop(offsetTop: number): HTMLDivElement {
   const el = document.createElement('div')
   Object.defineProperty(el, 'offsetTop', { value: offsetTop, configurable: true })
@@ -229,6 +241,58 @@ describe('useStepObserver', () => {
     const instance = FakeIntersectionObserver.instances[0]
     expect(instance.observed.size).toBe(1)
     expect(instance.observed.has(screen.getByTestId('panel-0'))).toBe(true)
+  })
+
+  it('skips a registered-but-detached panel when the observer starts up', () => {
+    // React calls a ref callback with null when its element goes away, so an
+    // index can be registered with no element by the time the observer's
+    // setup effect runs. Those entries must be skipped — a real
+    // IntersectionObserver throws on observe(null).
+    render(
+      <CalculatorProvider>
+        <PartlyDetachedPanels />
+      </CalculatorProvider>,
+    )
+
+    const instance = FakeIntersectionObserver.instances[0]
+    expect([...instance.observed]).toEqual([screen.getByTestId('panel-1')])
+  })
+
+  it('scrollToIndex is a no-op for an index with neither a wrapper nor a panel', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    // window.scrollTo is spied by earlier tests here too, and vitest hands
+    // back the same spy — so start from a clean call history.
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    scrollTo.mockClear()
+
+    act(() => {
+      result.current.registerPanel(1)(elementAtOffsetTop(100))
+      // Never registered, out of range, and two values that can't be a step.
+      result.current.scrollToIndex(9)
+      result.current.scrollToIndex(-1)
+      result.current.scrollToIndex(Number.NaN)
+    })
+
+    expect(scrollTo).not.toHaveBeenCalled()
+  })
+
+  it('scrollToIndex is a no-op once the panel it had has been detached', () => {
+    const { result } = renderHook(() => useHarness(), { wrapper })
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    scrollTo.mockClear()
+
+    act(() => {
+      result.current.registerPanel(2)(elementAtOffsetTop(400))
+      result.current.scrollToIndex(2)
+    })
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 400, behavior: 'smooth' })
+
+    scrollTo.mockClear()
+    act(() => {
+      result.current.registerPanel(2)(null)
+      result.current.scrollToIndex(2)
+    })
+    expect(scrollTo).not.toHaveBeenCalled()
   })
 
   it('disconnects the observer on unmount', () => {

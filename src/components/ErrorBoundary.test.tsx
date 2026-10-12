@@ -42,6 +42,49 @@ describe('ErrorBoundary', () => {
     expect(screen.queryByText('healthy content')).toBeNull()
   })
 
+  it('navigates with a full page load when no navigate prop is given — the app default', () => {
+    // The real app renders <ErrorBoundary> with no `navigate`, so this is the
+    // path that actually ships. jsdom refuses real navigation, so
+    // window.location is swapped for a recording stand-in that still answers
+    // the `origin`/`pathname` reads startOverUrl() makes.
+    window.history.replaceState(null, '', '/?g=car')
+    const realLocation = window.location
+    const assign = vi.fn()
+    const stub = { assign, origin: realLocation.origin, pathname: realLocation.pathname, search: realLocation.search }
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: stub })
+
+    try {
+      render(
+        <ErrorBoundary>
+          <Bomb explode />
+        </ErrorBoundary>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Start over' }))
+
+      expect(assign).toHaveBeenCalledExactlyOnceWith(`${stub.origin}${stub.pathname}`)
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation })
+      window.history.replaceState(null, '', '/')
+    }
+  })
+
+  it('logs the error and the component stack for a user report to be diagnosable', () => {
+    render(
+      <ErrorBoundary>
+        <Bomb explode />
+      </ErrorBoundary>,
+    )
+
+    // React logs the same error itself, so this looks for our own call rather
+    // than counting every console.error on the page.
+    const ours = vi.mocked(console.error).mock.calls.filter((call) => call[0] === 'Unrecoverable render error:')
+    expect(ours).toHaveLength(1)
+    expect(ours[0][1]).toBeInstanceOf(Error)
+    expect((ours[0][1] as Error).message).toBe('deliberate test crash')
+    // The component stack names the component that threw.
+    expect(String(ours[0][2])).toContain('Bomb')
+  })
+
   it('recovers to a URL with the query params stripped, so a bad shared link cannot re-crash it', () => {
     // Simulate arriving via a shared link whose params triggered the crash.
     window.history.replaceState(null, '', '/?g=car&th=abc')
