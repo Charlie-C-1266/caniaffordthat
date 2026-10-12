@@ -165,6 +165,8 @@
   --ease-reveal-transform: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-reveal-opacity: ease;
   --duration-hover: 0.15s;
+  /* How long a goal card takes to slide to its new carousel position. */
+  --duration-carousel: 0.5s;
   --debounce-advance: 1500ms;
   --delay-mode-select: 250ms;
 }
@@ -260,8 +262,13 @@
  * the duration leaves the reveal in place: the tile still appears, and still
  * via RevealTile's `revealed` flag, just without the slide or the fade.
  *
- * 0.01ms rather than 0s so the transition still fires its `transitionend`,
- * which anything listening for the reveal to finish depends on.
+ * The goal carousel's cards slide sideways by one or more card widths on
+ * every arrow or dot click; collapsing --duration-carousel makes them jump
+ * straight to their new place. Their short opacity and colour fades are left
+ * alone, as is the 0.15s hover lift — brief feedback, not movement.
+ *
+ * 0.01ms rather than 0s, the usual convention, so a `transitionend` listener
+ * added later would still fire. Nothing listens for one today.
  *
  * Last in the file on purpose: `:root` here carries the same specificity as
  * the `:root` block above, so source order is what makes this win. The
@@ -271,5 +278,6 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-reveal: 0.01ms;
+    --duration-carousel: 0.01ms;
   }
 }

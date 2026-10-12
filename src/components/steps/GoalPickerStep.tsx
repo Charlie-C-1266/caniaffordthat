@@ -87,10 +87,11 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   // text/icon color in the light theme (see tokens.css).
   const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
-  // transform jumps instantly across the seam when teleporting.
+  // transform jumps instantly across the seam when teleporting. The slide's
+  // duration is a token so reduced motion can collapse it (see tokens.css).
   const transition = teleport
     ? 'opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-    : 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+    : 'transform var(--duration-carousel) cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
 
   return (
     <button

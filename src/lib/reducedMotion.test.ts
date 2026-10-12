@@ -44,24 +44,30 @@ describe('tokens.css reduced-motion support', () => {
     expect(reducedMotionMediaRules()[0].conditionText).toContain('prefers-reduced-motion: reduce')
   })
 
-  it('collapses --duration-reveal to effectively instant on :root', () => {
+  // The step reveal's slide-and-fade, and the goal carousel's sideways slide.
+  const COLLAPSED_TOKENS = [
+    { token: '--duration-reveal', normal: '2s' },
+    { token: '--duration-carousel', normal: '0.5s' },
+  ]
+
+  it.each(COLLAPSED_TOKENS)('collapses $token to effectively instant on :root', ({ token }) => {
     const [mediaRule] = reducedMotionMediaRules()
     const rootRules = [...(mediaRule.cssRules as unknown as CSSRule[])].filter(
       (rule): rule is CSSStyleRule => (rule as CSSStyleRule).selectorText === ':root',
     )
     expect(rootRules).toHaveLength(1)
 
-    const duration = rootRules[0].style.getPropertyValue('--duration-reveal').trim()
+    const duration = rootRules[0].style.getPropertyValue(token).trim()
     expect(duration).toBe('0.01ms')
   })
 
   // The reduced-motion override has the same specificity as the :root block it
   // overrides, so source order is the only thing making it win. A later
-  // addition that re-declared the token below it would silently undo this.
-  it('declares the override after the default, so the cascade picks it', () => {
+  // addition that re-declared a token below it would silently undo this.
+  it.each(COLLAPSED_TOKENS)('declares the $token override after the default, so the cascade picks it', ({ token }) => {
     const rules = cssRules()
     const lastDefault = rules.findLastIndex(
-      (rule) => (rule as CSSStyleRule).selectorText === ':root' && (rule as CSSStyleRule).style?.getPropertyValue('--duration-reveal'),
+      (rule) => (rule as CSSStyleRule).selectorText === ':root' && (rule as CSSStyleRule).style?.getPropertyValue(token),
     )
     const mediaIndex = rules.findLastIndex(
       (rule) => rule.constructor.name === 'CSSMediaRule' && (rule as CSSMediaRule).conditionText.includes('prefers-reduced-motion'),
@@ -70,12 +76,12 @@ describe('tokens.css reduced-motion support', () => {
     expect(mediaIndex).toBeGreaterThan(lastDefault)
   })
 
-  it('still animates the reveal by default', () => {
+  it.each(COLLAPSED_TOKENS)('still animates by default ($token is $normal)', ({ token, normal }) => {
     const rules = cssRules()
     const root = rules.find(
       (rule): rule is CSSStyleRule =>
-        (rule as CSSStyleRule).selectorText === ':root' && Boolean((rule as CSSStyleRule).style?.getPropertyValue('--duration-reveal')),
+        (rule as CSSStyleRule).selectorText === ':root' && Boolean((rule as CSSStyleRule).style?.getPropertyValue(token)),
     )
-    expect(root?.style.getPropertyValue('--duration-reveal').trim()).toBe('2s')
+    expect(root?.style.getPropertyValue(token).trim()).toBe(normal)
   })
 })
