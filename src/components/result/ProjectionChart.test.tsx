@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ProjectionChart } from './ProjectionChart'
-import { savingProjection, financeProjection } from '../../lib/projection'
+import { savingProjection, financeProjection, type Projection } from '../../lib/projection'
 
 // The chart computes its x/y scaling inline from the projection, so these
 // tests feed it real projections (built by the same lib the app uses) and
@@ -67,6 +67,35 @@ describe('ProjectionChart', () => {
     const dot = container.querySelector('circle')
     expect(Number.isFinite(Number(dot?.getAttribute('cx')))).toBe(true)
     expect(Number.isFinite(Number(dot?.getAttribute('cy')))).toBe(true)
+  })
+
+  it('renders a series whose only point is month 0 without dividing by zero on the x scale', () => {
+    // The projection builders always emit month 0 plus at least one charted
+    // month, so this degenerate series can't come from them — but the chart
+    // takes a Projection as a prop, and its `|| 1` guard on the last month is
+    // what stops a 0-month span producing a division by zero.
+    const projection: Projection = {
+      kind: 'save',
+      points: [{ month: 0, value: 0, dateLabel: 'July 2026' }],
+      target: 1000,
+      months: 0,
+      hasOverflow: false,
+      endLabel: 'July 2026',
+    }
+
+    const { container } = render(<ProjectionChart projection={projection} accentColor="#3fb950" />)
+
+    expect(container.innerHTML).not.toContain('NaN')
+    expect(container.innerHTML).not.toContain('Infinity')
+    for (const d of paths(container)) {
+      expect(d.length).toBeGreaterThan(0)
+      expect(d).not.toContain('NaN')
+    }
+    const dot = container.querySelector('circle')
+    expect(Number.isFinite(Number(dot?.getAttribute('cx')))).toBe(true)
+    expect(Number.isFinite(Number(dot?.getAttribute('cy')))).toBe(true)
+    // Nothing to read off: the only point is "now".
+    expect(container.querySelectorAll('rect')).toHaveLength(0)
   })
 
   it('renders a single-charted-month projection without dividing by zero on the x scale', () => {

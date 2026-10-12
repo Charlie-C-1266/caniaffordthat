@@ -78,7 +78,12 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
         style={{ flexShrink: 0 }}
       >
         {arcs.map((arc, i) => {
-          const len = ringTotal > 0 ? (arc.amount / ringTotal) * CIRCUMFERENCE : 0
+          // No division-by-zero guard needed: an arc only exists when its own
+          // amount is positive, and every arc's amount is part of `ringTotal`
+          // (essentials + cost + leftover) — so `arcs` being non-empty implies
+          // `ringTotal > 0`. An all-zero budget draws no arcs at all, which
+          // BudgetDonut.test.tsx pins.
+          const len = (arc.amount / ringTotal) * CIRCUMFERENCE
           const drawn = Math.max(0.5, len - GAP)
           const offset = -(cumulative + GAP / 2)
           cumulative += len
