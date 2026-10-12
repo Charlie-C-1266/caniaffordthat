@@ -54,6 +54,32 @@ describe('InfoHint', () => {
     expect(queryTooltip()).not.toBeNull()
   })
 
+  it('ignores the mouseleave that a second tap brings with it, so the tooltip survives to the click', () => {
+    // Mid-tap, the touch guard is set and nothing but the click itself may
+    // change `open`. A mobile browser can send the previous interaction's
+    // mouseout after the new touchstart; without the guard that would close
+    // an open tooltip before the tap's own click got to toggle it.
+    render(<InfoHint text={TEXT} />)
+    const button = getButton()
+    fireEvent.click(button)
+    expect(queryTooltip()).not.toBeNull()
+
+    fireEvent.touchStart(button)
+    fireEvent.mouseOut(button)
+    expect(queryTooltip()).not.toBeNull()
+  })
+
+  it('ignores a blur that arrives mid-tap for the same reason', () => {
+    render(<InfoHint text={TEXT} />)
+    const button = getButton()
+    fireEvent.click(button)
+    expect(queryTooltip()).not.toBeNull()
+
+    fireEvent.touchStart(button)
+    fireEvent.blur(button)
+    expect(queryTooltip()).not.toBeNull()
+  })
+
   it('closes a tapped-open tooltip when tapping the button a second time', () => {
     render(<InfoHint text={TEXT} />)
     const button = getButton()
