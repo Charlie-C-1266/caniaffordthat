@@ -22,7 +22,13 @@ export function ResultHeadline({ eyebrow, eyebrowColor, headline, subheadline }:
       >
         {eyebrow}
       </div>
-      <h1
+      {/*
+       * An h2, not an h1: the result is the last step of the calculator page,
+       * whose single h1 is the goal picker's question. This is still the
+       * component's only heading — promoting the eyebrow or sub-line would
+       * split one result into several headings.
+       */}
+      <h2
         className="mono"
         style={{
           fontSize: 'var(--fs-result-headline)',
@@ -35,7 +41,7 @@ export function ResultHeadline({ eyebrow, eyebrowColor, headline, subheadline }:
         }}
       >
         {headline}
-      </h1>
+      </h2>
       <p style={{ fontSize: 'var(--fs-body)', color: 'var(--text-secondary)', margin: '0 0 16px', maxWidth: '54ch', fontWeight: 500 }}>
         {subheadline}
       </p>

@@ -1,6 +1,8 @@
 import { useState, type KeyboardEvent } from 'react'
 
 interface UnderlineInputProps {
+  /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. */
+  id?: string
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
@@ -18,6 +20,7 @@ interface UnderlineInputProps {
  * active mode's accent color on focus. Used for the item-name field.
  */
 export function UnderlineInput({
+  id,
   value,
   onChange,
   onKeyDown,
@@ -31,6 +34,7 @@ export function UnderlineInput({
 
   return (
     <input
+      id={id}
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}

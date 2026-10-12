@@ -3,12 +3,11 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ResultHeadline } from './ResultHeadline'
 
-// Every result the user sees is headed by this component's `h1` (the result
-// step's heading, as each step has its own) — so a refactor that demoted the
-// headline to a `div`, swapped the
-// eyebrow and sub-line, or dropped the caller-supplied eyebrow colour (the one
-// thing that differs between a "Yes" and a "No") would still pass the cards'
-// own tests. These assert on the rendered text, the element roles and the
+// Every result the user sees is headed by this component's `h2` (the result
+// step's heading, under the page's single h1) — so a refactor that demoted the
+// headline to a `div`, swapped the eyebrow and sub-line, or dropped the
+// caller-supplied eyebrow colour (the one thing that differs between a "Yes"
+// and a "No") would still pass the cards' own tests. These assert on the rendered text, the element roles and the
 // colour actually applied, not on the component's internals.
 
 /** The eyebrow, headline and sub-line in the order the fragment renders them. */
@@ -20,7 +19,7 @@ function parts(container: HTMLElement) {
 describe('ResultHeadline', () => {
   afterEach(cleanup)
 
-  it('renders the eyebrow, the headline as an h1, and the sub-line', () => {
+  it('renders the eyebrow, the headline as an h2, and the sub-line', () => {
     const { container } = render(
       <ResultHeadline
         eyebrow="YOU CAN AFFORD THIS"
@@ -33,7 +32,7 @@ describe('ResultHeadline', () => {
     const { eyebrow, headline, subheadline } = parts(container)
 
     expect(eyebrow.textContent).toBe('YOU CAN AFFORD THIS')
-    expect(headline.tagName).toBe('H1')
+    expect(headline.tagName).toBe('H2')
     expect(headline.textContent).toBe('£240 a month')
     expect(subheadline.tagName).toBe('P')
     expect(subheadline.textContent).toBe('Put that aside each month and you hit the goal on time.')
@@ -56,13 +55,17 @@ describe('ResultHeadline', () => {
     expect((parts(yes).eyebrow as HTMLElement).style.color).not.toBe((parts(no).eyebrow as HTMLElement).style.color)
   })
 
-  it('renders exactly one h1', () => {
+  it('renders exactly one heading, and never an h1', () => {
     render(<ResultHeadline eyebrow="YES" eyebrowColor="var(--accent-savings)" headline="£240" subheadline="sub" />)
 
     // The headline is the component's only heading: promoting the eyebrow or
-    // sub-line to one too would split a single result into several top-level
-    // headings for a screen reader.
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    // sub-line to one too would split a single result into several headings
+    // for a screen reader.
+    expect(screen.getAllByRole('heading')).toHaveLength(1)
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1)
+    // An h1 here would be the calculator page's second, alongside the goal
+    // picker's question — the whole point of the h2.
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
   })
 
   it('renders without throwing when the eyebrow or sub-line is empty', () => {
@@ -72,7 +75,7 @@ describe('ResultHeadline', () => {
 
     // The headline still carries the figure; the two optional-in-practice
     // lines are simply blank.
-    expect(headline.tagName).toBe('H1')
+    expect(headline.tagName).toBe('H2')
     expect(headline.textContent).toBe('£240 a month')
     expect(eyebrow.textContent).toBe('')
     expect(subheadline.textContent).toBe('')

@@ -2,7 +2,8 @@
 #
 # Asserts the HTTP behaviour the site is supposed to have, against any base
 # URL: compression, cache headers, security headers, and a real 404 for
-# unknown paths instead of an SPA fallback.
+# unknown paths instead of an SPA fallback — served with the branded
+# public/404.html body rather than a server's default error page.
 #
 # It knows nothing about how the site is being served. scripts/verify-nginx.sh
 # boots the repository's own nginx.conf against ./dist and points this script
@@ -105,11 +106,27 @@ expect_header() {
   fi
 }
 
+# Asserts the response body for a path contains a fixed string.
+expect_body() {
+  local label=$1 path=$2 needle=$3
+  if curl -sS "$BASE$path" | grep -qF -- "$needle"; then
+    pass "$label ($path contains '$needle')"
+  else
+    fail "$label" "$BASE$path: body did not contain '$needle'"
+  fi
+}
+
+# A string that appears only in public/404.html, so a server's plain error
+# body (or the calculator served by mistake) fails the body assertions below.
+NOT_FOUND_MARKER="This page doesn't exist"
+
 # The hashed assets, read out of the served HTML rather than a build
 # directory, so this works against a deployment we have no local copy of.
 HOME_HTML="$(curl -sS "$BASE/")"
+# `|| true`: no match is a case handled below with its own message, and grep's
+# exit 1 would otherwise end the script silently under `set -e -o pipefail`.
 first_asset() {
-  grep -o "/assets/[A-Za-z0-9._-]*\\.$1" <<<"$HOME_HTML" | sort | head -1
+  { grep -o "/assets/[A-Za-z0-9._-]*\\.$1" <<<"$HOME_HTML" || true; } | sort | head -1
 }
 ASSET_JS="$(first_asset js)"
 ASSET_CSS="$(first_asset css)"
@@ -161,6 +178,37 @@ expect_no_header 'a missing hashed asset is not cached' /assets/does-not-exist.j
 expect_no_header 'an unknown path is not cached' /does-not-exist Cache-Control
 
 echo
+echo "== the branded 404 body =="
+# The status must stay 404 alongside the branded body: a 200 here would tell a
+# crawler the mistyped URL is a real page.
+for path in /does-not-exist /nope.js /sources/typo; do
+  expect_status "status stays 404 on $path" "$path" 404
+  expect_body "branded body on $path" "$path" "$NOT_FOUND_MARKER"
+  expect_body "a way back on $path" "$path" 'href="/"'
+done
+expect_header 'the 404 body is HTML' /does-not-exist Content-Type '^text/html'
+# nginx's own plain error body is what the branded page replaces, so its
+# tell-tale must be gone — otherwise a broken `error_page` would pass the
+# checks above on a page that still says "404 Not Found" in Times New Roman.
+if curl -sS "$BASE/does-not-exist" | grep -qF '<center>'; then
+  fail "the 404 body is the branded page" "$BASE/does-not-exist: still a server's default error page"
+else
+  pass "the 404 body is not a server's default error page"
+fi
+# /404.html must not become a 200 duplicate of the real pages. nginx makes it
+# `internal`, so a direct request is itself a 404; a host that serves static
+# files by path (Vercel, or S3 behind CloudFront) answers 200, and there the
+# page's own `noindex` is what keeps it out of search results. Either is fine.
+code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/404.html")"
+if [[ $code == 404 ]]; then
+  pass "a direct request for /404.html is itself a 404"
+elif [[ $code == 200 ]] && curl -sS "$BASE/404.html" | grep -qF '<meta name="robots" content="noindex"'; then
+  pass "a direct request for /404.html is a 200 marked noindex"
+else
+  fail '/404.html requested directly' "$BASE/404.html: expected a 404, or a 200 carrying noindex; got $code"
+fi
+
+echo
 echo "== cache headers =="
 expect_header 'root HTML is not cached' / Cache-Control 'no-cache'
 expect_header 'sources HTML is not cached' /sources/ Cache-Control 'no-cache'
@@ -209,7 +257,15 @@ expect_header 'frame-ancestors survives a 404' /does-not-exist Content-Security-
 if [[ $BASE == https://* ]]; then
   echo
   echo "== HSTS (https only) =="
-  expect_header 'HSTS is set for at least a year' / Strict-Transport-Security 'max-age=(3153[6-9][0-9]{3}|[4-9][0-9]{7}|[1-9][0-9]{8,})'
+  # Compared as a number, not matched as a pattern: a regex for "at least
+  # 31536000" is easy to get subtly wrong at the digit boundaries.
+  hsts="$(curl -sS -D - -o /dev/null "$BASE/" |
+    tr -d '\r' | { grep -i '^strict-transport-security:' || true; } | head -1 | sed 's/^[^:]*: *//')"
+  if [[ $hsts =~ max-age=([0-9]+) ]] && ((10#${BASH_REMATCH[1]} >= 31536000)); then
+    pass "HSTS is set for at least a year (Strict-Transport-Security: $hsts)"
+  else
+    fail 'HSTS is set for at least a year' "$BASE/: Strict-Transport-Security was '${hsts:-<absent>}', expected max-age of at least 31536000"
+  fi
 fi
 
 echo

@@ -4,7 +4,8 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { InfoHint } from '../InfoHint'
-import { Icon, type IconName } from '../Icon'
+import { Icon } from '../Icon'
+import type { IconName } from '../iconRegistry'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
@@ -134,7 +135,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={640} padding="40px 44px">
           <Eyebrow color={accent}>Step {index} — Paying for it</Eyebrow>
-          <h1
+          <h2
             style={{
               fontSize: 'var(--fs-h1-sm)',
               lineHeight: 1.15,
@@ -144,7 +145,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
             }}
           >
             How are you buying it?
-          </h1>
+          </h2>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {METHOD_OPTIONS.map((option) => (

@@ -30,6 +30,8 @@ command -v nginx >/dev/null || {
 }
 
 WORK="$(mktemp -d)"
+# Only ever called by the EXIT trap below, which shellcheck can't see through.
+# shellcheck disable=SC2317
 cleanup() {
   if [[ -f $WORK/nginx.pid ]]; then
     nginx -c "$WORK/nginx.conf" -e "$WORK/error.log" -s quit 2>/dev/null || kill "$(cat "$WORK/nginx.pid")" 2>/dev/null || true
@@ -73,6 +75,22 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 
-# The exit status is the script's own: a failed assertion must fail this run,
-# and `cleanup` still stops nginx on the way out.
-bash "$REPO_ROOT/scripts/verify-headers.sh" "$BASE"
+# A failed assertion must fail this run, and `cleanup` still stops nginx on
+# the way out.
+status=0
+bash "$REPO_ROOT/scripts/verify-headers.sh" "$BASE" || status=$?
+
+# nginx-only, so it lives here rather than in verify-headers.sh: nginx.conf
+# makes /404.html `internal`, so a direct request must be a 404. The shared
+# script also accepts a 200 marked noindex, which is right for a host that
+# serves static files by path but would let a dropped `internal` slip by here.
+echo
+echo "== nginx only =="
+code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/404.html")"
+if [[ $code == 404 ]]; then
+  printf '  \033[32mok\033[0m   %s\n' "/404.html is internal: a direct request is a 404"
+else
+  printf '  \033[31mFAIL\033[0m %s\n       %s\n' "/404.html is internal" "$BASE/404.html: status expected 404, got $code" >&2
+  status=1
+fi
+exit "$status"
