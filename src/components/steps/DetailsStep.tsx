@@ -214,12 +214,12 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                       />
                     </div>
                   )}
-                  <h1
+                  <h2
                     id={priceHeadingId}
                     style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 20px' }}
                   >
                     {goal.priceHeadline}
-                  </h1>
+                  </h2>
                   <MoneyInput
                     ariaLabelledBy={priceHeadingId}
                     value={state.itemPrice}

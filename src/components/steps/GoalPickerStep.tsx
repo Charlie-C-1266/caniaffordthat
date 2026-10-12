@@ -289,6 +289,14 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
       >
         <LandingPill />
+        {/*
+         * The calculator is one scrolling page, so this is its *only* h1 —
+         * the landing question that opens every flow. Each later step's
+         * question, and the result headline, is an h2 under it. A new step
+         * adding its own h1 would flatten the heading outline back into a
+         * list of unrelated top-level headings for a screen reader; the e2e
+         * suite counts the h1s in every flow to catch that.
+         */}
         <h1
           style={{
             fontSize: 'var(--fs-h1-md)',

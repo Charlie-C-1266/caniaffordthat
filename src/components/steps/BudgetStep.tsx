@@ -135,7 +135,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
           <Eyebrow color={accent} marginBottom={16}>
             Step {index} — Your budget
           </Eyebrow>
-          <h1
+          <h2
             style={{
               fontSize: 'var(--fs-h1-budget)',
               lineHeight: 1.1,
@@ -145,7 +145,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
             }}
           >
             {isEmergency ? "What's coming in?" : "What's coming in, and going out?"}
-          </h1>
+          </h2>
 
           <div style={{ marginBottom: 24 }}>
             <div style={{ marginBottom: 14 }}>

@@ -86,7 +86,9 @@ const goalDateButton = () => screen.getByRole('button', { name: 'I have a goal d
 /** The masked MM-YYYY field — only rendered on the goal-date flavour. */
 const goalDateInput = () => screen.getByPlaceholderText<HTMLInputElement>('MM-YYYY')
 const slider = (name: string) => screen.getByRole<HTMLInputElement>('slider', { name })
-const heading = () => screen.getByRole('heading', { level: 1 })
+// The step's question is an h2: the calculator page's single h1 is the
+// goal picker's landing question (#168).
+const heading = () => screen.getByRole('heading', { level: 2 })
 
 describe('PlanStep fixed-amount seeding', () => {
   afterEach(() => {
