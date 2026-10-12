@@ -22,6 +22,16 @@ async function startVehicle(page: Page, { price = '22000', deposit = '' }: { pri
   if (deposit) await labelledInput(page, 'Deposit / part-exchange').fill(deposit)
 }
 
+/**
+ * The Road tax (VED) field, by its accessible name rather than through
+ * `labelledInput`. Since #201 its label text sits in a `<span>` inside the
+ * `<label>` (so the "?" hint stays out of the input's accessible name), which
+ * means `getByText` returns that span and the helper's `following-sibling`
+ * xpath finds nothing. Querying by name is both correct here and the
+ * direction #166 is taking these specs.
+ */
+const vedInput = (page: Page) => page.getByRole('spinbutton', { name: 'Road tax (VED) / year', exact: true })
+
 /** Fills the Budget step's take-home field and jumps to the result via the rail. */
 async function budgetAndResult(page: Page, takeHome = '2000') {
   await labelledInput(page, 'Take-home pay / month').fill(takeHome)
@@ -50,7 +60,7 @@ test.describe('vehicle flow', () => {
 
     // Running costs: leave only the £60/month maintenance default standing.
     await labelledInput(page, 'Miles you drive / year').fill('0')
-    await labelledInput(page, 'Road tax (VED) / year').fill('0')
+    await vedInput(page).fill('0')
 
     await budgetAndResult(page)
 
@@ -99,7 +109,7 @@ test.describe('vehicle flow', () => {
 
     // Running costs: zero everything but the £60/month maintenance default.
     await labelledInput(page, 'Miles you drive / year').fill('0')
-    await labelledInput(page, 'Road tax (VED) / year').fill('0')
+    await vedInput(page).fill('0')
 
     await budgetAndResult(page)
 
@@ -131,7 +141,12 @@ test.describe('vehicle flow', () => {
 
     await budgetAndResult(page, '4000')
 
-    await expect(page.getByText(/£440\/year supplement/)).toBeVisible()
+    // Matched on the caption's own opening words, not the bare "£440/year
+    // supplement" fragment: since #201 that fragment also appears in the VED
+    // field's screen-reader-only description, and a clipped 1px element still
+    // counts as visible to Playwright, so the loose match resolved to two
+    // elements. This names the result caption and nothing else.
+    await expect(page.getByText(/Road tax includes the £440\/year supplement/)).toBeVisible()
     // £200 VED + £440 supplement = £640/year ≈ £53/month on the tax row.
     await expect(page.getByText('£53', { exact: true })).toBeVisible()
   })

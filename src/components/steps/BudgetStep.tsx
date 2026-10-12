@@ -1,10 +1,9 @@
-import { useId, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, type KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { FieldLabel } from '../FieldLabel'
-import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
@@ -94,18 +93,15 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   // double-counting it. Relabel the field for that goal only, rather than
   // hiding it: other transport spend (public transport, a second car) still
   // belongs in spare cash.
-  const outgoingLabel = (key: OutgoingFieldKey): ReactNode => {
-    if (key !== 'transport' || !goal?.vehicle) return OUTGOING_FIELD_LABELS[key]
-    return (
-      <>
-        Transport (other than this car){' '}
-        <InfoHint
-          size={14}
-          text="This car's fuel, insurance, tax and finance payment are already counted on the previous steps — put anything else here, like public transport or another vehicle."
-        />
-      </>
-    )
-  }
+  const outgoingLabel = (key: OutgoingFieldKey): string =>
+    key === 'transport' && goal?.vehicle ? 'Transport (other than this car)' : OUTGOING_FIELD_LABELS[key]
+
+  // Passed to LabeledMoneyField's `hint` rather than built into the label:
+  // inside the label it would become part of the input's accessible name.
+  const outgoingHint = (key: OutgoingFieldKey): string | undefined =>
+    key === 'transport' && goal?.vehicle
+      ? "This car's fuel, insurance, tax and finance payment are already counted on the previous steps — put anything else here, like public transport or another vehicle."
+      : undefined
 
   const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
 
@@ -224,6 +220,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                   <LabeledMoneyField
                     key={key}
                     label={outgoingLabel(key)}
+                    hint={outgoingHint(key)}
                     value={state[key]}
                     onChange={(value) => setField(key, value)}
                     onKeyDown={handleEnterAdvance}

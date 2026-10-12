@@ -117,3 +117,44 @@ test.describe('hero field accessible names', () => {
     expect(unnamed).toEqual([])
   })
 })
+
+/*
+ * A "?" InfoHint inside a field's <label> used to land in the input's
+ * accessible *name*, because a <label for> names its input from the label's
+ * whole content. The hint belongs in the description, read after the name or
+ * on request, rather than every time focus reaches the field. Checked in a
+ * real browser, since only a browser computes the name the way an assistive
+ * technology does.
+ */
+test.describe('a hinted field names itself without the hint', () => {
+  test('the VED field is named by its label and described by its hint', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Go to Vehicle' }).click()
+    await page.getByRole('button', { name: 'Get started with Vehicle', exact: true }).click()
+    await page.getByPlaceholder('e.g. Volkswagen Golf').fill('VW Golf')
+    await page.locator('input[type="number"]').nth(0).fill('22000')
+    await page.getByRole('button', { name: 'Running costs', exact: true }).click()
+
+    // `exact: true` is the assertion: before the fix this name carried the
+    // whole hint paragraph, so the exact match failed.
+    const ved = page.getByRole('spinbutton', { name: 'Road tax (VED) / year', exact: true })
+    await expect(ved).toBeVisible()
+
+    // The hint is still reachable, as the description.
+    const description = await ved.evaluate((input) =>
+      (input.getAttribute('aria-describedby') ?? '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+        .join(' ')
+        .trim(),
+    )
+    expect(description).toContain('is the standard rate for most cars')
+
+    // And the "?" still works: hover opens the tooltip, as it did before.
+    const hint = page.getByRole('button', { name: /is the standard rate for most cars/ })
+    await expect(hint).toBeVisible()
+    await hint.hover()
+    await expect(page.getByRole('tooltip')).toBeVisible()
+  })
+})

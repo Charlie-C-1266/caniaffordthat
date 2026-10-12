@@ -17,6 +17,13 @@ interface MoneyInputProps {
    * named by the goal's `priceHeadline`. Use instead of `id`, not as well.
    */
   ariaLabelledBy?: string
+  /**
+   * `id` of an element describing this input — supporting detail that is read
+   * *after* the name, or on request, rather than as part of it. Used for a
+   * field whose label carries an `InfoHint`, whose text belongs in the
+   * description and not in the name.
+   */
+  ariaDescribedBy?: string
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
@@ -42,6 +49,7 @@ interface MoneyInputProps {
 export function MoneyInput({
   id,
   ariaLabelledBy,
+  ariaDescribedBy,
   value,
   onChange,
   onKeyDown,
@@ -75,6 +83,7 @@ export function MoneyInput({
       <input
         id={id}
         aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
         type="number"
         min={0}
         value={value}

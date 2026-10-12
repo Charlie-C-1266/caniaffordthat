@@ -84,6 +84,15 @@ const modeButton = (label: string) => screen.getByRole('button', { name: label }
 /** The take-home money input — only rendered while take-home mode is active. */
 const takeHomeInput = () => fieldInput('Take-home pay / month')
 
+/** The text an assistive technology would read as `element`'s description, by resolving aria-describedby. */
+function accessibleDescription(element: HTMLElement): string {
+  const ids = (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+  return ids
+    .map((id) => element.ownerDocument.getElementById(id)?.textContent?.trim() ?? '')
+    .join(' ')
+    .trim()
+}
+
 describe('BudgetStep', () => {
   afterEach(() => {
     cleanup()
@@ -447,5 +456,56 @@ describe('BudgetStep', () => {
       expect(label?.getAttribute('for')).toBe(field.id)
       expect(field.id).not.toBe('')
     })
+  })
+})
+
+// For the car goal the transport field is relabelled and carries a "?" hint
+// explaining what it excludes. The hint sits inside the field's <label>, and
+// a <label for> names its input from the label's whole content — so before
+// #201 the field was announced as its name followed by that whole sentence.
+describe("the car goal's transport field", () => {
+  const TRANSPORT_LABEL = 'Transport (other than this car)'
+
+  afterEach(() => {
+    cleanup()
+    calculator = null
+  })
+
+  it('is named by the label text alone, not the label plus the hint', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+
+    // Exact-string `name`: one character of the hint leaking in fails this.
+    const input = screen.getByRole('spinbutton', { name: TRANSPORT_LABEL })
+    expect(input.getAttribute('aria-labelledby')).toBeTruthy()
+    // And it is the field that actually takes the value.
+    fireEvent.change(input, { target: { value: '85' } })
+    expect(calculator?.state.transport).toBe('85')
+  })
+
+  it('carries the hint as its accessible description instead', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+    const input = screen.getByRole('spinbutton', { name: TRANSPORT_LABEL })
+
+    const description = accessibleDescription(input)
+    expect(description).toContain('already counted on the previous steps')
+    expect(description).toContain('public transport or another vehicle')
+  })
+
+  it('leaves the other outgoing fields with no description and their plain names', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+
+    // Only the hinted field gains a description — the change must not have
+    // wired one onto every LabeledMoneyField.
+    const housing = screen.getByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.housing })
+    expect(housing.getAttribute('aria-describedby')).toBeNull()
+    expect(housing.getAttribute('aria-labelledby')).toBeNull()
+  })
+
+  it('uses the plain "Transport" name, with no hint, for a non-vehicle goal', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2600' })
+
+    const input = screen.getByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.transport })
+    expect(input.getAttribute('aria-describedby')).toBeNull()
+    expect(accessibleDescription(input)).toBe('')
   })
 })
