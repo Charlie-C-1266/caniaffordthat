@@ -58,8 +58,8 @@ test.describe('hero field accessible names', () => {
   test("the price field is named by the goal's own headline", async ({ page }) => {
     await page.goto('/?goalId=holiday')
 
-    // The visible question *is* the <h1>, so the name has to follow the goal's
-    // priceHeadline rather than a separate hand-written label.
+    // The visible question *is* the step's heading, so the name has to follow
+    // the goal's priceHeadline rather than a separate hand-written label.
     await expectLabelledField(page, 'How much is the trip?', '4000')
   })
 

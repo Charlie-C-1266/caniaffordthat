@@ -3,12 +3,11 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ResultHeadline } from './ResultHeadline'
 
-// Every result the user sees is headed by this component's `h1` (the result
-// step's heading, as each step has its own) — so a refactor that demoted the
-// headline to a `div`, swapped the
-// eyebrow and sub-line, or dropped the caller-supplied eyebrow colour (the one
-// thing that differs between a "Yes" and a "No") would still pass the cards'
-// own tests. These assert on the rendered text, the element roles and the
+// Every result the user sees is headed by this component's `h2` (the result
+// step's heading, under the page's single h1) — so a refactor that demoted the
+// headline to a `div`, swapped the eyebrow and sub-line, or dropped the
+// caller-supplied eyebrow colour (the one thing that differs between a "Yes"
+// and a "No") would still pass the cards' own tests. These assert on the rendered text, the element roles and the
 // colour actually applied, not on the component's internals.
 
 /** The eyebrow, headline and sub-line in the order the fragment renders them. */
