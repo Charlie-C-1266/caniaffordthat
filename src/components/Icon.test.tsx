@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
-import { Icon, ICON_NAMES } from './Icon'
+import { Icon } from './Icon'
+import { ICON_NAMES } from './iconRegistry'
 import { GOALS } from '../lib/goals'
 
 // Icon is the one indirection between a name string and a Lucide glyph, used

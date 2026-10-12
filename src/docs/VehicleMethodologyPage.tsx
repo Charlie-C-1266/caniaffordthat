@@ -8,6 +8,7 @@ import { DataTable } from './article/DataTable'
 import { Num } from './article/Num'
 import { PageHeader } from './article/PageHeader'
 import { DepreciationChart } from './DepreciationChart'
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
 import { fmt, paymentForFinance } from '../lib/calculations'
 import { SPARE_CASH_COMFORTABLE_RATIO, SPARE_CASH_TIGHT_RATIO } from '../lib/derive'
 import {
@@ -354,8 +355,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
           </P>
           <P>
             Spotted something wrong, or a rate that's moved? Email{' '}
-            <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Vehicle%20methodology">hello@caniaffordthat.co.uk</ExternalLink> —
-            corrections are very welcome.
+            <ExternalLink href={contactMailto('Vehicle methodology')}>{CONTACT_EMAIL}</ExternalLink> — corrections are very welcome.
           </P>
         </Section>
       </main>

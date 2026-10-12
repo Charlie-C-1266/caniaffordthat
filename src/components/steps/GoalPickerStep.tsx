@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
-import { Icon, type IconName } from '../Icon'
+import { Icon } from '../Icon'
+import type { IconName } from '../iconRegistry'
+import { prefersReducedMotion } from '../../lib/motion'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -85,10 +87,11 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   // text/icon color in the light theme (see tokens.css).
   const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
-  // transform jumps instantly across the seam when teleporting.
+  // transform jumps instantly across the seam when teleporting. The slide's
+  // duration is a token so reduced motion can collapse it (see tokens.css).
   const transition = teleport
     ? 'opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-    : 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+    : 'transform var(--duration-carousel) cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
 
   return (
     <button
@@ -256,7 +259,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
   useEffect(() => {
     if (engaged || hovered || state.goalId !== null) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (prefersReducedMotion()) return
     const timer = setInterval(() => {
       setField('carouselIndex', wrapIndex(indexRef.current + 1))
     }, AUTO_ROTATE_MS)

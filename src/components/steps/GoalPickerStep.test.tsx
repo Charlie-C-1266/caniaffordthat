@@ -282,6 +282,13 @@ describe('GoalPickerStep', () => {
       expect(teleportingGoals()).toEqual([])
     })
 
+    it('times the slide with the --duration-carousel token, so reduced motion can collapse it', () => {
+      // tokens.css drops the token to 0.01ms under prefers-reduced-motion; a
+      // hard-coded duration here would quietly bypass that.
+      renderPicker()
+      for (const goal of GOALS) expect(cardFor(goal).style.transition).toContain('transform var(--duration-carousel) ')
+    })
+
     it('teleports only the card crossing the seam on a one-step move', () => {
       renderPicker()
       fireEvent.click(arrow('Next goal'))

@@ -445,4 +445,72 @@ describe('DetailsStep emergency-fund essentials grid', () => {
     })
     expect(miswired).toEqual([])
   })
+
+  // #167: the price input and the goal-title input had no accessible name.
+  // The price is named by its own headline (the visible question is the
+  // heading, not a label), and the title by its FieldLabel. These query the
+  // way a screen reader resolves a name, so they fail on the unnamed markup.
+  describe('accessible names for the hero fields', () => {
+    const HEADLINES = {
+      car: 'How much is the car?',
+      holiday: 'How much is the trip?',
+      luxury: 'How much is it?',
+      big: "What's the total cost?",
+    } as const
+
+    it("names the price field with each goal's own headline", () => {
+      for (const [goalId, headline] of Object.entries(HEADLINES)) {
+        renderStandardDetails(goalId as 'car')
+        // Same element, reached by role+name and by label lookup.
+        expect(screen.getByRole('spinbutton', { name: headline })).toBe(screen.getByLabelText(headline))
+        cleanup()
+        calculator = null
+      }
+    })
+
+    it('points the price field at the heading that is actually rendered', () => {
+      renderStandardDetails('holiday')
+
+      const field = screen.getByLabelText('How much is the trip?')
+      const headingId = field.getAttribute('aria-labelledby')
+      expect(headingId).toBeTruthy()
+      // Not a dangling reference: the id resolves to the visible headline.
+      expect(document.getElementById(headingId!)?.textContent).toBe('How much is the trip?')
+    })
+
+    it('names the input that actually takes the price', () => {
+      renderStandardDetails('holiday')
+
+      fireEvent.change(screen.getByLabelText('How much is the trip?'), { target: { value: '4200' } })
+
+      expect(calculator?.state.itemPrice).toBe('4200')
+    })
+
+    it('names the goal-title field from its label, not just its placeholder', () => {
+      renderStandardDetails('holiday')
+
+      const title = screen.getByLabelText(/^Goal title/)
+      expect(title.getAttribute('placeholder')).toBe('e.g. Two weeks in Italy')
+      fireEvent.change(title, { target: { value: 'Two weeks in Italy' } })
+      expect(calculator?.state.itemName).toBe('Two weeks in Italy')
+    })
+
+    it('leaves no input on the step without an accessible name', () => {
+      renderStandardDetails('car')
+
+      // Collected rather than matched with a `label[for="..."]` selector:
+      // React's useId emits ids containing colons, which need escaping that
+      // jsdom's CSS.escape doesn't provide.
+      const labelledIds = new Set([...document.querySelectorAll('label[for]')].map((label) => label.getAttribute('for')))
+
+      const unnamed = [...document.querySelectorAll('input')].filter((input) => {
+        if (input.getAttribute('aria-label')) return false
+        const labelledBy = input.getAttribute('aria-labelledby')
+        if (labelledBy && document.getElementById(labelledBy)?.textContent?.trim()) return false
+        return !labelledIds.has(input.id)
+      })
+
+      expect(unnamed.map((input) => input.getAttribute('placeholder') ?? input.type)).toEqual([])
+    })
+  })
 })

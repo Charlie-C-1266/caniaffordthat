@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import { useId, type KeyboardEvent, type ReactNode } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -52,6 +52,12 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   const { state, setField, setFields } = useCalculator()
   const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
+  // Names whichever income input is showing. The visible FieldLabel above it
+  // already says which one it is; without the association a screen reader
+  // announces the step's most important field as a bare "spin button".
+  // Generated rather than hand-written, as LabeledMoneyField does, so it
+  // can't collide with another step's id.
+  const incomeInputId = useId()
 
   // Take-home entry: typed directly, or worked out from an annual salary. In
   // salary mode the tax engine computes the monthly take-home and writes it to
@@ -145,10 +151,11 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
             <div style={{ marginBottom: 14 }}>
               <SegmentedControl options={TAKE_HOME_MODE_OPTIONS} value={state.takeHomeMode} onChange={handleTakeHomeModeChange} size="sm" />
             </div>
-            <FieldLabel>{salaryMode ? 'Annual salary (before tax)' : 'Take-home pay / month'}</FieldLabel>
+            <FieldLabel htmlFor={incomeInputId}>{salaryMode ? 'Annual salary (before tax)' : 'Take-home pay / month'}</FieldLabel>
             {salaryMode ? (
               <>
                 <MoneyInput
+                  id={incomeInputId}
                   value={state.grossSalary}
                   onChange={handleSalaryChange}
                   onKeyDown={handleEnterAdvance}
@@ -182,6 +189,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
               </>
             ) : (
               <MoneyInput
+                id={incomeInputId}
                 value={state.takeHome}
                 onChange={(value) => setField('takeHome', value)}
                 onKeyDown={handleEnterAdvance}
