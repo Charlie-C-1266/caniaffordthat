@@ -89,6 +89,12 @@ describe('sanitiseItemName', () => {
     expect(sanitiseItemName('a\u200Eb\u200Fc\u061Cd')).toBe('abcd')
   })
 
+  it('returns an empty string when every character is stripped', () => {
+    expect(sanitiseItemName('\u0000\u0001\u001F\u007F')).toBe('')
+    expect(sanitiseItemName('\u0085\u009F')).toBe('')
+    expect(sanitiseItemName('\u202A\u202E\u2066\u2069')).toBe('')
+  })
+
   it('keeps the zero-width joiner that multi-part emoji need', () => {
     const family = '👨\u200D👩\u200D👧'
     expect(sanitiseItemName(family)).toBe(family)
