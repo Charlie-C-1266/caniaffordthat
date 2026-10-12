@@ -199,6 +199,31 @@ fi
 # `internal` on its location: reachable as an error body, not as a route of
 # its own, so it can't become a 200 duplicate of the real pages.
 expect_status 'a direct request for /404.html is itself a 404' /404.html 404
+
+# A directory with no index.html of its own. /methodology/ holds only salary/
+# and vehicle/, so `index` finds nothing and autoindex is off, which makes
+# nginx answer 403 rather than 404 — the one URL most likely to be reached by
+# trimming a real page back. `error_page 403 =404` rewrites that.
+expect_status 'a directory without an index is a 404, not a 403' /methodology/ 404
+expect_body 'the branded body on a directory without an index' /methodology/ "$NOT_FOUND_MARKER"
+expect_header 'nosniff on the directory 404' /methodology/ X-Content-Type-Options '^nosniff$'
+expect_header 'Referrer-Policy on the directory 404' /methodology/ Referrer-Policy 'strict-origin-when-cross-origin'
+expect_header 'X-Frame-Options on the directory 404' /methodology/ X-Frame-Options '^DENY$'
+expect_header 'frame-ancestors on the directory 404' /methodology/ Content-Security-Policy "frame-ancestors 'none'"
+expect_no_header 'a directory 404 is not cached' /methodology/ Cache-Control
+# Without the trailing slash nginx redirects to the slashed form, which now
+# ends on the branded 404 — so there is no 403 on either spelling.
+expect_status 'the same directory without a trailing slash ends on the 404 too' /methodology 404 -L
+# Nothing anywhere should still be answering 403: this config's only deny
+# paths are `=404`, and the directory case above was the last real 403.
+for path in /methodology/ /methodology /does-not-exist /assets/does-not-exist.js /sources/typo; do
+  got="$(curl -s -L -o /dev/null -w '%{http_code}' "$BASE$path")"
+  if [[ $got == 403 ]]; then
+    fail 'no bare 403 anywhere' "$path returned 403"
+  else
+    pass "no 403 on $path (got $got)"
+  fi
+done
 # The security headers are repeated inside that location because add_header
 # does not inherit into a location that sets any of its own.
 expect_header 'nosniff on the 404 body' /does-not-exist X-Content-Type-Options '^nosniff$'
