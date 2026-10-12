@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
-import { Icon, type IconName } from '../Icon'
+import { Icon } from '../Icon'
+import type { IconName } from '../iconRegistry'
+import { prefersReducedMotion } from '../../lib/motion'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -85,10 +87,11 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   // text/icon color in the light theme (see tokens.css).
   const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
-  // transform jumps instantly across the seam when teleporting.
+  // transform jumps instantly across the seam when teleporting. The slide's
+  // duration is a token so reduced motion can collapse it (see tokens.css).
   const transition = teleport
     ? 'opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-    : 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+    : 'transform var(--duration-carousel) cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
 
   return (
     <button
@@ -247,21 +250,37 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
     focus(index)
   }
 
+  // The pending post-selection scroll, held so it can be cancelled — see
+  // select() below, and the unmount cleanup under the auto-rotate effect.
+  const selectScrollTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
   const select = (goal: Goal) => {
     if (goal.soon) return
     setEngaged(true)
     setFields(seedFromGoal(goal))
-    setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
+    // At most one pending scroll. Two selections inside the delay — the
+    // focused card clicked twice, or Enter pressed twice — would otherwise
+    // each schedule one, and the second could land after the user has
+    // already scrolled on or started over, yanking the page to the wrong
+    // step. Cleared after the `soon` guard above, so a "Soon" goal neither
+    // schedules a scroll nor cancels one already pending.
+    clearTimeout(selectScrollTimer.current)
+    selectScrollTimer.current = setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
 
   useEffect(() => {
     if (engaged || hovered || state.goalId !== null) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (prefersReducedMotion()) return
     const timer = setInterval(() => {
       setField('carouselIndex', wrapIndex(indexRef.current + 1))
     }, AUTO_ROTATE_MS)
     return () => clearInterval(timer)
   }, [engaged, hovered, state.goalId, setField])
+
+  // Unmounting inside the selection delay would otherwise still run the
+  // scroll against refs the hook has already torn down. Same pattern as
+  // ResultActions' revert timer.
+  useEffect(() => () => clearTimeout(selectScrollTimer.current), [])
 
   return (
     <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
@@ -270,6 +289,14 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
       >
         <LandingPill />
+        {/*
+         * The calculator is one scrolling page, so this is its *only* h1 —
+         * the landing question that opens every flow. Each later step's
+         * question, and the result headline, is an h2 under it. A new step
+         * adding its own h1 would flatten the heading outline back into a
+         * list of unrelated top-level headings for a screen reader; the e2e
+         * suite counts the h1s in every flow to catch that.
+         */}
         <h1
           style={{
             fontSize: 'var(--fs-h1-md)',

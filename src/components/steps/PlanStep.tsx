@@ -161,7 +161,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
           {isSave ? (
             <>
               <Eyebrow color={accent}>Step {index} — Timeframe</Eyebrow>
-              <h1
+              <h2
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
                   lineHeight: 1.15,
@@ -173,7 +173,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                 How do you want
                 <br />
                 to plan it?
-              </h1>
+              </h2>
               <div style={{ display: 'flex', gap: 10, marginBottom: 26 }}>
                 <ToggleButton
                   label="How long will it take?"
@@ -203,7 +203,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
           ) : (
             <>
               <Eyebrow color={accent}>Step {index} — Finance details</Eyebrow>
-              <h1
+              <h2
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
                   lineHeight: 1.15,
@@ -213,7 +213,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                 }}
               >
                 Term and rate?
-              </h1>
+              </h2>
               <div style={{ marginBottom: 22 }}>
                 <SliderField
                   label="Term length"

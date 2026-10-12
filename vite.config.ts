@@ -12,6 +12,13 @@ export default defineConfig({
   // noscriptFallbackPlugin does the same for the no-JavaScript fallback, so
   // neither has to be kept in step across the four entries by hand.
   plugins: [react(), themeBootstrapPlugin(), noscriptFallbackPlugin()],
+  // Vercel's Speed Insights and Analytics scripts live under /_vercel/, a path
+  // only Vercel's edge serves. Gate them on Vercel's own build-time `VERCEL`
+  // variable so the self-hosted Docker/nginx build and `vite preview` don't
+  // fetch two scripts that 404 on every page load. A `define` rather than an
+  // import.meta.env value, because those arrive as strings and the string
+  // 'false' is truthy (see src/vite-env.d.ts).
+  define: { __ON_VERCEL__: JSON.stringify(Boolean(process.env.VERCEL)) },
   build: {
     rollupOptions: {
       // Multi-page build: the calculator plus the methodology page(s). Each
