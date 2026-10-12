@@ -2,7 +2,8 @@
 #
 # Checks the behaviour nginx.conf is supposed to give the self-hosted build:
 # compression, cache headers, security headers, and a real 404 for unknown
-# paths instead of the SPA fallback.
+# paths instead of the SPA fallback — including that the 404 body is the
+# branded public/404.html rather than nginx's default plain one.
 #
 # Runs the repository's own nginx.conf against a real ./dist, rehoming only
 # the two directives that can't be shared with a live server — `listen` (to an
@@ -76,6 +77,10 @@ done
 ASSET_FILE="$(find "$DIST/assets" -name '*.js' -printf '%f\n' | sort | head -1)"
 ASSET="/assets/$ASSET_FILE"
 
+# A string that appears only in public/404.html, so a plain nginx error body
+# (or the calculator served by mistake) fails the body assertions below.
+NOT_FOUND_MARKER="This page doesn't exist"
+
 FAILED=0
 pass() { printf '  \033[32mok\033[0m   %s\n' "$1"; }
 fail() {
@@ -108,6 +113,16 @@ expect_no_header() {
     pass "$label (no $header)"
   else
     fail "$label" "$path: expected no $header, got '$got'"
+  fi
+}
+
+# Asserts the response body for a path contains a fixed string.
+expect_body() {
+  local label=$1 path=$2 needle=$3
+  if curl -sS "$BASE$path" | grep -qF -- "$needle"; then
+    pass "$label ($path contains '$needle')"
+  else
+    fail "$label" "$path: body did not contain '$needle'"
   fi
 }
 
@@ -163,6 +178,34 @@ expect_status 'missing hashed asset' /assets/does-not-exist.js 404
 # for a year, and elsewhere it would hide a page published later.
 expect_no_header 'a missing hashed asset is not cached' /assets/does-not-exist.js Cache-Control
 expect_no_header 'an unknown path is not cached' /does-not-exist Cache-Control
+
+echo
+echo "== the branded 404 body =="
+# error_page without `=` must leave the status at 404: a 200 here would tell a
+# crawler the mistyped URL is a real page.
+for path in /does-not-exist /nope.js /sources/typo; do
+  expect_status "status stays 404 on $path" "$path" 404
+  expect_body "branded body on $path" "$path" "$NOT_FOUND_MARKER"
+  expect_body "a way back on $path" "$path" 'href="/"'
+done
+# nginx's own plain error body is what this replaces, so its tell-tale must be
+# gone — otherwise a broken `error_page` would pass the assertions above on a
+# page that still says "404 Not Found" in Times New Roman.
+if curl -sS "$BASE/does-not-exist" | grep -qF '<center>'; then
+  fail 'the 404 body is the branded page' "still nginx's default error page"
+else
+  pass "the 404 body is not nginx's default error page"
+fi
+# `internal` on its location: reachable as an error body, not as a route of
+# its own, so it can't become a 200 duplicate of the real pages.
+expect_status 'a direct request for /404.html is itself a 404' /404.html 404
+# The security headers are repeated inside that location because add_header
+# does not inherit into a location that sets any of its own.
+expect_header 'nosniff on the 404 body' /does-not-exist X-Content-Type-Options '^nosniff$'
+expect_header 'Referrer-Policy on the 404 body' /does-not-exist Referrer-Policy 'strict-origin-when-cross-origin'
+expect_header 'X-Frame-Options on the 404 body' /does-not-exist X-Frame-Options '^DENY$'
+expect_header 'frame-ancestors on the 404 body' /does-not-exist Content-Security-Policy "frame-ancestors 'none'"
+expect_header 'the 404 body is HTML' /does-not-exist Content-Type '^text/html'
 
 echo
 echo "== cache headers =="
