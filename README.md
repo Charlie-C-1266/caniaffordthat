@@ -46,6 +46,23 @@ To produce a static build you can serve from any static host:
 npm run build   # outputs to dist/
 ```
 
+## Testing
+
+```bash
+npm test            # unit tests (Vitest)
+npm run test:e2e    # browser tests (Playwright) — starts its own dev server
+```
+
+`npm run test:e2e` normally starts the dev server itself. Set `E2E_BASE_URL` to
+run the same suite against a server that's already up — a preview build, a
+staging deployment, anything reachable over http(s) — and no server is started:
+
+```bash
+E2E_BASE_URL=http://localhost:4173 npx playwright test   # e.g. against `npm run preview`
+```
+
+It must be an absolute `http://` or `https://` URL; a trailing slash is fine.
+
 ## Found a bug?
 
 Please [raise an issue](../../issues) or email **<hello@caniaffordthat.co.uk>** —
