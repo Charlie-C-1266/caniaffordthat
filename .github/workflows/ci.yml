@@ -29,6 +29,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # shellcheck is preinstalled on the ubuntu-latest image.
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+
       # One run does both jobs: it fails the build on a failing test exactly as
       # `npm test` would, and the `text` reporter prints the per-file coverage
       # table straight into this job's log, so a reviewer can see a 0%-covered
