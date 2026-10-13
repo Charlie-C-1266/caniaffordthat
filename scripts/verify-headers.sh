@@ -195,6 +195,31 @@ if curl -sS "$BASE/does-not-exist" | grep -qF '<center>'; then
 else
   pass "the 404 body is not a server's default error page"
 fi
+# A directory that exists but holds no index.html of its own. /methodology/
+# holds only salary/ and vehicle/, so nginx's `index` finds nothing and,
+# autoindex being off, it answers 403 rather than 404 unless `error_page 403
+# =404` rewrites it. It is a natural URL to reach by trimming
+# /methodology/salary/ back, and the Vercel deployment already answers it with
+# a 404 — so this belongs in the shared list, where it holds both servers to
+# the same answer.
+expect_status 'a directory without an index is a 404, not a 403' /methodology/ 404
+expect_body 'the branded body on a directory without an index' /methodology/ "$NOT_FOUND_MARKER"
+expect_no_header 'a directory 404 is not cached' /methodology/ Cache-Control
+# Without the trailing slash the server redirects to the slashed form, which
+# must end on the branded 404 too — so there is no 403 on either spelling.
+expect_status 'the same directory without a trailing slash ends on the 404 too' /methodology 404 -L
+# No path should answer 403 at all: "forbidden" is the wrong answer for a URL
+# that simply has no page, and it is the one status that would reach a visitor
+# as a bare server error rather than the branded body.
+for path in /methodology/ /methodology /does-not-exist /assets/does-not-exist.js /sources/typo; do
+  got="$(curl -s -L -o /dev/null -w '%{http_code}' "$BASE$path")"
+  if [[ $got == 403 ]]; then
+    fail 'no bare 403 anywhere' "$BASE$path: returned 403"
+  else
+    pass "no 403 on $path (got $got)"
+  fi
+done
+
 # /404.html must not become a 200 duplicate of the real pages. nginx makes it
 # `internal`, so a direct request is itself a 404; a host that serves static
 # files by path (Vercel, or S3 behind CloudFront) answers 200, and there the
@@ -251,6 +276,13 @@ expect_header 'security headers survive a 404' /does-not-exist X-Content-Type-Op
 expect_header 'Referrer-Policy survives a 404' /does-not-exist Referrer-Policy 'strict-origin-when-cross-origin'
 expect_header 'X-Frame-Options survives a 404' /does-not-exist X-Frame-Options '^DENY$'
 expect_header 'frame-ancestors survives a 404' /does-not-exist Content-Security-Policy "frame-ancestors 'none'"
+# The directory case reaches the 404 body through a different route (a
+# rewritten 403, not a `try_files` miss), so its headers are asserted too
+# rather than assumed to follow.
+expect_header 'nosniff on the directory 404' /methodology/ X-Content-Type-Options '^nosniff$'
+expect_header 'Referrer-Policy on the directory 404' /methodology/ Referrer-Policy 'strict-origin-when-cross-origin'
+expect_header 'X-Frame-Options on the directory 404' /methodology/ X-Frame-Options '^DENY$'
+expect_header 'frame-ancestors on the directory 404' /methodology/ Content-Security-Policy "frame-ancestors 'none'"
 
 # HSTS only makes sense on https, and nginx.conf deliberately doesn't set it:
 # TLS is terminated in front of the container, so the edge owns this header.

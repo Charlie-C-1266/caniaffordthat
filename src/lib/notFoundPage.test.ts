@@ -125,4 +125,14 @@ describe('public/404.html', () => {
     // `internal` is what stops /404.html being a 200 route of its own.
     expect(NGINX_CONF).toMatch(/location = \/404\.html \{[\s\S]*?\binternal;/)
   })
+
+  it('also serves the branded page for a directory that has no index', () => {
+    // /methodology/ exists but holds only salary/ and vehicle/, so `index`
+    // finds nothing and autoindex is off: nginx answers 403, not 404. Here
+    // the `=404` is required rather than forbidden — it rewrites a status
+    // that would otherwise say "not allowed" about a path that simply has no
+    // page. scripts/verify-nginx.sh proves the behaviour against real nginx;
+    // this guards the directive from being dropped.
+    expect(NGINX_CONF).toMatch(/^\s*error_page 403 =404 \/404\.html;$/m)
+  })
 })
