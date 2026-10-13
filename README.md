@@ -128,3 +128,19 @@ If a release does get squashed by accident, the repair is a back-merge —
 `git checkout dev && git merge origin/main` — which carries no content change
 and just reconnects the two branches. This happened once, to the #23 release;
 `028d677` is the back-merge that fixed it.
+
+### Which pushes Vercel builds
+
+`main` always deploys. On every other branch, Vercel first runs
+`scripts/vercel-ignore-build.sh` (wired up through `vercel.json`) and skips the
+preview build when nothing that reaches the deployed site has changed since
+that branch's last successful deployment. A push that only touches unit tests
+(`src/**/*.test.ts(x)`), `e2e/`, `.github/`, docs and Markdown, the other
+`scripts/`, or the Docker and nginx setup is skipped. Anything else builds, and
+so does a branch's first deployment and anything the script can't be sure
+about. CI still builds and tests every PR either way. A skipped deployment
+shows as **Canceled** in the Vercel dashboard, with the script's reason in its
+build log; the header of the script lists the full rules.
+
+To force a build anyway, open the deployment in the Vercel dashboard, choose
+**Redeploy**, and untick **Use project's Ignore Build Step**.
