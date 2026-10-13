@@ -74,10 +74,15 @@ export function LabeledMoneyField({
           </>
         )}
       </FieldLabel>
-      {/* Off-screen but in the accessibility tree, so the explanation is not
-          lost to the screen-reader users it was written for. */}
+      {/*
+       * The input's description. `hidden`, not visually-hidden: an element
+       * referenced by aria-describedby is still read as the description when
+       * hidden, but a visually-hidden one would also be read where it sits,
+       * so a screen reader reading down the page would hear the hint twice
+       * (once as the "?" button's name, once here) before reaching the field.
+       */}
       {hint !== undefined && (
-        <span id={hintId} className="visually-hidden">
+        <span id={hintId} hidden>
           {hint}
         </span>
       )}

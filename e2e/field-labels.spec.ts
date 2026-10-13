@@ -150,6 +150,13 @@ test.describe('a hinted field names itself without the hint', () => {
         .trim(),
     )
     expect(description).toContain('is the standard rate for most cars')
+    // The same, computed the way assistive technology does it: an element
+    // referenced by aria-describedby is read even though it is hidden.
+    await expect(ved).toHaveAccessibleDescription(/is the standard rate for most cars/)
+    // And only there. The description element is hidden, so a screen reader
+    // reading down the page doesn't hear the hint again after the "?" button.
+    const describedBy = await ved.getAttribute('aria-describedby')
+    await expect(page.locator(`[id="${describedBy}"]`)).toBeHidden()
 
     // And the "?" still works: hover opens the tooltip, as it did before.
     const hint = page.getByRole('button', { name: /is the standard rate for most cars/ })
