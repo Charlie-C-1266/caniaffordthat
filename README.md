@@ -69,7 +69,14 @@ anywhere.
 ```bash
 npm test            # unit tests (Vitest)
 npm run test:e2e    # browser tests (Playwright) — starts its own dev server
+scripts/check-uk-spelling.sh   # US spellings in the lines your branch adds
 ```
+
+The site is UK-only, comments and test names included. `check-uk-spelling.sh
+[base-ref]` (default `origin/dev`) fails on US spellings such as `color` or
+`behavior` in the lines added since the base, and CI runs it on PRs into `dev`.
+Spellings fixed by a spec, like CSS `color` or `text-align: center`, are allowed
+by patterns in `scripts/uk-spelling-allow.txt`.
 
 `npm run test:e2e` normally starts the dev server itself. Set `E2E_BASE_URL` to
 run the same suite against a server that's already up — a preview build, a
@@ -100,7 +107,7 @@ git push -u origin feature/short-description
 ```
 
 Then open a PR into `dev`. CI (`.github/workflows/ci.yml` — typecheck, lint,
-test, build, e2e) must pass before merging.
+shellcheck, UK spelling, test, build, e2e) must pass before merging.
 
 Dependency and GitHub Actions updates arrive on their own: Dependabot
 (`.github/dependabot.yml`) opens weekly PRs into `dev` for npm, the Dockerfile
