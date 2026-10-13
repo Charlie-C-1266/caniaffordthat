@@ -55,15 +55,28 @@ const pressedChipNames = () =>
   )
 
 /**
- * The money input belonging to a field label. FieldLabel renders a bare
- * `<label>` with no `htmlFor`, so there's no accessible name to query by —
- * the input is found through the wrapper the two share instead.
+ * The money input belonging to a field label, found through the wrapper the
+ * two share. Kept as-is for the fields this file already drove structurally;
+ * replacing these helpers with `getByLabelText` across the suite is #166's
+ * job. (The comment here used to claim FieldLabel rendered a bare `<label>`
+ * with no `htmlFor` — untrue since #94.) The VED field, whose accessible
+ * name is the point of the block at the end of this file, is queried by that
+ * name instead.
  */
 function fieldInput(labelText: string): HTMLInputElement {
   const [label] = screen.getAllByText((_, element) => element?.tagName === 'LABEL' && (element.textContent ?? '').startsWith(labelText))
   const input = label?.parentElement?.querySelector('input')
   if (!input) throw new Error(`No input found for field labelled "${labelText}"`)
   return input
+}
+
+/** The text an assistive technology would read as `element`'s description, by resolving aria-describedby. */
+function accessibleDescription(element: HTMLElement): string {
+  const ids = (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+  return ids
+    .map((id) => element.ownerDocument.getElementById(id)?.textContent?.trim() ?? '')
+    .join(' ')
+    .trim()
 }
 
 describe('VehicleCostsStep', () => {
@@ -204,6 +217,50 @@ describe('VehicleCostsStep', () => {
       renderCostsStep({}, scrollToIndex)
       fireEvent.keyDown(fieldInput('Average fuel economy'), { key: 'a' })
       expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+  })
+  // The "?" hint sits inside the field's <label>, and a <label for> names its
+  // input from the label's whole content — so before #201 this field was
+  // announced as its name followed by the entire hint paragraph, every time
+  // focus landed on it.
+  describe("the VED field's accessible name", () => {
+    const VED_LABEL = 'Road tax (VED) / year'
+
+    it('is named by the label text alone, not the label plus the hint', () => {
+      renderCostsStep({ itemPrice: '22000' })
+
+      // An exact-string `name` match: this fails if one character of the hint
+      // leaks into the name.
+      const input = screen.getByRole('spinbutton', { name: VED_LABEL })
+      expect(input.getAttribute('aria-labelledby')).toBeTruthy()
+      // And it is the field that actually takes the value, not some other
+      // element that happens to carry the name.
+      fireEvent.change(input, { target: { value: '275' } })
+      expect(calculator?.state.taxAnnual).toBe('275')
+    })
+
+    it('carries the hint as its accessible description instead', () => {
+      renderCostsStep({ itemPrice: '22000' })
+      const input = screen.getByRole('spinbutton', { name: VED_LABEL })
+
+      const description = accessibleDescription(input)
+      expect(description).toContain('is the standard rate for most cars')
+      expect(description).toContain('supplement in years 2–6')
+      // The description resolves to a real element, so it isn't a dangling id.
+      expect(description.length).toBeGreaterThan(40)
+    })
+
+    it('still renders the "?" button, with the hint as its own name', () => {
+      renderCostsStep({ itemPrice: '22000' })
+
+      // The affordance is unchanged: the button still announces the hint, so
+      // the text is reachable on demand as well as as a description.
+      const hintButton = screen
+        .getAllByRole('button')
+        .find((button) => (button.getAttribute('aria-label') ?? '').includes('standard rate for most cars'))
+      expect(hintButton).toBeTruthy()
+      // It lives inside the label, which is why the name had to be narrowed.
+      expect(hintButton?.closest('label')).toBeTruthy()
     })
   })
 })

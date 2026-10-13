@@ -3,7 +3,6 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
-import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SliderField } from '../SliderField'
@@ -197,7 +196,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
 
           <SectionLabel>Insurance &amp; tax</SectionLabel>
           {/* alignItems:'end' bottom-aligns the pair. "Road tax (VED) / year" plus
-              its InfoHint wraps onto one more line than "Insurance / year", and
+              its "?" hint wraps onto one more line than "Insurance / year", and
               top-aligned grid items left the two £ amounts 17px out of line with
               each other. Aligning on the inputs rather than the labels keeps them
               level whatever the labels wrap to. */}
@@ -209,15 +208,8 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
               onKeyDown={handleEnterAdvance}
             />
             <LabeledMoneyField
-              label={
-                <>
-                  Road tax (VED) / year{' '}
-                  <InfoHint
-                    size={14}
-                    text={`£${STANDARD_VED_ANNUAL}/year is the standard rate for most cars. Brand-new cars over £${EXPENSIVE_CAR_PRICE_THRESHOLD.toLocaleString('en-GB')} list price also pay a £${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement in years 2–6 — we add that automatically.`}
-                  />
-                </>
-              }
+              label="Road tax (VED) / year"
+              hint={`£${STANDARD_VED_ANNUAL}/year is the standard rate for most cars. Brand-new cars over £${EXPENSIVE_CAR_PRICE_THRESHOLD.toLocaleString('en-GB')} list price also pay a £${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement in years 2–6 — we add that automatically.`}
               value={state.taxAnnual}
               onChange={(value) => setField('taxAnnual', value)}
               onKeyDown={handleEnterAdvance}
