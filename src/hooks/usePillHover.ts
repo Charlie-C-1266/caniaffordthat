@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 
 /**
- * Hover state for the persistent top-right "ghost pill" controls, which carry
- * their own inline chrome rather than a shared CSS class.
+ * Hover state for any control that styles its own hover inline rather than
+ * through a CSS class — the persistent top-right "ghost pill" controls, and
+ * the goal carousel's arrows and "Get started" CTA.
  *
  * A tap on a touch device fires a synthetic `mouseenter` *after* `touchend`,
  * and the matching `mouseleave` only arrives when the user next taps
@@ -12,8 +13,8 @@ import { useRef, useState } from 'react'
  * the synthetic `mouseenter` that follows consumes that mark instead of
  * lighting the pill up. A genuine mouse hover is untouched.
  *
- * Spread `hoverHandlers` onto the element and drive its background from
- * `hovered`.
+ * Spread `hoverHandlers` onto the element and drive its hover styling from
+ * `hovered` — a background for the pills, a `translateY` lift for the CTA.
  */
 export function usePillHover() {
   const [hovered, setHovered] = useState(false)

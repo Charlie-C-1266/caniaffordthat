@@ -637,4 +637,86 @@ describe('GoalPickerStep', () => {
       expect(document.activeElement).not.toBe(cta)
     })
   })
+  // A tap fires a synthetic mouseenter *after* touchend, and the matching
+  // mouseleave may never arrive — so before #205 both controls stayed in
+  // their hover style after a tap, reading as a stuck button. Both now use
+  // usePillHover; these mirror StartOverButton.test.tsx's touch-order tests,
+  // which pin the same contract for the top-right pills.
+  describe('hover state after a touch tap', () => {
+    it('leaves the arrow on its resting background after a tap', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      // The event order a real tap produces: touchstart/touchend, then a
+      // synthetic mouseenter, and no mouseleave.
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseEnter(next)
+      fireEvent.click(next)
+
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+      // The tap still did its job — the hover guard must not swallow the move.
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+    })
+
+    it('leaves the CTA unlifted after a tap', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      const cta = ctaFor(CAR)
+      fireEvent.touchStart(cta)
+      fireEvent.touchEnd(cta)
+      fireEvent.mouseEnter(cta)
+      fireEvent.click(cta)
+
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+      expect(calculator?.state.goalId).toBe(CAR.id)
+    })
+
+    it('still hovers the arrow normally with a mouse after an earlier tap', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseEnter(next)
+      fireEvent.mouseLeave(next)
+
+      fireEvent.mouseEnter(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('still lifts the CTA with a mouse after an earlier tap', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      fireEvent.touchStart(cta)
+      fireEvent.touchEnd(cta)
+      fireEvent.mouseEnter(cta)
+      fireEvent.mouseLeave(cta)
+
+      fireEvent.mouseEnter(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+    })
+
+    it('still hovers after a tap whose synthetic mouseenter never arrived', () => {
+      // The touch mark must not outlive the next mouseleave, or it would
+      // swallow the following real hover and a hybrid touch-and-mouse device
+      // would get a control that never lights up.
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseLeave(next)
+
+      fireEvent.mouseEnter(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('drops the arrow hover when focus leaves', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.mouseEnter(next)
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.blur(next)
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+    })
+  })
 })
