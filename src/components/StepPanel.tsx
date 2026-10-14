@@ -14,7 +14,7 @@ interface StepPanelProps {
   /** Scroll target for this step (steps 0-3 only; the final step scrolls to its panel instead). */
   wrapperRef?: DivRefCallback
   panelStyle?: CSSProperties
-  /** Test-only hook for e2e assertions (e.g. checking the result panel's background color) — never used for styling or behavior. */
+  /** Test-only hook for e2e assertions (e.g. checking the result panel's background colour) — never used for styling or behaviour. */
   panelTestId?: string
 }
 

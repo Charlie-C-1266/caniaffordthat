@@ -40,14 +40,14 @@ function LandingPill() {
   )
 }
 
-// Card width and the horizontal gap between adjacent cards' centers. The
+// Card width and the horizontal gap between adjacent cards' centres. The
 // design's cover-flow spec is 250px wide, stepped 268px apart, which needs
 // ~1100px of room for the focused card and one neighbour each side — so both
 // are read from custom properties that index.css steps down on narrow
 // viewports rather than being baked in here (see --goal-card-width).
 const CARD_WIDTH = 'var(--goal-card-width)'
 const CARD_STEP_X = 'var(--goal-card-step-x)'
-// Cards more than this many positions from center are faded out / non-interactive.
+// Cards more than this many positions from centre are faded out / non-interactive.
 const MAX_VISIBLE_OFFSET = 2
 // Delay after selecting a goal before scrolling to Details, so the card's
 // selection state is visible for a beat first (design: 260ms).
@@ -85,7 +85,7 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   const geo = cardGeometry(offset)
   // The text-safe variant: this accent is used for the card border, icon
   // fill, and tag-label text below, and --accent-save fails contrast as
-  // text/icon color in the light theme (see tokens.css).
+  // text/icon colour in the light theme (see tokens.css).
   const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
   // transform jumps instantly across the seam when teleporting. The slide's
@@ -332,7 +332,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
             position: 'relative',
             width: '100%',
             height: 360,
-            // The cards are absolutely positioned off a centered rail, so at
+            // The cards are absolutely positioned off a centred rail, so at
             // any viewport narrower than the full cover-flow spread they used
             // to push `document.documentElement`'s scroll width past the
             // window and put the *whole page* into horizontal scroll. Clipping

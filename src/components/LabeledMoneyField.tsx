@@ -13,7 +13,7 @@ interface LabeledMoneyFieldProps {
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
   /** `'grid'` for the compact two-column budget/essentials grids; `'single'` for a full-width standalone field (slightly larger prefix offset and label). */
   variant?: 'grid' | 'single'
-  /** Underline color while focused. Defaults to the neutral primary-text color; pass the mode accent for fields that should light up. */
+  /** Underline colour while focused. Defaults to the neutral primary-text colour; pass the mode accent for fields that should light up. */
   accentColor?: string
   /**
    * Explanatory text for a "?" affordance beside the label.

@@ -127,7 +127,7 @@ describe('StandardResultCard', () => {
       renderCard(savingsResult({ grossTarget: 4500 }), { goalId: 'emergency', coverMonths: 6 })
 
       expect(rowValue('GOAL')).toBe('Emergency fund — £4,500 (6 mo)')
-      // Emergency funds are "set aside", not "saved toward this".
+      // Emergency funds are "set aside", not "saved towards this".
       expect(screen.getByText('ALREADY SET ASIDE')).toBeTruthy()
       expect(screen.queryByText('ALREADY SAVED')).toBeNull()
     })

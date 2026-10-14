@@ -11,7 +11,7 @@ import { DEFAULT_STATE } from './defaults'
 // they're only exercised incidentally (a step test happens to type into a
 // field), so these tests drive each one directly and assert on the *observed
 // state* rather than on the provider's internals — the `useMemo` identity of
-// `value` is deliberately not asserted, so memoization can be retuned without
+// `value` is deliberately not asserted, so memoisation can be retuned without
 // breaking these tests.
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -45,7 +45,7 @@ describe('CalculatorProvider', () => {
     const { result } = renderCalculator()
 
     act(() => {
-      // The shape the goal picker uses: seed mode, flavor and term together.
+      // The shape the goal picker uses: seed mode, flavour and term together.
       result.current.setFields({ goalId: 'car', mode: 'monthly', term: 48 })
     })
 
@@ -95,7 +95,7 @@ describe('CalculatorProvider', () => {
     expect(result.current.state.revealed).toEqual({ 0: true, 1: true, 3: true })
   })
 
-  it('reset restores every field to the defaults — the "Start over" behavior', () => {
+  it('reset restores every field to the defaults — the "Start over" behaviour', () => {
     const { result } = renderCalculator()
 
     act(() => {

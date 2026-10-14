@@ -142,7 +142,7 @@ test.describe('core flow', () => {
 
   test('full flow reaches a result with the expected verdict and breakdown', async ({ page }) => {
     await goToPlan(page, { itemName: 'New sofa', itemPrice: '1200', takeHome: '2000' })
-    // Switch to goal-date flavor (default goalMonths=12, 0% growth) for a
+    // Switch to goal-date flavour (default goalMonths=12, 0% growth) for a
     // deterministic £1,200/12 = £100/mo, rather than duration mode's
     // months-to-save headline, whose expected date shifts with "now".
     await page.getByRole('button', { name: 'I have a goal date' }).click()

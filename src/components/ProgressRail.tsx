@@ -7,8 +7,8 @@ interface ProgressRailProps {
 }
 
 /**
- * Fixed, vertically-centered rail of step dots on the right edge. The active
- * dot is larger, filled with the accent color; inactive dots are hollow
+ * Fixed, vertically-centred rail of step dots on the right edge. The active
+ * dot is larger, filled with the accent colour; inactive dots are hollow
  * (transparent fill, dim border). Dots only — the step name is exposed to
  * assistive tech via each button's aria-label rather than rendered, so the
  * rail never overlaps the tiles. Clicking any dot jumps straight to that step.

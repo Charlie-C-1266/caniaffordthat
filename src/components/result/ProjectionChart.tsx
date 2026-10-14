@@ -20,7 +20,7 @@ interface ProjectionChartProps {
   accentColor: string
 }
 
-/** The balance-over-time area chart: £ saved (or repaid) climbing month by month toward the goal line. */
+/** The balance-over-time area chart: £ saved (or repaid) climbing month by month towards the goal line. */
 export function ProjectionChart({ projection, accentColor }: ProjectionChartProps) {
   const gradientId = useId()
   const { points, target, kind } = projection

@@ -12,7 +12,7 @@ interface CalculatorProviderProps {
 export function CalculatorProvider({ children }: CalculatorProviderProps) {
   const [state, setState] = useState<CalculatorState>(() => hydrateStateFromUrl(window.location.search))
 
-  // Memoized with stable identity (setState from useState never changes) so
+  // Memoised with stable identity (setState from useState never changes) so
   // that effects elsewhere — e.g. useStepObserver's IntersectionObserver
   // setup — can safely depend on these without re-running on every keystroke.
   const setField = useCallback<CalculatorContextValue['setField']>((key, value) => {

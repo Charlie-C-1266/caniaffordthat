@@ -29,7 +29,7 @@ const noop = () => {}
 
 const SALARY_MODE_LABEL = 'Annual salary'
 const TAKE_HOME_MODE_LABEL = 'Monthly take-home'
-const SAVINGS_LABEL = 'Already saved toward this'
+const SAVINGS_LABEL = 'Already saved towards this'
 const SET_ASIDE_LABEL = 'Already set aside'
 const VEHICLE_TRANSPORT_LABEL = 'Transport (other than this car)'
 // The heading wraps on a U+2028 line separator, so match across the break

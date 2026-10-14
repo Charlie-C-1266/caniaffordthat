@@ -5,7 +5,7 @@ import { ResultActions } from './ResultActions'
 import { CalculatorProvider } from '../../state/CalculatorProvider'
 import { copyToClipboard } from '../../lib/clipboard'
 
-// The component's behavior under test is what it shows for each clipboard
+// The component's behaviour under test is what it shows for each clipboard
 // outcome, so the clipboard helper itself is mocked per-case.
 vi.mock('../../lib/clipboard', () => ({ copyToClipboard: vi.fn() }))
 const mockCopy = vi.mocked(copyToClipboard)

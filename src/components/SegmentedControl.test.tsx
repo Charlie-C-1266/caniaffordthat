@@ -42,7 +42,7 @@ describe('SegmentedControl', () => {
     expect(screen.getByRole('button', { name: 'Pay monthly' }).getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('styles only the active option with its active colors', () => {
+  it('styles only the active option with its active colours', () => {
     render(<SegmentedControl options={OPTIONS} value="save" onChange={vi.fn()} />)
     const active = screen.getByRole('button', { name: 'Save up' })
     const inactive = screen.getByRole('button', { name: 'Pay monthly' })
