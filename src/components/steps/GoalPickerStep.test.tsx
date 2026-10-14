@@ -366,6 +366,32 @@ describe('GoalPickerStep', () => {
       expect(scrollToIndex).not.toHaveBeenCalled()
     })
 
+    it('a focused "Soon" goal has no select handler, so nothing can start it', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+
+      // Focus it the way a user would, via its dot.
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      const card = cardFor(MORTGAGE)
+      const cta = screen.getByRole('button', { name: 'Coming soon' })
+      // Two independent reasons it can't be started, which together are what
+      // replaced the unreachable `if (goal.soon) return` inside select():
+      // both controls are disabled...
+      expect(card.hasAttribute('disabled')).toBe(true)
+      expect(cta.hasAttribute('disabled')).toBe(true)
+      // ...and the card's click would focus rather than select even if they
+      // weren't, so no amount of clicking seeds a "Soon" goal.
+      fireEvent.click(card)
+      fireEvent.click(cta)
+
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(calculator?.state.goalId).toBeNull()
+      expect(scrollToIndex).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
     it('does not cancel a pending scroll when a "Soon" goal is interacted with', () => {
       const scrollToIndex = vi.fn()
       renderPicker({}, scrollToIndex)
@@ -377,9 +403,9 @@ describe('GoalPickerStep', () => {
       fireEvent.click(cardFor(MORTGAGE))
       expect(carouselIndex()).toBe(LAST_INDEX)
 
-      // Now focused, both its card and the CTA are disabled, so `select` is
-      // unreachable for it at all — the `soon` guard is defence in depth, and
-      // the clear sits after it so the guard keeps that property.
+      // Now focused, both its card and the CTA are disabled, and the card
+      // does not even have `onSelect` wired (#207) — so `select` cannot run
+      // for it, which is what keeps the car's pending scroll intact.
       expect(cardFor(MORTGAGE).hasAttribute('disabled')).toBe(true)
       fireEvent.click(cardFor(MORTGAGE))
       fireEvent.click(screen.getByRole('button', { name: 'Coming soon' }))
