@@ -97,7 +97,13 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   return (
     <button
       type="button"
-      onClick={focused ? onSelect : onFocus}
+      // A "Soon" goal never gets `onSelect` wired up at all, so selecting one
+      // is structurally impossible rather than guarded against at the far end
+      // (#207). `disabled` below already stops the click, so this changes
+      // nothing a user can see — but it is evaluated on every render, which
+      // makes it a rule the tests actually exercise, where the old
+      // `if (goal.soon) return` inside select() was unreachable dead code.
+      onClick={focused && !goal.soon ? onSelect : onFocus}
       disabled={goal.soon && focused}
       aria-label={goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`}
       style={{
@@ -258,16 +264,20 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
   // select() below, and the unmount cleanup under the auto-rotate effect.
   const selectScrollTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
+  // Only ever called for a selectable goal: GoalCard wires `onSelect` only
+  // when the focused card is not "Soon", and StartButton is `disabled` for
+  // one. That is what keeps a "Soon" goal from scheduling a scroll or
+  // cancelling one already pending — it used to be an `if (goal.soon) return`
+  // here, which no test could reach because both controls are disabled, and
+  // so sat as the repo's last uncovered branch (#207).
   const select = (goal: Goal) => {
-    if (goal.soon) return
     setEngaged(true)
     setFields(seedFromGoal(goal))
     // At most one pending scroll. Two selections inside the delay — the
     // focused card clicked twice, or Enter pressed twice — would otherwise
     // each schedule one, and the second could land after the user has
     // already scrolled on or started over, yanking the page to the wrong
-    // step. Cleared after the `soon` guard above, so a "Soon" goal neither
-    // schedules a scroll nor cancels one already pending.
+    // step.
     clearTimeout(selectScrollTimer.current)
     selectScrollTimer.current = setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
@@ -405,7 +415,10 @@ function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      // Not wired for a "Soon" goal, matching GoalCard: `disabled` already
+      // stops the click, so this is the second, structural layer that keeps
+      // select() unreachable for one (#207).
+      onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label={disabled ? undefined : `Get started with ${goal.name}`}
       {...hoverHandlers}
