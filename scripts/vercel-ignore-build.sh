@@ -2,8 +2,8 @@
 #
 # Vercel's "Ignored Build Step", wired up through `ignoreCommand` in
 # vercel.json. Vercel runs it on each Git deployment before building: exit 0
-# cancels the build (the deployment shows as Canceled), and any other exit
-# code lets it run.
+# cancels the build (the deployment's state becomes `CANCELED`), and any other
+# exit code lets it run.
 #
 # It skips a preview build only when nothing that reaches the deployed site has
 # changed since the branch's last successful deployment. A push that only

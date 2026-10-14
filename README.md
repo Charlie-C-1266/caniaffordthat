@@ -139,8 +139,9 @@ that branch's last successful deployment. A push that only touches unit tests
 `scripts/`, or the Docker and nginx setup is skipped. Anything else builds, and
 so does a branch's first deployment and anything the script can't be sure
 about. CI still builds and tests every PR either way. A skipped deployment
-shows as **Canceled** in the Vercel dashboard, with the script's reason in its
-build log; the header of the script lists the full rules.
+shows as cancelled in the Vercel dashboard (`CANCELED` in Vercel's API), with
+the script's reason in its build log; the header of the script lists the full
+rules.
 
 To force a build anyway, open the deployment in the Vercel dashboard, choose
 **Redeploy**, and untick **Use project's Ignore Build Step**.
