@@ -35,7 +35,13 @@ export default defineConfig({
   test: {
     // Playwright's e2e specs live alongside unit tests but run via a
     // separate runner (`npm run test:e2e`), so exclude them here.
-    exclude: ['e2e/**', 'node_modules/**'],
+    //
+    // .claude/** is Claude Code's local git worktrees, each a full copy of the
+    // repo (see .gitignore). Vitest doesn't read .gitignore, so without this
+    // `npm test` also runs every worktree's copy of the suite, and picks up
+    // its Playwright specs too: 'e2e/**' only matches the root's e2e/ folder,
+    // and Playwright's test.describe() throws when Vitest loads it.
+    exclude: ['e2e/**', 'node_modules/**', '.claude/**'],
     coverage: {
       provider: 'v8',
       // Report on the app source only; measure every source file (not just the
