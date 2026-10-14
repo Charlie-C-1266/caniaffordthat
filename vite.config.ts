@@ -58,6 +58,24 @@ export default defineConfig({
       // fourth docs page is excluded without touching this list.
       exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx', 'src/docs/*-main.tsx'],
       reporter: ['text', 'html'],
+      /*
+       * The gate (#178). A flat 100% on all four metrics: the backlog that
+       * made a threshold premature is closed, and #207 removed the last
+       * uncovered branch, so there is no headroom to leave and nothing to
+       * ratchet upward — `thresholds.autoUpdate` would have nothing to do.
+       *
+       * No `perFile`: a global floor of 100 is already per-file in effect,
+       * since one uncovered line anywhere drops the global below 100. That is
+       * the point of picking 100 over "just below today's figure" — a floor
+       * with slack lets a new 0%-covered file hide inside the average, which
+       * is exactly what #178 set out to prevent.
+       *
+       * The cost is real and deliberate: the build now fails on the first
+       * uncovered line, so genuinely untestable code needs an `exclude` entry
+       * above (with the reason, as the existing ones have) rather than a
+       * lowered floor.
+       */
+      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 })

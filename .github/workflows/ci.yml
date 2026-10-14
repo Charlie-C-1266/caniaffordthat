@@ -32,10 +32,11 @@ jobs:
       # One run does both jobs: it fails the build on a failing test exactly as
       # `npm test` would, and the `text` reporter prints the per-file coverage
       # table straight into this job's log, so a reviewer can see a 0%-covered
-      # file without reproducing the run locally. Deliberately no `thresholds`
-      # in vite.config.ts — large parts of the app are mid-remediation, so
-      # coverage must not gate the build. A threshold gate is a follow-up once
-      # that backlog is closer to clear.
+      # file without reproducing the run locally. Since #178 it is also the
+      # gate: `coverage.thresholds` in vite.config.ts is a flat 100 on all
+      # four metrics, so this step fails the build on the first uncovered
+      # line. (When everything is covered the table prints empty — that is
+      # the reporter showing a fully covered tree, not a broken run.)
       - name: Test (with coverage)
         run: npm run test:coverage
 
