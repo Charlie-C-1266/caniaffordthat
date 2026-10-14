@@ -4,6 +4,7 @@ import { RevealTile } from '../RevealTile'
 import { Icon } from '../Icon'
 import type { IconName } from '../iconRegistry'
 import { prefersReducedMotion } from '../../lib/motion'
+import { usePillHover } from '../../hooks/usePillHover'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -189,13 +190,16 @@ interface RoundButtonProps {
 }
 
 function RoundButton({ icon, label, onClick }: RoundButtonProps) {
-  const [hovered, setHovered] = useState(false)
+  // usePillHover rather than a bare onMouseEnter: a tap fires a synthetic
+  // mouseenter after touchend whose mouseleave may never come, which left the
+  // arrow stuck highlighted (#205, the same defect #158 fixed for the
+  // top-right pills).
+  const { hovered, hoverHandlers } = usePillHover()
   return (
     <button
       type="button"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      {...hoverHandlers}
       aria-label={label}
       style={{
         width: 'var(--goal-nav-size)',
@@ -393,7 +397,9 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
 /** The primary landing CTA. Text stays a static "Get started" so it never overflows or reads awkwardly per goal; the focused goal's name rides along in the aria-label for screen readers (clicking the focused card selects it too). */
 function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false)
+  // See RoundButton: without this the CTA stayed lifted after a tap, and was
+  // still lifted on scrolling back up to it (#205).
+  const { hovered, hoverHandlers } = usePillHover()
   const disabled = Boolean(goal.soon)
 
   return (
@@ -402,8 +408,7 @@ function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
       onClick={onClick}
       disabled={disabled}
       aria-label={disabled ? undefined : `Get started with ${goal.name}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      {...hoverHandlers}
       style={{
         minWidth: 'var(--goal-cta-min-width)',
         display: 'inline-flex',
