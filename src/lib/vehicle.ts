@@ -29,7 +29,7 @@ export const EXPENSIVE_CAR_SUPPLEMENT_ANNUAL = 440
 export const EXPENSIVE_CAR_PRICE_THRESHOLD = 40000
 
 /** A suggested monthly maintenance budget the costs step offers as a one-tap preset. */
-export interface MaintenancePreset {
+interface MaintenancePreset {
   id: 'budget' | 'average' | 'premium'
   label: string
   /** Suggested £/month for servicing, MOT, tyres and repairs. */
@@ -100,7 +100,7 @@ export function mileageFactor(excessMiles: number): number {
   return Math.min(MILEAGE_FACTOR_MAX, Math.max(MILEAGE_FACTOR_MIN, factor))
 }
 
-export interface BalloonEstimateInput {
+interface BalloonEstimateInput {
   /** What the car costs today — the anchor the future value is projected from. */
   price: number
   /** The car's age today, in years (0 = brand new). */
