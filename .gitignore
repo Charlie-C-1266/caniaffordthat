@@ -32,3 +32,14 @@ playwright/.cache
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code's per-machine files. The desktop app runs parallel sessions in git
+# worktrees under .claude/worktrees/, inside this folder, and each one is a full
+# checkout of the repo. Left unignored, they show up in `git status`, and
+# Prettier (format:check) and oxlint (lint) read .gitignore, so every worktree's
+# copy of the code gets checked as well. Vitest doesn't read this file, so
+# vite.config.ts excludes the folder from the unit tests separately.
+# settings.local.json holds personal permissions. Only these two are ignored,
+# so a team-wide .claude/settings.json could still be committed later.
+.claude/worktrees/
+.claude/settings.local.json
