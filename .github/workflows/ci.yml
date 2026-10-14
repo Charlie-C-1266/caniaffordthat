@@ -11,7 +11,11 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     steps:
+      # Full history, so the UK-spelling step below can find the merge base
+      # with the PR's target branch.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -28,6 +32,18 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # shellcheck is preinstalled on the ubuntu-latest image.
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+
+      # Fails on US spellings in the lines a PR adds, with each one as an
+      # annotation on the diff. Only PRs into dev: a dev → main release PR
+      # carries lines that were already checked on their way into dev, plus
+      # some from before this check existed, which a release shouldn't block on.
+      - name: UK spelling (added lines)
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+        run: scripts/check-uk-spelling.sh origin/dev
 
       # One run does both jobs: it fails the build on a failing test exactly as
       # `npm test` would, and the `text` reporter prints the per-file coverage

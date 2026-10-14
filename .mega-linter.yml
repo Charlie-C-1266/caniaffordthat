@@ -17,7 +17,8 @@ GITHUB_COMMENT_REPORTER: false
 
 # Whitelist: only these descriptors run. Everything owned by the native
 # toolchain (TypeScript, JavaScript, JSX, CSS, JSON, HTML) stays off, as do
-# spell-check and copy-paste detection.
+# spell-check and copy-paste detection. Shell scripts are left to the plain
+# shellcheck step in ci.yml, whose output reads more easily than this job's.
 ENABLE:
   - MARKDOWN
   - YAML

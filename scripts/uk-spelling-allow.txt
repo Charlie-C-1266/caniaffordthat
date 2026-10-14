@@ -1,0 +1,57 @@
+# Spellings fixed by a spec or an API, which scripts/check-uk-spelling.sh must
+# not flag even though they are US spellings.
+#
+# One POSIX extended regular expression per line (no \b or other GNU
+# extensions, so it works with every awk), matched case-sensitively. Whatever a
+# pattern matches is blanked out of an added line before the line's words are
+# checked. Blank lines and lines starting with # are ignored.
+#
+# Names (camelCase, PascalCase, snake_case), calls, member access and URLs are
+# already skipped by the script itself, so `backgroundColor`, `ScrollBehavior`,
+# `LabeledMoneyField`, `saveFlavor` and `.normalize(` need nothing here. Keep
+# each pattern as narrow as it can be: everything it matches goes unchecked.
+
+# CSS properties, media features and the meta tag whose names contain `color`:
+# background-color, border-top-color, outline-color, text-decoration-color,
+# accent-color, caret-color, column-rule-color, -webkit-tap-highlight-color,
+# prefers-color-scheme, forced-colors, theme-color, color-scheme, color-mix().
+(background|border|top|right|bottom|left|block|inline|start|end|outline|decoration|emphasis|caret|rule|accent|flood|lighting|stop|scrollbar|highlight|fill|stroke|theme|prefers|forced|print)-colors?
+color-(scheme|mix|gamut|interpolation|adjust)
+
+# The CSS `color` property, and an object key, TS property, JSX/HTML
+# attribute or variable named after it or after the DOM's `behavior` option:
+# `color: var(--ink)`, `color?: string`, `<Icon color={color} />`,
+# `{ color }`, a lone `color,` in a style object, and
+# `scrollTo({ behavior: 'smooth' })`. Prose that writes "color:" is missed.
+(color|colors|behavior)[?]?[ \t]*[:=]
+\{[ \t]*(color|colors|behavior)[ \t]*\}
+^[ \t]*(color|colors|behavior)[ \t]*,?[ \t]*$
+
+# CSS property names listed as a transition's or will-change's value:
+# transition: 'background 0.2s ease, color 0.2s ease'.
+(transition|transition-property|transitionProperty|will-change|willChange)[ \t]*:[ \t]*['"`]?[^;}'"`]*
+
+# A CSS keyword on its own as a string: toHaveCSS('color', …),
+# textAlign: 'center', scrollIntoView({ block: 'center' }), align="center",
+# <input type="color">, role="meter".
+['"`](color|center|behavior|meter)['"`]
+
+# Keyword values of the CSS alignment and position properties: text-align:
+# center, align-items: center, justify-content: center, place-items: center,
+# background-position: left center. The value stops at the first character
+# that can't be part of a keyword list, such as ; " or }.
+-(align|items|content|self|position|origin)[ \t]*:[a-z -]*
+
+# CSS custom properties and command-line options: --accent-color,
+# var(--text-center), git diff --no-color.
+--[A-Za-z0-9_-]+
+
+# The HTML <center> and <meter> elements.
+</?(center|meter)
+
+# GitHub Actions references, which are paths in someone else's repository:
+# uses: oxsecurity/megalinter/flavors/cupcake@v8.
+uses:[ \t]*[^ \t]+
+
+# The LabeledMoneyField and LabeledUnitField components, referred to together.
+Labeled\*
