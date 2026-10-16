@@ -22,6 +22,7 @@ export const STRING_FIELDS = [
   'transport',
   'debts',
   'savings',
+  'savingsMonthly',
   'monthlyAmount',
   // Vehicle flow (harmless no-ops for other goals; all parsed lazily via num()).
   'balloonAmount',

@@ -7,7 +7,7 @@ import { useCalculator, type CalculatorContextValue } from '../../state/calculat
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { fmt } from '../../lib/calculations'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
-import { OUTGOING_FIELD_LABELS } from '../../lib/budget'
+import { OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL } from '../../lib/budget'
 import type { CalculatorState, GoalId } from '../../state/types'
 
 // Two pieces of real logic live in this step beyond form rendering: the
@@ -507,5 +507,83 @@ describe("the car goal's transport field", () => {
     const input = screen.getByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.transport })
     expect(input.getAttribute('aria-describedby')).toBeNull()
     expect(accessibleDescription(input)).toBe('')
+  })
+})
+
+// The regular-saving field is the one money field here that is neither an
+// essential nor an asset: it comes off spare cash but must stay out of the
+// emergency fund's cushion basis. These cover what the step itself owns —
+// the live savings-rate caption, the two hint variants (the emergency fund
+// has its own double-counting trap), and the field showing for every goal
+// including the one whose outgoings live on another step.
+describe('the regular-saving field', () => {
+  afterEach(() => {
+    cleanup()
+    calculator = null
+  })
+
+  it('writes to savingsMonthly, leaving the already-saved lump sum alone', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }), { target: { value: '250' } })
+    expect(calculator?.state.savingsMonthly).toBe('250')
+    expect(calculator?.state.savings).toBe('0')
+  })
+
+  it('shows the saving as a share of take-home pay once both figures are in', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000', savingsMonthly: '300' })
+    expect(screen.getByText("That's 15% of your take-home pay.")).toBeTruthy()
+  })
+
+  it('holds the caption back until there is something to work out', () => {
+    // Nothing saved yet…
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+    expect(screen.queryByText(/of your take-home pay\./)).toBeNull()
+    cleanup()
+
+    // …and no take-home to measure it against.
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '', savingsMonthly: '300' })
+    expect(screen.queryByText(/of your take-home pay\./)).toBeNull()
+  })
+
+  it('warns against entering anything already taken off the payslip', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+
+    const description = accessibleDescription(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }))
+    expect(description).toContain('workplace pension')
+    expect(description).not.toContain('this cushion')
+  })
+
+  it("tells the emergency fund's users to leave out what is going into the cushion itself", () => {
+    renderBudgetStep({ goalId: 'emergency', takeHome: '2000' })
+
+    const description = accessibleDescription(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }))
+    expect(description).toContain("isn't going into this cushion")
+    expect(description).toContain('workplace pension')
+  })
+
+  it('is asked for even by the goals that collect their other money fields elsewhere', () => {
+    // The emergency fund's essentials live on the Details step and the car's
+    // deposit is its "already saved", so both render a shortened grid here —
+    // regular saving still has to appear in it.
+    renderBudgetStep({ goalId: 'emergency', takeHome: '2000' })
+    expect(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })).toBeTruthy()
+    expect(screen.queryByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.housing })).toBeNull()
+    cleanup()
+
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+    expect(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })).toBeTruthy()
+  })
+
+  it('gates Enter-to-advance on it like every other visible field', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000', savingsMonthly: '' })
+    const input = screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(advanced).toEqual([])
+
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(advanced).toEqual([STEP_INDEX + 1])
   })
 })

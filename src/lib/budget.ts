@@ -26,3 +26,15 @@ export const OUTGOING_FIELD_LABELS: Record<OutgoingFieldKey, string> = {
   transport: 'Transport',
   debts: 'Debt repayments',
 }
+
+// Regular saving sits beside the five above but is deliberately kept out of
+// the list: it is committed money for spare-cash purposes, yet it is not
+// essential spending, so it must not reach the emergency fund's cushion
+// basis. Its label lives here anyway, so everything that names a budget line
+// is still defined in one file.
+
+/** Input label for the regular-saving field (state key `savingsMonthly`). */
+export const REGULAR_SAVING_LABEL = 'Regular saving & investing'
+
+/** Short donut/legend label for regular saving — the input label is too long for a legend row. */
+export const REGULAR_SAVING_SHORT_LABEL = 'Saving'

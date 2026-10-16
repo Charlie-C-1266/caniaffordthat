@@ -29,6 +29,7 @@ function CaptureContext() {
 function savingsResult(overrides: Partial<DerivedResult> = {}): DerivedResult {
   return {
     spareCash: 1200,
+    regularSaving: 0,
     grossTarget: 10000,
     target: 8000,
     months: 20,
@@ -76,6 +77,18 @@ describe('StandardResultCard', () => {
   afterEach(() => {
     cleanup()
     calculator = null
+  })
+
+  describe('the regular-saving row', () => {
+    it('shows what the user already saves, so the deduction from spare cash is visible', () => {
+      renderCard(savingsResult({ regularSaving: 300 }), { goalId: 'holiday' })
+      expect(rowValue('REGULAR SAVING')).toBe('£300')
+    })
+
+    it('is left out when the user saves nothing, rather than showing a £0 row', () => {
+      renderCard(savingsResult(), { goalId: 'holiday' })
+      expect(screen.queryByText('REGULAR SAVING')).toBeNull()
+    })
   })
 
   describe('the finance-only total rows', () => {

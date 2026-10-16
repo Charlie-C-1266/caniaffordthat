@@ -112,4 +112,15 @@ describe('derive.ts reads exactly these keys', () => {
     const state = withOutgoings({ housing: '500', utilities: '0', groceries: '0', transport: '0', debts: '0' })
     expect(monthlyOutgoingsOf({ ...state, savings: '9999' })).toBe(monthlyOutgoingsOf(state))
   })
+
+  it('keeps regular saving out of the essentials sum, so it never inflates the emergency fund', () => {
+    // savingsMonthly *is* deducted from spare cash, but it is not essential
+    // spending: if it reached this sum, a 3-month cushion would grow by three
+    // times the amount saved — money the user would simply stop putting away.
+    const state = withOutgoings({ housing: '500', utilities: '0', groceries: '0', transport: '0', debts: '0' })
+    expect(monthlyOutgoingsOf({ ...state, savingsMonthly: '400' })).toBe(monthlyOutgoingsOf(state))
+
+    const emergency: CalculatorState = { ...state, goalId: 'emergency', takeHome: '2500', coverMonths: 3 }
+    expect(deriveResult({ ...emergency, savingsMonthly: '400' })?.grossTarget).toBe(deriveResult(emergency)?.grossTarget)
+  })
 })

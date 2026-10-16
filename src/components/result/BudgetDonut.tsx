@@ -1,12 +1,15 @@
 import { fmt } from '../../lib/calculations'
-import { OUTGOING_FIELD_KEYS } from '../../lib/budget'
+import { OUTGOING_FIELD_KEYS, REGULAR_SAVING_SHORT_LABEL } from '../../lib/budget'
 import { OUTGOING_SHORT_LABELS, type BudgetBreakdown } from '../../lib/budgetSplit'
 
 // A donut of where each month's take-home pay goes once the new commitment is
-// added: the essentials already being paid, the new cost being weighed up, and
-// whatever's left — or, when the new cost overshoots, the slice that spills
-// past spare cash, drawn in red. Answers "does this fit alongside everything
-// else I pay?" at a glance, which the balance chart can't.
+// added: the essentials already being paid, the saving already being done,
+// the new cost being weighed up, and whatever's left — or, when the new cost
+// overshoots, the slice that spills past spare cash, drawn in red. Answers
+// "does this fit alongside everything else I pay?" at a glance, which the
+// balance chart can't. Saving gets its own arc rather than being folded into
+// the essentials ramp, because it is the one slice the user could choose to
+// stop (see `pauseSavingHint` in lib/derive.ts).
 
 const SIZE = 176
 const CENTER = SIZE / 2
@@ -38,13 +41,17 @@ function essentialColor(key: (typeof OUTGOING_FIELD_KEYS)[number]): string {
 
 /** The budget-split donut with its legend. */
 export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
-  const { essentials, newCost, newCostWithin, newCostOver, leftover, overBudget, ringTotal, shareOfTakeHome, takeHome } = budget
+  const { essentials, regularSaving, newCost, newCostWithin, newCostOver, leftover, overBudget, ringTotal, shareOfTakeHome, takeHome } =
+    budget
+  const savingArc: Arc[] =
+    regularSaving > 0 ? [{ label: REGULAR_SAVING_SHORT_LABEL, amount: regularSaving, color: 'var(--chart-saving)' }] : []
 
   // Drawn arcs, in ring order: essentials, the part of the new cost that fits,
   // any overspend, then whatever's left over. The over/leftover pair is
   // mutually exclusive, so the arcs always sum to the ring total.
   const arcs: Arc[] = [
     ...essentials.map((line) => ({ label: OUTGOING_SHORT_LABELS[line.key], amount: line.amount, color: essentialColor(line.key) })),
+    ...savingArc,
     ...(newCostWithin > 0 ? [{ label: newCostLabel, amount: newCostWithin, color: 'var(--chart-newcost)' }] : []),
     ...(newCostOver > 0 ? [{ label: 'Over spare cash', amount: newCostOver, color: 'var(--chart-over)' }] : []),
     ...(leftover > 0 ? [{ label: 'Left over', amount: leftover, color: 'var(--chart-leftover)' }] : []),
@@ -54,6 +61,7 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
   // over/leftover line — so the figures match the breakdown box below.
   const legend: Arc[] = [
     ...essentials.map((line) => ({ label: OUTGOING_SHORT_LABELS[line.key], amount: line.amount, color: essentialColor(line.key) })),
+    ...savingArc,
     { label: newCostLabel, amount: newCost, color: 'var(--chart-newcost)' },
     overBudget
       ? { label: 'Over spare cash', amount: newCostOver, color: 'var(--chart-over)' }
@@ -62,6 +70,9 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
 
   let cumulative = 0
   const sharePct = Math.round(shareOfTakeHome * 100)
+  // Only named in the description when there is some, so a user who saves
+  // nothing doesn't hear "£0 into savings" on every result.
+  const savingClause = regularSaving > 0 ? `${fmt(regularSaving)} into savings, ` : ''
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '18px 26px' }}>
@@ -72,7 +83,7 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
         role="img"
         aria-label={`Donut chart of your ${fmt(takeHome)} monthly take-home pay: ${fmt(
           budget.essentialsTotal,
-        )} on essentials, ${fmt(newCost)} on ${newCostLabel.toLowerCase()} (${sharePct}% of take-home), and ${
+        )} on essentials, ${savingClause}${fmt(newCost)} on ${newCostLabel.toLowerCase()} (${sharePct}% of take-home), and ${
           overBudget ? `${fmt(newCostOver)} over your spare cash` : `${fmt(leftover)} left over`
         }.`}
         style={{ flexShrink: 0 }}
@@ -80,7 +91,7 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
         {arcs.map((arc) => {
           // No division-by-zero guard needed: an arc only exists when its own
           // amount is positive, and every arc's amount is part of `ringTotal`
-          // (essentials + cost + leftover) — so `arcs` being non-empty implies
+          // (essentials + saving + cost + leftover) — so `arcs` being non-empty implies
           // `ringTotal > 0`. An all-zero budget draws no arcs at all, which
           // BudgetDonut.test.tsx pins.
           const len = (arc.amount / ringTotal) * CIRCUMFERENCE

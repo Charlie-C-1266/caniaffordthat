@@ -1,5 +1,5 @@
 import { fmt, num, paymentForFinance } from './calculations'
-import { monthlyOutgoingsOf, spareCashOf, spareCashFitSub, withinReachVerdict } from './derive'
+import { committedOutgoingsOf, regularSavingOf, spareCashOf, commitmentFitSub, withinReachVerdict } from './derive'
 import { financeProjection, type Projection } from './projection'
 import { budgetBreakdown, type BudgetBreakdown } from './budgetSplit'
 import type { CalculatorState, VehicleFinanceMethod } from '../state/types'
@@ -216,6 +216,8 @@ export interface VehicleResult {
   /** financeMonthly + running costs — the figure judged against spare cash. */
   totalMonthly: number
   spareCash: number
+  /** What the user already saves each month — shown beside spare cash so the deduction is visible. */
+  regularSaving: number
   /** Due on day one: the full price less part-exchange for cash, the deposit for finance. */
   upfront: number
   /** Deposit + all payments (+ balloon, for PCP — i.e. the keep-the-car figure). Cash: the price. */
@@ -268,6 +270,7 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   const deposit = Math.min(num(state.savings), price)
   const principal = price - deposit
   const spareCash = spareCashOf(state)
+  const regularSaving = regularSavingOf(state)
   const termMonths = Math.max(1, state.term)
   const aprPct = state.growth
   const running = vehicleRunningCosts(state)
@@ -364,21 +367,22 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
     running,
     totalMonthly,
     spareCash,
+    regularSaving,
     upfront,
     totalPayable,
     interestPaid,
     supplementApplies,
     isAffordable,
     verdictText: withinReachVerdict(isAffordable),
-    verdictSub: spareCashFitSub(totalMonthly, spareCash),
+    verdictSub: commitmentFitSub({ contribution: totalMonthly, spareCash, takeHome, regularSaving }),
     resultEyebrow: 'Total monthly cost',
     headline: `${fmt(totalMonthly)}/mo`,
     subheadline,
     projection,
     budget: budgetBreakdown(state, totalMonthly),
     // Affordable when the car's total monthly cost fits spare cash, so the
-    // take-home it needs is essentials plus that cost.
-    requiredTakeHomeMonthly: monthlyOutgoingsOf(state) + totalMonthly,
+    // take-home it needs is everything already committed plus that cost.
+    requiredTakeHomeMonthly: committedOutgoingsOf(state) + totalMonthly,
     notes,
   }
 }

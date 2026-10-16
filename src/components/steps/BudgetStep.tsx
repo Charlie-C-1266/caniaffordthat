@@ -4,6 +4,7 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { FieldLabel } from '../FieldLabel'
+import { FieldGroupHeading } from '../FieldGroupHeading'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
@@ -11,7 +12,7 @@ import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
-import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, type OutgoingFieldKey } from '../../lib/budget'
+import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL, type OutgoingFieldKey } from '../../lib/budget'
 import { goalById } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
@@ -34,8 +35,8 @@ interface BudgetStepProps {
   scrollToIndex: (index: number) => void
 }
 
-/** A field this step may render: the five shared outgoings plus "already saved". */
-type BudgetFieldKey = OutgoingFieldKey | 'savings'
+/** A field this step may render: the five shared outgoings, the regular saving the user already does, and "already saved". */
+type BudgetFieldKey = OutgoingFieldKey | 'savingsMonthly' | 'savings'
 
 /**
  * The Budget step — take-home pay plus monthly outgoings. Which fields show
@@ -85,7 +86,25 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved towards this'
   // Emergency essentials live in Details; other goals collect outgoings here.
   const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
-  const visibleKeys: BudgetFieldKey[] = [...outgoings, ...(showSavings ? (['savings'] as const) : [])]
+  const visibleKeys: BudgetFieldKey[] = [...outgoings, 'savingsMonthly', ...(showSavings ? (['savings'] as const) : [])]
+
+  // The user's current savings rate, shown back to them as they type. Without
+  // it the field is just another box; with it they can see what share of
+  // their pay already has a job before the new commitment is weighed up.
+  const takeHomeMonthly = num(state.takeHome)
+  const regularSaving = num(state.savingsMonthly)
+  const savingRateCaption =
+    takeHomeMonthly > 0 && regularSaving > 0 ? `That's ${Math.round((regularSaving / takeHomeMonthly) * 100)}% of your take-home pay.` : ''
+
+  // Anything already deducted from the payslip must not be entered again: in
+  // take-home mode the figure typed in is net of a workplace pension already,
+  // and in salary mode the tax engine models no pension at all (see
+  // lib/salary.ts), so counting one here would be wrong in both directions.
+  // The emergency fund has a second trap of its own — saving already going
+  // into the cushion being built is the very thing this goal is about.
+  const regularSavingHint = isEmergency
+    ? "Money you put away each month that isn't going into this cushion — other savings pots or investments. Leave out anything already taken off your payslip, like a workplace pension."
+    : 'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension.'
 
   // The vehicle flow already itemises this car's fuel, insurance, tax and
   // finance payment on its own steps — without a note, "Transport" here reads
@@ -116,6 +135,32 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
       onChange={(value) => setField('savings', value)}
       onKeyDown={handleEnterAdvance}
     />
+  )
+
+  // Regular saving and the lump sum already put by are grouped together and
+  // kept out of the "outgoings" grid on purpose: neither is essential
+  // spending, and only the first of the two reduces spare cash.
+  const puttingAwaySection = (
+    <div style={{ marginTop: outgoings.length > 0 ? 26 : 0 }}>
+      <FieldGroupHeading>Money you&rsquo;re already putting away</FieldGroupHeading>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
+        <div>
+          <LabeledMoneyField
+            label={REGULAR_SAVING_LABEL}
+            hint={regularSavingHint}
+            value={state.savingsMonthly}
+            onChange={(value) => setField('savingsMonthly', value)}
+            onKeyDown={handleEnterAdvance}
+          />
+          {savingRateCaption && (
+            <div style={{ marginTop: 8, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)', fontWeight: 600 }}>
+              {savingRateCaption}
+            </div>
+          )}
+        </div>
+        {savingsField}
+      </div>
+    </div>
   )
 
   return (
@@ -199,22 +244,9 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
             )}
           </div>
 
-          {isEmergency ? (
-            savingsField && <div style={{ maxWidth: 320 }}>{savingsField}</div>
-          ) : (
+          {outgoings.length > 0 && (
             <>
-              <div
-                style={{
-                  fontSize: 'var(--fs-label)',
-                  fontWeight: 700,
-                  color: 'var(--text-tertiary)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  marginBottom: 14,
-                }}
-              >
-                Monthly outgoings (defaulted to £0 — adjust what applies to you)
-              </div>
+              <FieldGroupHeading>Monthly outgoings (defaulted to £0 — adjust what applies to you)</FieldGroupHeading>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 18px' }}>
                 {outgoings.map((key) => (
                   <LabeledMoneyField
@@ -226,10 +258,10 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                     onKeyDown={handleEnterAdvance}
                   />
                 ))}
-                {savingsField}
               </div>
             </>
           )}
+          {puttingAwaySection}
 
           <div style={{ marginTop: 22, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>
             Adjust anything that applies, then press Enter or scroll to continue ↓
