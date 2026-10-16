@@ -30,6 +30,7 @@ function financedResult(overrides: Partial<VehicleResult> = {}): VehicleResult {
     running: { fuel: 95, maintenance: 60, insurance: 50, tax: 20, supplementMonthly: 0, total: 225 },
     totalMonthly: 485,
     spareCash: 900,
+    regularSaving: 0,
     upfront: 3000,
     totalPayable: 22680,
     interestPaid: 4680,
@@ -82,6 +83,18 @@ function rowValue(label: string): string | null {
 describe('VehicleResultCard', () => {
   afterEach(() => {
     cleanup()
+  })
+
+  describe('the regular-saving row', () => {
+    it('shows what the user already saves, so the deduction from spare cash is visible', () => {
+      renderCard(financedResult({ regularSaving: 200 }))
+      expect(rowValue('REGULAR SAVING')).toBe('£200')
+    })
+
+    it('is left out when the user saves nothing, rather than showing a £0 row', () => {
+      renderCard(financedResult())
+      expect(screen.queryByText('REGULAR SAVING')).toBeNull()
+    })
   })
 
   describe('a cash purchase', () => {

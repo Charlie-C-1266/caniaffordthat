@@ -8,7 +8,7 @@ test.describe('vehicle methodology page', () => {
 
     // The verdict bands quote the real thresholds.
     await expect(page.getByText('Fits comfortably')).toBeVisible()
-    await expect(page.getByText('Up to 40%')).toBeVisible()
+    await expect(page.getByText('Up to 20%')).toBeVisible()
 
     // The PCP formula (with the balloon term) is published.
     await expect(page.getByText(/PCP payment/).first()).toBeVisible()
