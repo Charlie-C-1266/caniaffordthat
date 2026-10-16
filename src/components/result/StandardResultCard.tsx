@@ -62,6 +62,9 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
                 : `${state.itemName || goal?.name || 'Your goal'} — ${fmt(result.grossTarget)}`
             }
           />
+          {/* Only shown when there is some, so a reader who saves nothing isn't
+              asked to parse a £0 row before the figure that matters. */}
+          {result.regularSaving > 0 && <BreakdownRow label="REGULAR SAVING" value={fmt(result.regularSaving)} />}
           <BreakdownRow label="SPARE CASH" value={fmt(result.spareCash)} />
           <BreakdownRow label={result.contributionRowLabel} value={fmt(result.contribution)} />
           {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}

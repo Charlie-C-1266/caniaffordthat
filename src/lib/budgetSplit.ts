@@ -30,7 +30,9 @@ export interface BudgetBreakdown {
   /** The non-zero essential outgoings, in their canonical display order. */
   essentials: BudgetLine[]
   essentialsTotal: number
-  /** Take-home less essentials, floored at 0 — the room the new cost has to fit into. */
+  /** What the user already saves each month — drawn as its own arc, because money with a job already isn't spare. */
+  regularSaving: number
+  /** Take-home less essentials and regular saving, floored at 0 — the room the new cost has to fit into. */
   spareCash: number
   /** The commitment being weighed up: a monthly saving, a finance payment, or a car's total monthly cost. */
   newCost: number
@@ -59,7 +61,8 @@ export function budgetBreakdown(state: CalculatorState, newCost: number): Budget
   const takeHome = num(state.takeHome)
   const essentials: BudgetLine[] = OUTGOING_FIELD_KEYS.map((key) => ({ key, amount: num(state[key]) })).filter((line) => line.amount > 0)
   const essentialsTotal = essentials.reduce((sum, line) => sum + line.amount, 0)
-  const spareCash = Math.max(0, takeHome - essentialsTotal)
+  const regularSaving = num(state.savingsMonthly)
+  const spareCash = Math.max(0, takeHome - essentialsTotal - regularSaving)
   const cost = Math.max(0, newCost)
 
   const newCostWithin = Math.min(cost, spareCash)
@@ -70,13 +73,14 @@ export function budgetBreakdown(state: CalculatorState, newCost: number): Budget
     takeHome,
     essentials,
     essentialsTotal,
+    regularSaving,
     spareCash,
     newCost: cost,
     newCostWithin,
     newCostOver,
     leftover,
     overBudget: newCostOver > 0,
-    ringTotal: essentialsTotal + cost + leftover,
+    ringTotal: essentialsTotal + regularSaving + cost + leftover,
     shareOfTakeHome: takeHome > 0 ? cost / takeHome : 0,
   }
 }

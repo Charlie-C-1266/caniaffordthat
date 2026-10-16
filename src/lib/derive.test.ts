@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { deriveResult, spareCashOf, spareCashFitSub, SPARE_CASH_COMFORTABLE_RATIO, SPARE_CASH_TIGHT_RATIO } from './derive'
+import {
+  committedOutgoingsOf,
+  commitmentFitSub,
+  deriveResult,
+  monthlyOutgoingsOf,
+  pauseSavingHint,
+  regularSavingOf,
+  spareCashOf,
+  SPARE_CASH_HEADROOM_COMFORTABLE_RATIO,
+  SPARE_CASH_HEADROOM_TIGHT_RATIO,
+  TAKE_HOME_COMFORTABLE_RATIO,
+  TAKE_HOME_TIGHT_RATIO,
+} from './derive'
 import { DEFAULT_STATE } from '../state/defaults'
 import type { CalculatorState } from '../state/types'
 
@@ -12,6 +24,24 @@ describe('spareCashOf', () => {
     expect(spareCashOf(makeState({ takeHome: '2000' }))).toBe(2000) // outgoings default to '0'
     expect(spareCashOf(makeState({ takeHome: '2000', housing: '500', groceries: '300' }))).toBe(1200)
     expect(spareCashOf(makeState({ takeHome: '500', housing: '900' }))).toBe(0) // never negative
+  })
+
+  it('also deducts the regular saving the user already does', () => {
+    expect(spareCashOf(makeState({ takeHome: '2000', housing: '500', savingsMonthly: '300' }))).toBe(1200)
+    expect(spareCashOf(makeState({ takeHome: '500', savingsMonthly: '900' }))).toBe(0) // never negative
+  })
+})
+
+describe('regularSavingOf and committedOutgoingsOf', () => {
+  it('reads the regular-saving field', () => {
+    expect(regularSavingOf(makeState({ savingsMonthly: '250' }))).toBe(250)
+    expect(regularSavingOf(makeState({}))).toBe(0) // defaults to '0'
+  })
+
+  it('adds regular saving to the essentials without changing the essentials themselves', () => {
+    const state = makeState({ housing: '800', utilities: '200', savingsMonthly: '300' })
+    expect(monthlyOutgoingsOf(state)).toBe(1000)
+    expect(committedOutgoingsOf(state)).toBe(1300)
   })
 })
 
@@ -123,21 +153,49 @@ describe('deriveResult', () => {
       expect(result?.verdictSub).toMatch(/more than your spare cash/)
     })
 
-    it('tiers the "fits" copy by how much of spare cash the contribution uses', () => {
-      // £100 contribution / £2000 spare cash = 5% -> comfortable
+    it('tiers the "fits" copy by how much of take-home pay the contribution uses', () => {
+      // No outgoings in any of these, so spare cash equals take-home and the
+      // share-of-income bands decide (they are the stricter of the two).
+
+      // £100 contribution / £2000 take-home = 5% -> comfortable
       const comfortable = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }))
       expect(comfortable?.verdictSub).toMatch(/comfortably/)
 
-      // £500 / £1000 = 50% -> a "good chunk", not comfortable, not tight
-      const moderate = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '6000', takeHome: '1000', goalMonths: 12 }))
+      // £250 / £1000 = 25% -> a "good chunk", not comfortable, not tight
+      const moderate = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '3000', takeHome: '1000', goalMonths: 12 }))
       expect(moderate?.isAffordable).toBe(true)
       expect(moderate?.verdictSub).toMatch(/good chunk/)
       expect(moderate?.verdictSub).not.toMatch(/comfortably|tight/)
 
-      // £900 / £1000 = 90% -> tight
-      const tight = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '10800', takeHome: '1000', goalMonths: 12 }))
+      // £500 / £1000 = 50% -> tight, even though it is only half the spare cash
+      const tight = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '6000', takeHome: '1000', goalMonths: 12 }))
       expect(tight?.isAffordable).toBe(true)
       expect(tight?.verdictSub).toMatch(/tight/)
+    })
+
+    it('counts regular saving against spare cash, which can turn a fitting plan into a stretch', () => {
+      // £600/month needed, £800 spare before the user's own saving is
+      // counted — comfortably affordable until £300/month of it is already
+      // going into an ISA, which leaves only £500.
+      const base = makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '7200', takeHome: '2000', housing: '1200', goalMonths: 12 })
+      const before = deriveResult(base)
+      expect(before?.spareCash).toBe(800)
+      expect(before?.isAffordable).toBe(true)
+
+      const after = deriveResult({ ...base, savingsMonthly: '300' })
+      expect(after?.spareCash).toBe(500)
+      expect(after?.regularSaving).toBe(300)
+      expect(after?.isAffordable).toBe(false)
+      // Saving is the one committed line the user could stop, so say so.
+      expect(after?.verdictSub).toContain('paused the £300/month')
+    })
+
+    it('adds regular saving to the take-home the plan would need', () => {
+      const state = makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '7200', takeHome: '2000', housing: '1200', goalMonths: 12 })
+      // Essentials (£1,200) + the £600 commitment, with nothing being saved.
+      expect(deriveResult(state)?.requiredTakeHomeMonthly).toBeCloseTo(1800, 6)
+      // The same plan for someone already saving £300 needs that much more.
+      expect(deriveResult({ ...state, savingsMonthly: '300' })?.requiredTakeHomeMonthly).toBeCloseTo(2100, 6)
     })
   })
 
@@ -376,34 +434,87 @@ describe('deriveResult', () => {
 
 // The branches that only appear when a plan can't work, or when a figure lands
 // exactly on a boundary. All of these were previously unexercised.
-describe('spareCashFitSub', () => {
+describe('pauseSavingHint', () => {
+  it('offers the pause when the shortfall is within what the user already saves', () => {
+    expect(pauseSavingHint(150, 300)).toContain('£300/month')
+    // Exactly covering the gap still counts — the bound is inclusive.
+    expect(pauseSavingHint(300, 300)).not.toBe('')
+  })
+
+  it('stays quiet when there is nothing to pause, or pausing would not be enough', () => {
+    expect(pauseSavingHint(150, 0)).toBe('')
+    expect(pauseSavingHint(400, 300)).toBe('')
+  })
+})
+
+// A roomy budget, so the share-of-spare-cash floor never decides the band on
+// its own and each income band can be exercised in isolation.
+const roomy = (contribution: number) => commitmentFitSub({ contribution, spareCash: 10000, takeHome: 10000, regularSaving: 0 })
+
+describe('commitmentFitSub', () => {
   it('reports the shortfall when the commitment exceeds spare cash', () => {
-    expect(spareCashFitSub(800, 500)).toContain('more than your spare cash')
+    expect(commitmentFitSub({ contribution: 800, spareCash: 500, takeHome: 2000, regularSaving: 0 })).toContain('more than your spare cash')
+  })
+
+  it('tells the user when pausing their saving would close the gap', () => {
+    const copy = commitmentFitSub({ contribution: 800, spareCash: 500, takeHome: 2000, regularSaving: 400 })
+    expect(copy).toContain('more than your spare cash')
+    expect(copy).toContain('paused the £400/month')
   })
 
   it('handles zero spare cash without dividing by it', () => {
-    // The ratio falls back to Infinity rather than 0/0 = NaN, and the
-    // over-budget branch answers first, so the copy never shows "NaN".
-    const copy = spareCashFitSub(300, 0)
+    const copy = commitmentFitSub({ contribution: 300, spareCash: 0, takeHome: 0, regularSaving: 0 })
     expect(copy).toContain('more than your spare cash')
     expect(copy).not.toMatch(/NaN|Infinity/)
   })
 
-  it('still answers when both the commitment and spare cash are zero', () => {
-    // 0 > 0 is false, so this reaches the ratio — which is Infinity, not NaN —
-    // and lands on the tightest band rather than producing broken copy.
-    const copy = spareCashFitSub(0, 0)
+  it('still answers when the commitment, spare cash and take-home are all zero', () => {
+    // 0 > 0 is false, so this reaches the band logic with both denominators
+    // at 0 — which must read as a 0 share rather than NaN.
+    const copy = commitmentFitSub({ contribution: 0, spareCash: 0, takeHome: 0, regularSaving: 0 })
     expect(copy).not.toMatch(/NaN|Infinity/)
-    expect(copy.length).toBeGreaterThan(0)
+    expect(copy).toContain('comfortably')
   })
 
-  it('puts each ratio boundary in the band that includes it', () => {
-    const spare = 1000
+  it('puts each share-of-take-home boundary in the band that includes it', () => {
     // The bands are `<=`, so a figure exactly on a cut-off takes the
     // friendlier description.
-    expect(spareCashFitSub(spare * SPARE_CASH_COMFORTABLE_RATIO, spare)).toContain('comfortably')
-    expect(spareCashFitSub(spare * SPARE_CASH_TIGHT_RATIO, spare)).toContain('a good chunk')
-    expect(spareCashFitSub(spare * 0.9, spare)).toContain("it's tight")
+    expect(roomy(10000 * TAKE_HOME_COMFORTABLE_RATIO)).toContain('comfortably')
+    expect(roomy(10000 * TAKE_HOME_TIGHT_RATIO)).toContain('a good chunk')
+    expect(roomy(10000 * 0.4)).toContain("it's tight")
+  })
+
+  it('states the commitment as a share of take-home pay, not of spare cash', () => {
+    // £400 of a £2,000 take-home is 20%, even though it is 80% of the £500
+    // spare cash — the percentage quoted is the income one.
+    expect(commitmentFitSub({ contribution: 400, spareCash: 500, takeHome: 2000, regularSaving: 0 })).toContain(
+      '£400/month is 20% of your take-home pay',
+    )
+  })
+
+  it('falls back to the harsher band when the commitment eats most of the spare cash', () => {
+    // 18% of take-home is "comfortable" on income alone, but £360 of £500
+    // spare cash is 72% — the headroom floor decides it.
+    const copy = commitmentFitSub({ contribution: 360, spareCash: 500, takeHome: 2000, regularSaving: 0 })
+    expect(copy).toContain("it's tight")
+  })
+
+  it('puts each headroom-floor boundary in the band that includes it', () => {
+    // Take-home is large enough that the income reading is always
+    // "comfortable", so the floor alone picks the band.
+    const spare = 1000
+    const onFloor = (ratio: number) =>
+      commitmentFitSub({ contribution: spare * ratio, spareCash: spare, takeHome: 1000000, regularSaving: 0 })
+    expect(onFloor(SPARE_CASH_HEADROOM_COMFORTABLE_RATIO)).toContain('comfortably')
+    expect(onFloor(SPARE_CASH_HEADROOM_TIGHT_RATIO)).toContain('a good chunk')
+    expect(onFloor(0.9)).toContain("it's tight")
+  })
+
+  it('never loosens a verdict: the worse of the two readings wins either way round', () => {
+    // Income reading tight, headroom reading comfortable -> tight.
+    expect(commitmentFitSub({ contribution: 500, spareCash: 5000, takeHome: 1000, regularSaving: 0 })).toContain("it's tight")
+    // Income reading comfortable, headroom reading tight -> tight.
+    expect(commitmentFitSub({ contribution: 500, spareCash: 600, takeHome: 10000, regularSaving: 0 })).toContain("it's tight")
   })
 })
 

@@ -80,6 +80,28 @@ describe('BudgetDonut', () => {
     expect(screen.getByRole('img').getAttribute('aria-label')).toContain('£350 over your spare cash')
   })
 
+  it('gives regular saving its own arc, legend row and mention in the description', () => {
+    // £2,000 take-home, £800 housing, £300/month already saved, £200 new cost
+    // -> £700 left over. Saving is drawn apart from the essentials ramp.
+    const budget = budgetBreakdown(makeState({ takeHome: '2000', housing: '800', savingsMonthly: '300' }), 200)
+    const { container } = render(<BudgetDonut budget={budget} newCostLabel="Monthly saving" />)
+
+    // Housing, saving, the new cost, leftover.
+    expect(arcGeometry(container)).toHaveLength(4)
+    expect(container.querySelector('circle[stroke="var(--chart-saving)"]')).not.toBeNull()
+    expect(screen.getByText('Saving')).toBeTruthy()
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('£300 into savings')
+  })
+
+  it('leaves saving out entirely when the user saves nothing', () => {
+    const budget = budgetBreakdown(makeState({ takeHome: '2000', housing: '800' }), 200)
+    const { container } = render(<BudgetDonut budget={budget} newCostLabel="Monthly saving" />)
+
+    expect(container.querySelector('circle[stroke="var(--chart-saving)"]')).toBeNull()
+    expect(screen.queryByText('Saving')).toBeNull()
+    expect(screen.getByRole('img').getAttribute('aria-label')).not.toContain('into savings')
+  })
+
   it('renders the ringTotal === 0 edge case without NaN or Infinity anywhere', () => {
     // Everything blank: no take-home, no essentials, no new cost.
     const budget = budgetBreakdown(makeState({}), 0)
