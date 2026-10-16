@@ -145,6 +145,9 @@ expect_status 'sources page' /sources/ 200
 expect_status 'salary methodology' /methodology/salary/ 200
 expect_status 'vehicle methodology' /methodology/vehicle/ 200
 expect_status 'favicon' /favicon.svg 200
+expect_status 'robots.txt' /robots.txt 200
+expect_status 'sitemap.xml' /sitemap.xml 200
+expect_status 'OG image' /og-image.png 200
 expect_status 'hashed asset' "$ASSET_JS" 200
 expect_status 'HEAD on root (the Docker HEALTHCHECK probe)' / 200 --head
 
@@ -241,8 +244,35 @@ expect_header 'hashed asset is immutable for a year' "$ASSET_JS" Cache-Control '
 # Unhashed public files: cacheable, but only for an hour, so replacing one
 # reaches visitors the same day rather than after a year.
 for path in /favicon.svg /og-image.png /robots.txt /sitemap.xml; do
-  expect_header "$path is cached for an hour" "$path" Cache-Control 'max-age=3600'
+  # Anchored: an unanchored 'max-age=3600' also matches max-age=36000, which
+  # is ten hours, and would have passed silently.
+  expect_header "$path is cached for an hour" "$path" Cache-Control '^public, max-age=3600$'
 done
+
+echo
+echo "== the crawler-facing files =="
+# Served with the right type, and with their own content rather than the SPA
+# fallback: a host that answers an unknown path with index.html and a 200
+# satisfies the status checks above while serving a crawler a web page where
+# it asked for a sitemap.
+expect_header 'robots.txt is plain text' /robots.txt Content-Type '^text/plain'
+expect_header 'sitemap.xml is XML' /sitemap.xml Content-Type '^(application|text)/xml'
+expect_header 'the OG image is a PNG' /og-image.png Content-Type '^image/png'
+expect_body 'robots.txt names the sitemap' /robots.txt 'Sitemap:'
+expect_body 'sitemap.xml is a sitemap, not an HTML page' /sitemap.xml '<urlset'
+# The OG image is binary, so its body is checked by shape rather than content:
+# a PNG starts with the eight-byte signature, which an HTML fallback does not.
+# Downloaded to a file rather than piped into `head`: closing the pipe after
+# eight bytes makes curl fail with a write error, which `pipefail` then turns
+# into a failure of this check rather than of the thing it is testing.
+png_body="$(mktemp)"
+if curl -sS -o "$png_body" "$BASE/og-image.png" &&
+  [[ "$(head -c 8 "$png_body" | od -An -tx1 | tr -d ' \n')" == 89504e470d0a1a0a ]]; then
+  pass 'the OG image really is a PNG (file signature)'
+else
+  fail 'the OG image really is a PNG' "$BASE/og-image.png: body does not start with the PNG signature"
+fi
+rm -f "$png_body"
 
 echo
 echo "== compression =="
@@ -264,7 +294,7 @@ fi
 
 echo
 echo "== security headers =="
-for path in / /sources/ "$ASSET_JS"; do
+for path in / /sources/ "$ASSET_JS" /robots.txt /sitemap.xml /og-image.png; do
   expect_header "nosniff on $path" "$path" X-Content-Type-Options '^nosniff$'
   expect_header "Referrer-Policy on $path" "$path" Referrer-Policy 'strict-origin-when-cross-origin'
   expect_header "X-Frame-Options on $path" "$path" X-Frame-Options '^DENY$'
