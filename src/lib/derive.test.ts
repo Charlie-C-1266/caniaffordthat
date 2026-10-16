@@ -31,7 +31,7 @@ describe('deriveResult', () => {
     expect(deriveResult(makeState({ itemPrice: '0', takeHome: '2000' }))).toBeNull()
   })
 
-  describe('saving up — duration flavor', () => {
+  describe('saving up — duration flavour', () => {
     it('is affordable within the 60-month cap', () => {
       // £2000 take-home, no outgoings -> £2000 spare cash; 25% rate -> £500/mo.
       // Target £2000, so 4 months to save it.
@@ -107,7 +107,7 @@ describe('deriveResult', () => {
     })
   })
 
-  describe('saving up — goal-date flavor', () => {
+  describe('saving up — goal-date flavour', () => {
     it('is affordable when the required contribution fits spare cash', () => {
       const result = deriveResult(makeState({ mode: 'save', saveFlavor: 'goal', itemPrice: '1200', takeHome: '2000', goalMonths: 12 }))
       expect(result?.isFeasible).toBe(true)

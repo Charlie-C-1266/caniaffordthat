@@ -14,13 +14,13 @@ afterEach(() => {
 })
 
 describe('useTheme', () => {
-  it('initializes from whatever data-theme is already on <html> — it does not re-decide the theme', () => {
+  it('initialises from whatever data-theme is already on <html> — it does not re-decide the theme', () => {
     document.documentElement.setAttribute('data-theme', 'light')
     const { result } = renderHook(() => useTheme())
     expect(result.current.theme).toBe('light')
   })
 
-  it('initializes to dark when <html> has no data-theme attribute', () => {
+  it('initialises to dark when <html> has no data-theme attribute', () => {
     const { result } = renderHook(() => useTheme())
     expect(result.current.theme).toBe('dark')
   })

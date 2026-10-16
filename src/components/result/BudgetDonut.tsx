@@ -77,7 +77,7 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
         }.`}
         style={{ flexShrink: 0 }}
       >
-        {arcs.map((arc, i) => {
+        {arcs.map((arc) => {
           // No division-by-zero guard needed: an arc only exists when its own
           // amount is positive, and every arc's amount is part of `ringTotal`
           // (essentials + cost + leftover) — so `arcs` being non-empty implies
@@ -89,7 +89,13 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
           cumulative += len
           return (
             <circle
-              key={i}
+              // Keyed by label, not position: the over/leftover and new-cost
+              // arcs are conditional, so a slice's index shifts as the budget
+              // changes and React would re-use one slice's circle for a
+              // different category. Labels are distinct by construction — the
+              // essentials come from the OUTGOING_SHORT_LABELS record, and the
+              // remaining three are fixed strings.
+              key={arc.label}
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
@@ -140,8 +146,8 @@ export function BudgetDonut({ budget, newCostLabel }: BudgetDonutProps) {
             {fmt(takeHome)}
           </span>
         </div>
-        {legend.map((row, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 'var(--fs-label-sm)' }}>
+        {legend.map((row) => (
+          <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 'var(--fs-label-sm)' }}>
             <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 3, background: row.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{row.label}</span>
             <span className="mono" style={{ marginLeft: 'auto', color: 'var(--text-primary)', fontWeight: 600 }}>

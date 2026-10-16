@@ -29,7 +29,7 @@ export const EXPENSIVE_CAR_SUPPLEMENT_ANNUAL = 440
 export const EXPENSIVE_CAR_PRICE_THRESHOLD = 40000
 
 /** A suggested monthly maintenance budget the costs step offers as a one-tap preset. */
-export interface MaintenancePreset {
+interface MaintenancePreset {
   id: 'budget' | 'average' | 'premium'
   label: string
   /** Suggested £/month for servicing, MOT, tyres and repairs. */
@@ -100,7 +100,7 @@ export function mileageFactor(excessMiles: number): number {
   return Math.min(MILEAGE_FACTOR_MAX, Math.max(MILEAGE_FACTOR_MIN, factor))
 }
 
-export interface BalloonEstimateInput {
+interface BalloonEstimateInput {
   /** What the car costs today — the anchor the future value is projected from. */
   price: number
   /** The car's age today, in years (0 = brand new). */
@@ -137,7 +137,7 @@ export function estimateBalloon({ price, ageYears, currentMileage, termMonths, a
 }
 
 /**
- * Monthly PCP payment: amortizes `principal` down to the `balloon` (rather
+ * Monthly PCP payment: amortises `principal` down to the `balloon` (rather
  * than to zero) over `n` months at `annualRatePct` APR — interest accrues on
  * the full outstanding balance including the balloon, which is why PCP
  * payments are lower than HP but the interest cost isn't. With a zero
@@ -306,7 +306,7 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   const isAffordable = totalMonthly <= spareCash
 
   // --- The projection: balance repaid over the term ---
-  // A PCP payment amortizes only down to its balloon, so the repaid series
+  // A PCP payment amortises only down to its balloon, so the repaid series
   // honestly tops out below 100% — the final payment is still owed. Cash has
   // no finance balance to project.
   const projection = method !== 'cash' && principal > 0 ? financeProjection(principal, financeMonthly, aprPct, termMonths) : null

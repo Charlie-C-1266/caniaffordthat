@@ -9,6 +9,9 @@ const ACCENT = '#7cf'
 
 const dots = () => screen.getAllByRole('button')
 
+/** The coloured dot inside the rail button with this label. */
+const dotOf = (label: string) => screen.getByRole('button', { name: label }).firstElementChild as HTMLElement
+
 describe('ProgressRail', () => {
   afterEach(cleanup)
 
@@ -100,7 +103,6 @@ describe('ProgressRail', () => {
   it('fills only the active dot with the accent colour, leaving the others hollow', () => {
     render(<ProgressRail activeIndex={1} labels={LABELS} accentColor="rgb(120, 200, 255)" onSelect={() => {}} />)
 
-    const dotOf = (label: string) => screen.getByRole('button', { name: label }).firstElementChild as HTMLElement
     expect(dotOf('Details').style.background).toBe('rgb(120, 200, 255)')
     expect(dotOf('Goal').style.background).toBe('transparent')
   })

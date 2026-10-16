@@ -45,7 +45,7 @@ describe('Icon', () => {
     expect(icon.getAttribute('stroke-width')).toBe('1.8')
   })
 
-  it('applies size, color and strokeWidth overrides', () => {
+  it('applies size, colour and strokeWidth overrides', () => {
     const icon = glyph(render(<Icon name="car" size={40} color="var(--accent-save)" strokeWidth={2.4} />).container)
     expect(icon.getAttribute('width')).toBe('40')
     expect(icon.getAttribute('height')).toBe('40')

@@ -82,7 +82,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   const isEmergency = goal?.emergency === true
   // The car's savings is its Details deposit; don't ask for it twice.
   const showSavings = !goal?.deposit
-  const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved toward this'
+  const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved towards this'
   // Emergency essentials live in Details; other goals collect outgoings here.
   const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
   const visibleKeys: BudgetFieldKey[] = [...outgoings, ...(showSavings ? (['savings'] as const) : [])]

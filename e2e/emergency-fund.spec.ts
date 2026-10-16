@@ -34,7 +34,7 @@ test.describe('emergency fund', () => {
     await expect(page.getByText('Time to build your fund')).toBeVisible()
   })
 
-  test('honours the "I have a goal date" plan flavor and reframes the result', async ({ page }) => {
+  test('honours the "I have a goal date" plan flavour and reframes the result', async ({ page }) => {
     await page.goto('/')
 
     await page.getByRole('button', { name: 'Go to Emergency fund' }).click()
@@ -45,7 +45,7 @@ test.describe('emergency fund', () => {
     await page.getByRole('button', { name: 'Budget', exact: true }).click()
     await page.getByText('Take-home pay / month').locator('xpath=following-sibling::div//input').fill('3000')
 
-    // Plan step: switch from the default duration flavor to a fixed goal date.
+    // Plan step: switch from the default duration flavour to a fixed goal date.
     // Before the fix this toggle had no effect on the emergency result.
     await page.getByRole('button', { name: 'Plan', exact: true }).click()
     await page.getByRole('button', { name: 'I have a goal date' }).click()

@@ -102,7 +102,7 @@ function DurationInput({ accentColor }: { accentColor: string }) {
     }
   }
 
-  // The save accent is the active color for both segments — unlike the pay-mode
+  // The save accent is the active colour for both segments — unlike the pay-mode
   // toggle, this choice doesn't change the app's accent.
   const rateModeOptions: readonly SegmentedOption<RateMode>[] = [
     { value: 'percent', label: '% of spare cash', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },

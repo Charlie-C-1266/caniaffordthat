@@ -6,7 +6,7 @@ import type { Mode } from '../state/types'
 // than the mode accent, and on a "No" the accent is neutralised elsewhere in
 // the result so nothing positive-reading sits beside the red.
 
-/** The accent color for the active mode. */
+/** The accent colour for the active mode. */
 export function accentColorFor(mode: Mode): string {
   return mode === 'save' ? 'var(--accent-save)' : 'var(--accent-finance)'
 }

@@ -20,7 +20,7 @@ interface ProjectionChartProps {
   accentColor: string
 }
 
-/** The balance-over-time area chart: £ saved (or repaid) climbing month by month toward the goal line. */
+/** The balance-over-time area chart: £ saved (or repaid) climbing month by month towards the goal line. */
 export function ProjectionChart({ projection, accentColor }: ProjectionChartProps) {
   const gradientId = useId()
   const { points, target, kind } = projection
@@ -41,8 +41,16 @@ export function ProjectionChart({ projection, accentColor }: ProjectionChartProp
     fontFamily: 'var(--font-mono)',
   } as const
 
-  // Three money gridlines: £0, half-way, and the goal.
-  const yTicks = [0, target / 2, target]
+  // Three money gridlines: £0, half-way, and the goal. Named rather than
+  // keyed by value because `target` can legitimately be 0 (hence the guard in
+  // `y` above), which collapses all three values to 0 — so the value is not a
+  // usable React key. The name also identifies the dashed goal line directly,
+  // instead of comparing an index against the array's length.
+  const yTicks = [
+    { name: 'zero', value: 0 },
+    { name: 'half', value: target / 2 },
+    { name: 'goal', value: target },
+  ]
 
   return (
     <svg
@@ -59,19 +67,19 @@ export function ProjectionChart({ projection, accentColor }: ProjectionChartProp
       </defs>
 
       {/* Money gridlines + labels. The top line (the goal) is dashed. */}
-      {yTicks.map((value, i) => (
-        <g key={i}>
+      {yTicks.map((tick) => (
+        <g key={tick.name}>
           <line
             x1={MARGIN.left}
-            y1={y(value)}
+            y1={y(tick.value)}
             x2={VIEW_W - MARGIN.right}
-            y2={y(value)}
+            y2={y(tick.value)}
             style={{ stroke: 'var(--chart-axis-line)' }}
             strokeWidth={1}
-            strokeDasharray={i === yTicks.length - 1 ? '3 5' : undefined}
+            strokeDasharray={tick.name === 'goal' ? '3 5' : undefined}
           />
-          <text x={MARGIN.left - 8} y={y(value) + 4} textAnchor="end" style={axisLabelStyle}>
-            {fmt(value)}
+          <text x={MARGIN.left - 8} y={y(tick.value) + 4} textAnchor="end" style={axisLabelStyle}>
+            {fmt(tick.value)}
           </text>
         </g>
       ))}

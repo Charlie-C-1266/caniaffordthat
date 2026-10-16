@@ -9,7 +9,7 @@ import { addMonths } from './calculations'
 /** Longest span the result chart draws month-by-month for; longer plans are truncated and flagged via `hasOverflow`. Exported so the "chart capped at N months" caption can't drift from the actual cap. */
 export const CHART_MONTHS_CAP = 24
 
-/** One month of the projection: the £ progress toward the goal. Month 0 is "now" (nothing saved / repaid yet). */
+/** One month of the projection: the £ progress towards the goal. Month 0 is "now" (nothing saved / repaid yet). */
 export interface ProjectionPoint {
   month: number
   /** £ progress so far: amount saved (saving plans) or amount repaid (finance plans). */
@@ -20,7 +20,7 @@ export interface ProjectionPoint {
 
 /** The full month-by-month projection the result screen renders two ways. */
 export interface Projection {
-  /** Whether `value` counts up saved money toward a target, or down-owed money repaid. Drives the chart/table wording ("saved" vs "repaid"). */
+  /** Whether `value` counts up saved money towards a target, or down-owed money repaid. Drives the chart/table wording ("saved" vs "repaid"). */
   kind: 'save' | 'finance'
   /** Points from month 0 (now) to the charted horizon, inclusive. */
   points: ProjectionPoint[]
@@ -40,7 +40,7 @@ function horizonLabel(months: number): string {
 }
 
 /**
- * A savings plan's projection: a balance compounding up from £0 toward
+ * A savings plan's projection: a balance compounding up from £0 towards
  * `target` at `growthPct` APR, `contribution` added each month. `value` is the
  * balance saved so far (capped at the target so the final month reads as
  * "goal reached", not a fractional overshoot).
@@ -64,9 +64,9 @@ export function savingProjection(target: number, contribution: number, growthPct
 }
 
 /**
- * A finance plan's projection: the amount repaid, climbing from £0 toward the
- * `principal` as the outstanding balance amortizes down at `growthPct` APR,
- * `payment` paid each month. A PCP payment amortizes only down to its balloon,
+ * A finance plan's projection: the amount repaid, climbing from £0 towards the
+ * `principal` as the outstanding balance amortises down at `growthPct` APR,
+ * `payment` paid each month. A PCP payment amortises only down to its balloon,
  * so the repaid amount honestly tops out below the principal.
  */
 export function financeProjection(principal: number, payment: number, growthPct: number, months: number): Projection {

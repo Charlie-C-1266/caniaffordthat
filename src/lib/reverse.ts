@@ -6,7 +6,7 @@ import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 // salary behind it and how it compares to what the user earns now. Pure glue
 // over the salary engine so it's unit-testable and shared by both result cards.
 
-export interface SalaryFlip {
+interface SalaryFlip {
   /** Annual take-home the plan needs. */
   requiredTakeHomeAnnual: number
   /** Gross salary that yields that take-home. */

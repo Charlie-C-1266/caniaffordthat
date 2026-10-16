@@ -42,9 +42,14 @@ async function budgetAndResult(page: Page, takeHome = '2000') {
 test.describe('vehicle flow', () => {
   test('the car gets its own six-step flow on the progress rail', async ({ page }) => {
     await startVehicle(page)
-    for (const label of ['Goal', 'Details', 'Paying for it', 'Running costs', 'Budget', 'Result']) {
-      await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible()
-    }
+    // Awaited together rather than in sequence: these are read-only
+    // assertions against an already-settled page, so nothing here depends on
+    // the previous one having finished.
+    await Promise.all(
+      ['Goal', 'Details', 'Paying for it', 'Running costs', 'Budget', 'Result'].map((label) =>
+        expect(page.getByRole('button', { name: label, exact: true })).toBeVisible(),
+      ),
+    )
     // The generic Plan step is replaced by the two vehicle steps.
     await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveCount(0)
   })
@@ -75,7 +80,7 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText('TOTAL IF YOU KEEP IT').locator('xpath=following-sibling::span')).toHaveText('£22,000')
 
     // The car's deposit was captured in Details, so Budget never asks twice.
-    await expect(page.getByText('Already saved toward this')).toHaveCount(0)
+    await expect(page.getByText('Already saved towards this')).toHaveCount(0)
   })
 
   test('PCP with an estimated balloon: the preview, deal box and caveat all carry the depreciation estimate', async ({ page }) => {

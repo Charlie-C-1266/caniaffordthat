@@ -8,12 +8,12 @@ export interface CalculatorContextValue {
   /** Patches several fields in one update — used when selecting a goal seeds mode, term, etc. at once. */
   setFields: (patch: Partial<CalculatorState>) => void
   /**
-   * Marks a step as the active/centered one and, once revealed, keeps it
+   * Marks a step as the active/centred one and, once revealed, keeps it
    * revealed even if the user scrolls away — mirrors the IntersectionObserver
-   * behavior described in the design doc.
+   * behaviour described in the design doc.
    */
   revealStep: (index: number) => void
-  /** Restores all fields to their defaults (the "Start over" behavior). */
+  /** Restores all fields to their defaults (the "Start over" behaviour). */
   reset: () => void
 }
 

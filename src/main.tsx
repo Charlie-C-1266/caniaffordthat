@@ -11,7 +11,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Above the provider too: hydrating state from a shared link's query
-        params happens in the provider's initializer, so a crash there must
+        params happens in the provider's initialiser, so a crash there must
         also land in the fallback rather than a blank page. */}
     <ErrorBoundary>
       <CalculatorProvider>

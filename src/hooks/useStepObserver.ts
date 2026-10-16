@@ -3,14 +3,14 @@ import { useCalculator } from '../state/calculatorContext'
 import type { DivRefCallback } from '../lib/refs'
 import { scrollBehaviour } from '../lib/motion'
 
-// Centers the intersection "trigger zone" on the middle 40% of the viewport,
+// Centres the intersection "trigger zone" on the middle 40% of the viewport,
 // so whichever step's panel occupies that band is treated as active.
 const OBSERVER_ROOT_MARGIN = '-30% 0px -30% 0px'
 
 /**
  * Wires the scrollytelling reveal/progress mechanics described in the design
  * doc: an IntersectionObserver watches each step's pinned panel, and
- * whichever one is centered in the viewport is reported to shared state via
+ * whichever one is centred in the viewport is reported to shared state via
  * `revealStep` (which sets `activeIndex` and permanently marks the step
  * `revealed`). Also returns `scrollToIndex`, shared by the progress rail and
  * the auto-advance logic built in later steps.
