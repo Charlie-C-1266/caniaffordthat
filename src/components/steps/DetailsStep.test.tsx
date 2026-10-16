@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { DetailsStep } from './DetailsStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 
 // `coverBandText` is a live three-way branch driven straight off the "Months
@@ -18,23 +17,10 @@ const OVER_BAND = 'More than the usual 3–6 months — a larger cushion, which 
 const STEP_INDEX = 1
 const noop = () => {}
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so the test can pick the emergency-fund goal. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 /** Renders the Details step on the emergency-fund goal, with `coverMonths` at the given value. */
 function renderEmergencyDetails(coverMonths?: number) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />
-    </CalculatorProvider>,
-  )
-  act(() => calculator?.setField('goalId', 'emergency'))
+  renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />)
+  act(() => calculator().setField('goalId', 'emergency'))
 
   const slider = screen.getByRole('slider', { name: 'Months of cover' })
   if (coverMonths !== undefined) fireEvent.change(slider, { target: { value: String(coverMonths) } })
@@ -49,7 +35,6 @@ function bandRow(text: string): HTMLElement | null {
 describe('DetailsStep emergency-fund cover band copy', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('nudges towards 3 months when the cover is under the recommended band', () => {
@@ -119,15 +104,10 @@ const DEBOUNCE_MS = 1500
 /** Renders the Details step on `goalId`, parked on this step so auto-advance can fire. */
 function renderStandardDetails(goalId: 'car' | 'holiday' | 'luxury' | 'big' | 'mortgage') {
   const scrollToIndex = vi.fn()
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />
-    </CalculatorProvider>,
-  )
+  renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />)
   act(() => {
-    calculator?.setField('goalId', goalId)
-    calculator?.setField('activeIndex', STEP_INDEX)
+    calculator().setField('goalId', goalId)
+    calculator().setField('activeIndex', STEP_INDEX)
   })
   return scrollToIndex
 }
@@ -154,7 +134,6 @@ describe('DetailsStep standard-goal path', () => {
 
   afterEach(() => {
     cleanup()
-    calculator = null
     vi.useRealTimers()
   })
 
@@ -200,7 +179,7 @@ describe('DetailsStep standard-goal path', () => {
       const scrollToIndex = renderStandardDetails('big')
 
       fireEvent.change(priceField(), { target: { value: '1200' } })
-      act(() => calculator?.setField('activeIndex', 0))
+      act(() => calculator().setField('activeIndex', 0))
 
       runDebounce()
       // The guard in useDebouncedAdvance: don't yank someone forward from a
@@ -267,7 +246,7 @@ describe('DetailsStep standard-goal path', () => {
       renderStandardDetails('big')
 
       fireEvent.change(screen.getByPlaceholderText('e.g. Wedding, new kitchen, sofa'), { target: { value: 'New sofa' } })
-      expect(calculator?.state.itemName).toBe('New sofa')
+      expect(calculator().state.itemName).toBe('New sofa')
     })
 
     it('renders only for goals with showName, using that goal placeholder', () => {
@@ -276,7 +255,6 @@ describe('DetailsStep standard-goal path', () => {
       expect(screen.getByPlaceholderText('e.g. Omega watch')).toBeTruthy()
 
       cleanup()
-      calculator = null
 
       // Mortgage is the only goal that takes this branch with showName: false,
       // so it is what actually exercises the gate. (Emergency fund also has
@@ -287,16 +265,10 @@ describe('DetailsStep standard-goal path', () => {
       expect(screen.queryByRole('textbox')).toBeNull()
 
       cleanup()
-      calculator = null
 
       // And the emergency fund has no title field either, via its own branch.
-      render(
-        <CalculatorProvider>
-          <CaptureContext />
-          <DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />
-        </CalculatorProvider>,
-      )
-      act(() => calculator?.setField('goalId', 'emergency'))
+      renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />)
+      act(() => calculator().setField('goalId', 'emergency'))
       expect(screen.queryByText(/Goal title/)).toBeNull()
     })
   })
@@ -314,7 +286,6 @@ describe('DetailsStep standard-goal path', () => {
         renderStandardDetails(goalId as 'car')
         expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(headline)
         cleanup()
-        calculator = null
       }
     })
   })
@@ -329,7 +300,6 @@ describe('DetailsStep standard-goal path', () => {
       expect(screen.getAllByRole('spinbutton')).toHaveLength(2)
 
       cleanup()
-      calculator = null
 
       renderStandardDetails('big')
       expect(screen.queryByText('Deposit / part-exchange')).toBeNull()
@@ -340,8 +310,8 @@ describe('DetailsStep standard-goal path', () => {
       renderStandardDetails('car')
 
       fireEvent.change(fieldUnderLabel('Deposit / part-exchange'), { target: { value: '3000' } })
-      expect(calculator?.state.savings).toBe('3000')
-      expect(calculator?.state.itemPrice).toBe('')
+      expect(calculator().state.savings).toBe('3000')
+      expect(calculator().state.itemPrice).toBe('')
     })
 
     it('shares the price field Enter-to-advance handler', () => {
@@ -369,10 +339,10 @@ describe('DetailsStep standard-goal path', () => {
 
       // Seeded to 'save' for this goal; the toggle flips it to finance.
       fireEvent.click(screen.getByRole('button', { name: 'Pay monthly' }))
-      expect(calculator?.state.mode).toBe('monthly')
+      expect(calculator().state.mode).toBe('monthly')
 
       fireEvent.click(screen.getByRole('button', { name: 'Save up for it' }))
-      expect(calculator?.state.mode).toBe('save')
+      expect(calculator().state.mode).toBe('save')
     })
 
     it('is hidden for the Vehicle goal, whose purchase step asks the same question', () => {
@@ -381,25 +351,15 @@ describe('DetailsStep standard-goal path', () => {
     })
 
     it('is hidden for the emergency fund', () => {
-      render(
-        <CalculatorProvider>
-          <CaptureContext />
-          <DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />
-        </CalculatorProvider>,
-      )
-      act(() => calculator?.setField('goalId', 'emergency'))
+      renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />)
+      act(() => calculator().setField('goalId', 'emergency'))
       expect(screen.queryByText('How do you plan to pay?')).toBeNull()
     })
   })
 
   describe('with no goal chosen', () => {
     it('prompts the user back to the carousel instead of rendering a price field', () => {
-      render(
-        <CalculatorProvider>
-          <CaptureContext />
-          <DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />
-        </CalculatorProvider>,
-      )
+      renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />)
       expect(screen.getByText('Scroll back up and pick a goal to get started.')).toBeTruthy()
       expect(screen.queryByRole('spinbutton')).toBeNull()
     })
@@ -413,19 +373,18 @@ describe('DetailsStep standard-goal path', () => {
 describe('DetailsStep emergency-fund essentials grid', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('writes each essentials field to its own state key and re-totals the target', () => {
     renderEmergencyDetails(3)
 
     fireEvent.change(fieldUnderLabel('Housing (rent/mortgage)'), { target: { value: '800' } })
-    expect(calculator?.state.housing).toBe('800')
+    expect(calculator().state.housing).toBe('800')
 
     fireEvent.change(fieldUnderLabel('Utilities & bills'), { target: { value: '150' } })
-    expect(calculator?.state.utilities).toBe('150')
+    expect(calculator().state.utilities).toBe('150')
     // Untouched fields keep their defaults rather than being overwritten.
-    expect(calculator?.state.groceries).toBe('0')
+    expect(calculator().state.groceries).toBe('0')
 
     // 3 months x £950 of essentials — the figure the summary quotes.
     expect(screen.getByText(/£2,850/)).toBeTruthy()
@@ -441,7 +400,7 @@ describe('DetailsStep emergency-fund essentials grid', () => {
 
     const miswired = OUTGOING_FIELD_KEYS.filter((key) => {
       fireEvent.change(screen.getByLabelText(OUTGOING_FIELD_LABELS[key]), { target: { value: '123' } })
-      return calculator?.state[key] !== '123'
+      return calculator().state[key] !== '123'
     })
     expect(miswired).toEqual([])
   })
@@ -464,7 +423,6 @@ describe('DetailsStep emergency-fund essentials grid', () => {
         // Same element, reached by role+name and by label lookup.
         expect(screen.getByRole('spinbutton', { name: headline })).toBe(screen.getByLabelText(headline))
         cleanup()
-        calculator = null
       }
     })
 
@@ -483,7 +441,7 @@ describe('DetailsStep emergency-fund essentials grid', () => {
 
       fireEvent.change(screen.getByLabelText('How much is the trip?'), { target: { value: '4200' } })
 
-      expect(calculator?.state.itemPrice).toBe('4200')
+      expect(calculator().state.itemPrice).toBe('4200')
     })
 
     it('names the goal-title field from its label, not just its placeholder', () => {
@@ -492,7 +450,7 @@ describe('DetailsStep emergency-fund essentials grid', () => {
       const title = screen.getByLabelText(/^Goal title/)
       expect(title.getAttribute('placeholder')).toBe('e.g. Two weeks in Italy')
       fireEvent.change(title, { target: { value: 'Two weeks in Italy' } })
-      expect(calculator?.state.itemName).toBe('Two weeks in Italy')
+      expect(calculator().state.itemName).toBe('Two weeks in Italy')
     })
 
     it('leaves no input on the step without an accessible name', () => {

@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { screen, cleanup } from '@testing-library/react'
+import { renderWithCalculator } from '../../test/renderWithCalculator'
 import { VehicleResultCard } from './VehicleResultCard'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { budgetBreakdown } from '../../lib/budgetSplit'
 import { DEFAULT_STATE } from '../../state/defaults'
 import type { VehicleResult } from '../../lib/vehicle'
@@ -15,14 +14,6 @@ import type { CalculatorState } from '../../state/types'
 // card a hand-built VehicleResult so a row can be pinned to one field.
 
 const noop = () => {}
-
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed the state the earlier steps would have captured. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
 
 /** A financed (PCP) purchase with an estimated balloon — the flow's default shape. */
 function financedResult(overrides: Partial<VehicleResult> = {}): VehicleResult {
@@ -80,13 +71,7 @@ function cashResult(overrides: Partial<VehicleResult> = {}): VehicleResult {
 
 /** Renders the card under a provider seeded with the fields it reads off state. */
 function renderCard(result: VehicleResult, state: Partial<CalculatorState> = {}) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <VehicleResultCard result={result} scrollToIndex={noop} />
-    </CalculatorProvider>,
-  )
-  act(() => calculator?.setFields({ goalId: 'car', ...state }))
+  renderWithCalculator(<VehicleResultCard result={result} scrollToIndex={noop} />, { goalId: 'car', ...state })
 }
 
 /** The £ value rendered next to a breakdown label, or null when the row is absent. */
@@ -98,7 +83,6 @@ function rowValue(label: string): string | null {
 describe('VehicleResultCard', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   describe('the regular-saving row', () => {

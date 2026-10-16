@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { BudgetStep } from './BudgetStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { fmt } from '../../lib/calculations'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
@@ -39,50 +38,20 @@ const BOTH_HALVES_HEADING = /^What's coming in,\s*and going out\?$/
 /** Mirrors the step's own roundPence, so the expectation is the value it should store. */
 const expectedTakeHome = (grossAnnual: number) => String(Math.round(monthlyTakeHomeFromGross(grossAnnual) * 100) / 100)
 
-let calculator: CalculatorContextValue | null = null
 /** Every index the step asked to scroll to, so the Enter gate can be read off it. */
 const advanced: number[] = []
 
-/** Exposes the provider's context so a test can seed state and read back what the step wrote. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 function renderBudgetStep(state: Partial<CalculatorState> = {}) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <BudgetStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={(i) => advanced.push(i)} />
-    </CalculatorProvider>,
-  )
-  act(() => calculator?.setFields(state))
+  renderWithCalculator(<BudgetStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={(i) => advanced.push(i)} />, state)
 }
 
 /** Renders the step for a goal, with a price so it looks like a real run-through. */
 const renderForGoal = (goalId: GoalId, state: Partial<CalculatorState> = {}) =>
   renderBudgetStep({ goalId, itemPrice: '18000', takeHome: '2600', ...state })
 
-/**
- * The money input belonging to a field label, found through the wrapper the
- * two share. Kept as-is for the fields whose labels this file already drove
- * structurally; replacing these helpers with `getByLabelText` across the
- * suite is #166's job. The income field, which this step labels properly, is
- * queried by its accessible name in the block at the end of this file.
- */
-function fieldInput(labelText: string): HTMLInputElement {
-  const [label] = screen.getAllByText((_, element) => element?.tagName === 'LABEL' && (element.textContent ?? '').startsWith(labelText))
-  const input = label?.parentElement?.querySelector('input')
-  if (!input) throw new Error(`No input found for field labelled "${labelText}"`)
-  return input
-}
-
-const hasField = (labelText: string) =>
-  screen.queryAllByText((_, element) => element?.tagName === 'LABEL' && (element.textContent ?? '').startsWith(labelText)).length > 0
-
 const modeButton = (label: string) => screen.getByRole('button', { name: label })
 /** The take-home money input — only rendered while take-home mode is active. */
-const takeHomeInput = () => fieldInput('Take-home pay / month')
+const takeHomeInput = () => screen.getByLabelText<HTMLInputElement>('Take-home pay / month')
 
 /** The text an assistive technology would read as `element`'s description, by resolving aria-describedby. */
 function accessibleDescription(element: HTMLElement): string {
@@ -96,7 +65,6 @@ function accessibleDescription(element: HTMLElement): string {
 describe('BudgetStep', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 
@@ -104,35 +72,35 @@ describe('BudgetStep', () => {
     it('writes the rounded monthly take-home alongside the salary typed', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
 
-      fireEvent.change(fieldInput('Annual salary (before tax)'), { target: { value: '60000' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '60000' } })
 
-      expect(calculator?.state.grossSalary).toBe('60000')
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(60000))
+      expect(calculator().state.grossSalary).toBe('60000')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(60000))
       // Sanity-check the figure is a real one, not an artefact of both sides
       // calling the same broken helper.
-      expect(Number(calculator?.state.takeHome)).toBeGreaterThan(3000)
-      expect(Number(calculator?.state.takeHome)).toBeLessThan(4000)
+      expect(Number(calculator().state.takeHome)).toBeGreaterThan(3000)
+      expect(Number(calculator().state.takeHome)).toBeLessThan(4000)
     })
 
     it('keeps the two in step as the salary is edited', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
-      const input = fieldInput('Annual salary (before tax)')
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
 
       fireEvent.change(input, { target: { value: '60000' } })
       fireEvent.change(input, { target: { value: '35000' } })
 
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(35000))
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(35000))
     })
 
     it('clears take-home rather than leaving a stale figure when the salary is emptied', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
-      const input = fieldInput('Annual salary (before tax)')
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
 
       fireEvent.change(input, { target: { value: '60000' } })
       fireEvent.change(input, { target: { value: '' } })
 
-      expect(calculator?.state.grossSalary).toBe('')
-      expect(calculator?.state.takeHome).toBe('')
+      expect(calculator().state.grossSalary).toBe('')
+      expect(calculator().state.takeHome).toBe('')
     })
   })
 
@@ -144,8 +112,8 @@ describe('BudgetStep', () => {
 
       fireEvent.click(modeButton(SALARY_MODE_LABEL))
 
-      expect(calculator?.state.takeHomeMode).toBe('salary')
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(45000))
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(45000))
     })
 
     it('leaves a typed take-home alone when there is no salary to sync from', () => {
@@ -153,8 +121,8 @@ describe('BudgetStep', () => {
 
       fireEvent.click(modeButton(SALARY_MODE_LABEL))
 
-      expect(calculator?.state.takeHomeMode).toBe('salary')
-      expect(calculator?.state.takeHome).toBe('1800')
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe('1800')
     })
 
     it('leaves take-home alone when switching back the other way', () => {
@@ -162,8 +130,8 @@ describe('BudgetStep', () => {
 
       fireEvent.click(modeButton(TAKE_HOME_MODE_LABEL))
 
-      expect(calculator?.state.takeHomeMode).toBe('takehome')
-      expect(calculator?.state.takeHome).toBe('2500')
+      expect(calculator().state.takeHomeMode).toBe('takehome')
+      expect(calculator().state.takeHome).toBe('2500')
     })
   })
 
@@ -171,9 +139,9 @@ describe('BudgetStep', () => {
     it('asks an ordinary goal for all five outgoings and what it has already saved', () => {
       renderForGoal('holiday')
 
-      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(hasField(label)).toBe(true)
-      expect(hasField(SAVINGS_LABEL)).toBe(true)
-      expect(hasField(SET_ASIDE_LABEL)).toBe(false)
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(false)
     })
 
     it('asks the emergency fund for nothing but what it has set aside', () => {
@@ -181,42 +149,42 @@ describe('BudgetStep', () => {
       // double-count them.
       renderForGoal('emergency')
 
-      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(hasField(label)).toBe(false)
-      expect(hasField(SET_ASIDE_LABEL)).toBe(true)
-      expect(hasField(SAVINGS_LABEL)).toBe(false)
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(false)
     })
 
     it('does not ask a vehicle goal for savings, which its Details deposit already captured', () => {
       renderForGoal('car')
 
-      expect(hasField(SAVINGS_LABEL)).toBe(false)
-      expect(hasField(SET_ASIDE_LABEL)).toBe(false)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(false)
       // The outgoings themselves are still asked for.
-      expect(hasField(OUTGOING_FIELD_LABELS.housing)).toBe(true)
+      expect(screen.queryAllByLabelText(OUTGOING_FIELD_LABELS.housing).length > 0).toBe(true)
     })
 
     it('qualifies the Transport field for a vehicle goal, and only for one', () => {
       renderForGoal('car')
 
-      expect(hasField(VEHICLE_TRANSPORT_LABEL)).toBe(true)
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(true)
       expect(screen.getByRole('button', { name: /already counted on the previous steps/ })).toBeTruthy()
 
       cleanup()
       renderForGoal('holiday')
 
-      expect(hasField(VEHICLE_TRANSPORT_LABEL)).toBe(false)
-      expect(hasField(OUTGOING_FIELD_LABELS.transport)).toBe(true)
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(OUTGOING_FIELD_LABELS.transport).length > 0).toBe(true)
     })
 
     it('writes each outgoing to its own field', () => {
       renderForGoal('holiday')
 
-      fireEvent.change(fieldInput(OUTGOING_FIELD_LABELS.housing), { target: { value: '900' } })
-      fireEvent.change(fieldInput(OUTGOING_FIELD_LABELS.groceries), { target: { value: '320' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { target: { value: '900' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.groceries), { target: { value: '320' } })
 
-      expect(calculator?.state.housing).toBe('900')
-      expect(calculator?.state.groceries).toBe('320')
-      expect(calculator?.state.utilities).toBe('0')
+      expect(calculator().state.housing).toBe('900')
+      expect(calculator().state.groceries).toBe('320')
+      expect(calculator().state.utilities).toBe('0')
     })
   })
 
@@ -226,17 +194,17 @@ describe('BudgetStep', () => {
 
       fireEvent.change(takeHomeInput(), { target: { value: '2450' } })
 
-      expect(calculator?.state.takeHome).toBe('2450')
+      expect(calculator().state.takeHome).toBe('2450')
       // Nothing derived it, so the salary field stays empty.
-      expect(calculator?.state.grossSalary).toBe('')
+      expect(calculator().state.grossSalary).toBe('')
     })
 
     it('writes what has already been saved towards the goal', () => {
       renderForGoal('holiday')
 
-      fireEvent.change(fieldInput(SAVINGS_LABEL), { target: { value: '3200' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(SAVINGS_LABEL), { target: { value: '3200' } })
 
-      expect(calculator?.state.savings).toBe('3200')
+      expect(calculator().state.savings).toBe('3200')
     })
 
     it("writes the emergency fund's set-aside amount to the same field", () => {
@@ -244,9 +212,9 @@ describe('BudgetStep', () => {
       // the one key, so a second field here would strand the figure.
       renderForGoal('emergency')
 
-      fireEvent.change(fieldInput(SET_ASIDE_LABEL), { target: { value: '1500' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(SET_ASIDE_LABEL), { target: { value: '1500' } })
 
-      expect(calculator?.state.savings).toBe('1500')
+      expect(calculator().state.savings).toBe('1500')
     })
   })
 
@@ -268,9 +236,9 @@ describe('BudgetStep', () => {
     it('shows nothing for a salary of zero', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
 
-      fireEvent.change(fieldInput('Annual salary (before tax)'), { target: { value: '0' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '0' } })
 
-      expect(calculator?.state.takeHome).toBe('')
+      expect(calculator().state.takeHome).toBe('')
       expect(screen.queryByRole('link', { name: /How this is worked out/ })).toBeNull()
     })
 
@@ -287,36 +255,36 @@ describe('BudgetStep', () => {
       // the gross split over twelve months.
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
 
-      fireEvent.change(fieldInput('Annual salary (before tax)'), { target: { value: '10000' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '10000' } })
 
-      expect(calculator?.state.takeHome).toBe('833.33')
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(10000))
+      expect(calculator().state.takeHome).toBe('833.33')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(10000))
     })
 
     it('stays finite and well under gross on a seven-figure salary', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
 
-      fireEvent.change(fieldInput('Annual salary (before tax)'), { target: { value: '1000000' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '1000000' } })
 
-      const takeHome = Number(calculator?.state.takeHome)
+      const takeHome = Number(calculator().state.takeHome)
       expect(Number.isFinite(takeHome)).toBe(true)
       // Comfortably inside the additional rate, so a long way below gross/12.
       expect(takeHome).toBeGreaterThan(0)
       expect(takeHome).toBeLessThan(1000000 / 12)
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(1000000))
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(1000000))
     })
 
     it('clamps a typed minus sign to zero rather than deriving from it', () => {
       // MoneyInput clamps the negative before the step sees it; the point here
       // is that the derived take-home clears rather than keeping a stale value.
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
-      const input = fieldInput('Annual salary (before tax)')
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
 
       fireEvent.change(input, { target: { value: '45000' } })
       fireEvent.change(input, { target: { value: '-1' } })
 
-      expect(calculator?.state.grossSalary).toBe('0')
-      expect(calculator?.state.takeHome).toBe('')
+      expect(calculator().state.grossSalary).toBe('0')
+      expect(calculator().state.takeHome).toBe('')
     })
 
     it('survives being toggled back and forth without drifting', () => {
@@ -327,8 +295,8 @@ describe('BudgetStep', () => {
         fireEvent.click(modeButton(SALARY_MODE_LABEL))
       }
 
-      expect(calculator?.state.takeHomeMode).toBe('salary')
-      expect(calculator?.state.takeHome).toBe(expectedTakeHome(45000))
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(45000))
     })
   })
 
@@ -353,9 +321,9 @@ describe('BudgetStep', () => {
       renderBudgetStep({ goalId: null, takeHome: '2600' })
 
       expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(BOTH_HALVES_HEADING)
-      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(hasField(label)).toBe(true)
-      expect(hasField(SAVINGS_LABEL)).toBe(true)
-      expect(hasField(VEHICLE_TRANSPORT_LABEL)).toBe(false)
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(false)
     })
   })
 
@@ -365,7 +333,7 @@ describe('BudgetStep', () => {
       // back — only take-home and what it has set aside count.
       renderBudgetStep({ goalId: 'emergency', takeHome: '2600', housing: '', savings: '500' })
 
-      fireEvent.keyDown(fieldInput(SET_ASIDE_LABEL), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(SET_ASIDE_LABEL), { key: 'Enter' })
 
       expect(advanced).toEqual([STEP_INDEX + 1])
     })
@@ -373,7 +341,7 @@ describe('BudgetStep', () => {
     it('holds back while a visible field is still blank', () => {
       renderBudgetStep({ goalId: 'holiday', takeHome: '2600', housing: '' })
 
-      fireEvent.keyDown(fieldInput(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
 
       expect(advanced).toEqual([])
     })
@@ -398,7 +366,7 @@ describe('BudgetStep', () => {
     it('advances from the salary field too', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000', takeHome: expectedTakeHome(45000) })
 
-      fireEvent.keyDown(fieldInput('Annual salary (before tax)'), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { key: 'Enter' })
 
       expect(advanced).toEqual([STEP_INDEX + 1])
     })
@@ -406,7 +374,7 @@ describe('BudgetStep', () => {
     it('advances from an outgoing field once nothing is blank', () => {
       renderBudgetStep({ goalId: 'holiday', takeHome: '2600' })
 
-      fireEvent.keyDown(fieldInput(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
 
       expect(advanced).toEqual([STEP_INDEX + 1])
     })
@@ -414,7 +382,7 @@ describe('BudgetStep', () => {
     it('advances from the savings field', () => {
       renderBudgetStep({ goalId: 'holiday', takeHome: '2600' })
 
-      fireEvent.keyDown(fieldInput(SAVINGS_LABEL), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(SAVINGS_LABEL), { key: 'Enter' })
 
       expect(advanced).toEqual([STEP_INDEX + 1])
     })
@@ -445,7 +413,7 @@ describe('BudgetStep', () => {
 
       fireEvent.change(screen.getByLabelText('Take-home pay / month'), { target: { value: '2450' } })
 
-      expect(calculator?.state.takeHome).toBe('2450')
+      expect(calculator().state.takeHome).toBe('2450')
     })
 
     it('gives the label a for that resolves to the input, not a dangling id', () => {
@@ -468,7 +436,6 @@ describe("the car goal's transport field", () => {
 
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('is named by the label text alone, not the label plus the hint', () => {
@@ -479,7 +446,7 @@ describe("the car goal's transport field", () => {
     expect(input.getAttribute('aria-labelledby')).toBeTruthy()
     // And it is the field that actually takes the value.
     fireEvent.change(input, { target: { value: '85' } })
-    expect(calculator?.state.transport).toBe('85')
+    expect(calculator().state.transport).toBe('85')
   })
 
   it('carries the hint as its accessible description instead', () => {
@@ -517,17 +484,14 @@ describe("the car goal's transport field", () => {
 // has its own double-counting trap), and the field showing for every goal
 // including the one whose outgoings live on another step.
 describe('the regular-saving field', () => {
-  afterEach(() => {
-    cleanup()
-    calculator = null
-  })
+  afterEach(cleanup)
 
   it('writes to savingsMonthly, leaving the already-saved lump sum alone', () => {
     renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
 
     fireEvent.change(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }), { target: { value: '250' } })
-    expect(calculator?.state.savingsMonthly).toBe('250')
-    expect(calculator?.state.savings).toBe('0')
+    expect(calculator().state.savingsMonthly).toBe('250')
+    expect(calculator().state.savings).toBe('0')
   })
 
   it('shows the saving as a share of take-home pay once both figures are in', () => {

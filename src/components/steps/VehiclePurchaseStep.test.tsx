@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { VehiclePurchaseStep } from './VehiclePurchaseStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon } from '../../lib/vehicle'
 import { fmt } from '../../lib/calculations'
 import type { CalculatorState, VehicleFinanceMethod } from '../../state/types'
@@ -30,25 +29,15 @@ const noop = () => {}
 
 const PRICE = '18000'
 
-let calculator: CalculatorContextValue | null = null
 /** Every index the step asked to scroll to, so Enter-to-advance can be read off it. */
 const advanced: number[] = []
 
-/** Exposes the provider's context so a test can seed and read back the term. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 /** Renders the purchase step with arbitrary seeded state, on the car goal. */
 function renderStep(state: Partial<CalculatorState> = {}) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <VehiclePurchaseStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={(i) => advanced.push(i)} />
-    </CalculatorProvider>,
+  renderWithCalculator(
+    <VehiclePurchaseStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={(i) => advanced.push(i)} />,
+    { goalId: 'car', itemPrice: PRICE, ...state },
   )
-  act(() => calculator?.setFields({ goalId: 'car', itemPrice: PRICE, ...state }))
 }
 
 /** Renders the purchase step with a controlled starting method and term. */
@@ -58,7 +47,7 @@ function renderPurchaseStep(term: number, vehicleMethod: VehicleFinanceMethod = 
 
 const methodChip = (label: string) => screen.getByRole('button', { name: label })
 /** The term the step currently holds — the value derive/vehicle.ts will read. */
-const currentTerm = () => calculator?.state.term
+const currentTerm = () => calculator().state.term
 /** The term as the slider shows it, so the read-out can't drift from state. */
 const termSliderValue = () => Number(screen.getByRole<HTMLInputElement>('slider', { name: 'Term length' }).value)
 const slider = (name: string) => screen.getByRole<HTMLInputElement>('slider', { name })
@@ -69,7 +58,6 @@ const balloonModeButton = (label: string) => screen.getByRole('button', { name: 
 describe('VehiclePurchaseStep term clamping', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 
@@ -125,7 +113,7 @@ describe('VehiclePurchaseStep term clamping', () => {
       fireEvent.click(methodChip('Cash'))
     })
 
-    expect(calculator?.state.vehicleMethod).toBe('cash')
+    expect(calculator().state.vehicleMethod).toBe('cash')
     expect(currentTerm()).toBe(before)
     expect(currentTerm()).toBe(startTerm)
     // Cash shows no agreement, so there's no term slider to read it back from.
@@ -162,7 +150,7 @@ describe('VehiclePurchaseStep term clamping', () => {
       act(() => {
         fireEvent.click(methodChip(label))
       })
-      expect(calculator?.state.vehicleMethod).toBe(method)
+      expect(calculator().state.vehicleMethod).toBe(method)
       expect(methodChip(label).getAttribute('aria-pressed')).toBe('true')
     }
   })
@@ -171,7 +159,6 @@ describe('VehiclePurchaseStep term clamping', () => {
 describe('VehiclePurchaseStep cash summary', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 
@@ -207,7 +194,6 @@ describe('VehiclePurchaseStep cash summary', () => {
 describe('VehiclePurchaseStep term and rate', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 
@@ -217,7 +203,7 @@ describe('VehiclePurchaseStep term and rate', () => {
 
     fireEvent.change(slider('Term length'), { target: { value: String(target) } })
 
-    expect(calculator?.state.term).toBe(target)
+    expect(calculator().state.term).toBe(target)
     expect(slider('Term length').getAttribute('aria-valuetext')).toBe(`${target} months`)
   })
 
@@ -240,7 +226,7 @@ describe('VehiclePurchaseStep term and rate', () => {
 
     fireEvent.change(slider('Interest rate (APR)'), { target: { value: '11.9' } })
 
-    expect(calculator?.state.growth).toBe(11.9)
+    expect(calculator().state.growth).toBe(11.9)
     expect(slider('Interest rate (APR)').getAttribute('aria-valuetext')).toBe('11.9%')
   })
 
@@ -249,7 +235,7 @@ describe('VehiclePurchaseStep term and rate', () => {
 
     fireEvent.change(slider('Interest rate (APR)'), { target: { value: '0' } })
 
-    expect(calculator?.state.growth).toBe(0)
+    expect(calculator().state.growth).toBe(0)
   })
 
   it('shows neither slider on the cash branch', () => {
@@ -263,7 +249,6 @@ describe('VehiclePurchaseStep term and rate', () => {
 describe('VehiclePurchaseStep PCP balloon', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 
@@ -297,7 +282,7 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 
     fireEvent.click(balloonModeButton('I have a quote'))
 
-    expect(calculator?.state.balloonMode).toBe('known')
+    expect(calculator().state.balloonMode).toBe('known')
     expect(screen.getByText(QUOTE_LABEL)).toBeTruthy()
     // The age and mileage questions only exist to feed the estimate.
     expect(screen.queryByRole('slider', { name: 'How old is the car now?' })).toBeNull()
@@ -308,7 +293,7 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 
     fireEvent.change(numberInput(), { target: { value: '7500' } })
 
-    expect(calculator?.state.balloonAmount).toBe('7500')
+    expect(calculator().state.balloonAmount).toBe('7500')
   })
 
   it('switches back to estimating', () => {
@@ -316,7 +301,7 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 
     fireEvent.click(balloonModeButton('Estimate it for me'))
 
-    expect(calculator?.state.balloonMode).toBe('estimate')
+    expect(calculator().state.balloonMode).toBe('estimate')
     expect(slider('How old is the car now?')).toBeTruthy()
   })
 
@@ -325,7 +310,7 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 
     fireEvent.change(slider('How old is the car now?'), { target: { value: '0' } })
 
-    expect(calculator?.state.vehicleAge).toBe(0)
+    expect(calculator().state.vehicleAge).toBe(0)
     expect(slider('How old is the car now?').getAttribute('aria-valuetext')).toBe('Brand new')
   })
 
@@ -348,7 +333,7 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 
     fireEvent.change(numberInput(), { target: { value: '46000' } })
 
-    expect(calculator?.state.vehicleMileage).toBe('46000')
+    expect(calculator().state.vehicleMileage).toBe('46000')
   })
 
   it('shows the estimate the depreciation curve actually produces', () => {
@@ -385,7 +370,6 @@ describe('VehiclePurchaseStep PCP balloon', () => {
 describe('VehiclePurchaseStep Enter to advance', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
     advanced.length = 0
   })
 

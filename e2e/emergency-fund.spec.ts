@@ -25,7 +25,7 @@ test.describe('emergency fund', () => {
     // Budget step only needs take-home for the emergency fund. Target it by its
     // label — the Details essentials are earlier number inputs on the page.
     await page.getByRole('button', { name: 'Budget', exact: true }).click()
-    const takeHome = page.getByText('Take-home pay / month').locator('xpath=following-sibling::div//input')
+    const takeHome = page.getByLabel('Take-home pay / month')
     await takeHome.fill('3000')
 
     await page.getByRole('button', { name: 'Result', exact: true }).click()
@@ -43,7 +43,7 @@ test.describe('emergency fund', () => {
     await page.locator('input[type="number"]').nth(0).fill('1000') // housing -> £3,000 target
 
     await page.getByRole('button', { name: 'Budget', exact: true }).click()
-    await page.getByText('Take-home pay / month').locator('xpath=following-sibling::div//input').fill('3000')
+    await page.getByLabel('Take-home pay / month').fill('3000')
 
     // Plan step: switch from the default duration flavour to a fixed goal date.
     // Before the fix this toggle had no effect on the emergency result.
