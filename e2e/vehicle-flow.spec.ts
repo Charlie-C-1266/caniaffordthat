@@ -1,14 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
 /**
- * The input under a FieldLabel, found by its label text — the vehicle tiles
- * are label-heavy, and this beats brittle nth() indexing across six steps.
- */
-function labelledInput(page: Page, label: string) {
-  return page.getByText(label).locator('xpath=following-sibling::div//input')
-}
-
-/**
  * Lands on the vehicle Details step with the car named and priced. Uses the
  * carousel dot first so the auto-rotate can't move focus mid-test.
  */
@@ -19,22 +11,21 @@ async function startVehicle(page: Page, { price = '22000', deposit = '' }: { pri
 
   await page.getByPlaceholder('e.g. Volkswagen Golf').fill('VW Golf')
   await page.locator('input[type="number"]').nth(0).fill(price)
-  if (deposit) await labelledInput(page, 'Deposit / part-exchange').fill(deposit)
+  if (deposit) await page.getByLabel('Deposit / part-exchange').fill(deposit)
 }
 
 /**
- * The Road tax (VED) field, by its accessible name rather than through
- * `labelledInput`. Since #201 its label text sits in a `<span>` inside the
- * `<label>` (so the "?" hint stays out of the input's accessible name), which
- * means `getByText` returns that span and the helper's `following-sibling`
- * xpath finds nothing. Querying by name is both correct here and the
- * direction #166 is taking these specs.
+ * The Road tax (VED) field. It carries a "?" hint, so #201 moved its label
+ * text into a `<span>` inside the `<label>` to keep the hint out of the
+ * input's accessible name — which is why this one is worth naming: it is the
+ * field most likely to break a label-based query, and `getByLabel` resolves
+ * it through the `htmlFor`/`id` link rather than the markup shape.
  */
-const vedInput = (page: Page) => page.getByRole('spinbutton', { name: 'Road tax (VED) / year', exact: true })
+const vedInput = (page: Page) => page.getByLabel('Road tax (VED) / year', { exact: true })
 
 /** Fills the Budget step's take-home field and jumps to the result via the rail. */
 async function budgetAndResult(page: Page, takeHome = '2000') {
-  await labelledInput(page, 'Take-home pay / month').fill(takeHome)
+  await page.getByLabel('Take-home pay / month').fill(takeHome)
   await page.getByRole('button', { name: 'Result', exact: true }).click()
   await page.getByText('Copy result link').waitFor()
 }
@@ -61,10 +52,10 @@ test.describe('vehicle flow', () => {
     await expect(page.getByRole('button', { name: /^PCP/ })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('slider', { name: 'Interest rate (APR)' }).press('Home') // 0% for round numbers
     await page.getByRole('button', { name: 'I have a quote' }).click()
-    await labelledInput(page, 'Final payment from your quote').fill('8000')
+    await page.getByLabel('Final payment from your quote').fill('8000')
 
     // Running costs: leave only the £60/month maintenance default standing.
-    await labelledInput(page, 'Miles you drive / year').fill('0')
+    await page.getByLabel('Miles you drive / year').fill('0')
     await vedInput(page).fill('0')
 
     await budgetAndResult(page)
@@ -113,7 +104,7 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText(/£8,000.*on the day/)).toBeVisible()
 
     // Running costs: zero everything but the £60/month maintenance default.
-    await labelledInput(page, 'Miles you drive / year').fill('0')
+    await page.getByLabel('Miles you drive / year').fill('0')
     await vedInput(page).fill('0')
 
     await budgetAndResult(page)

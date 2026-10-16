@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { VehicleCostsStep } from './VehicleCostsStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { EXPENSIVE_CAR_PRICE_THRESHOLD, MAINTENANCE_PRESETS } from '../../lib/vehicle'
 import type { BalloonMode, CalculatorState, VehicleFinanceMethod } from '../../state/types'
 
@@ -25,24 +24,11 @@ const SUPPLEMENT_CAPTION = /"expensive car" tax supplement/
 const OVER_THRESHOLD_PRICE = String(EXPENSIVE_CAR_PRICE_THRESHOLD + 5000)
 const UNDER_THRESHOLD_PRICE = String(EXPENSIVE_CAR_PRICE_THRESHOLD - 5000)
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed state and read back what the step wrote. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 function renderCostsStep(state: Partial<CalculatorState> = {}, scrollToIndex: (index: number) => void = noop) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <VehicleCostsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />
-    </CalculatorProvider>,
-  )
+  renderWithCalculator(<VehicleCostsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />)
   // Seeded after mount because the provider hydrates its own initial state
   // from the URL; `revealed` mirrors having scrolled onto the step.
-  act(() => calculator?.setFields({ goalId: 'car', revealed: { [STEP_INDEX]: true }, ...state }))
+  act(() => calculator().setFields({ goalId: 'car', revealed: { [STEP_INDEX]: true }, ...state }))
 }
 
 const ageSlider = () => screen.queryByRole('slider', { name: AGE_SLIDER_LABEL })
@@ -53,22 +39,6 @@ const pressedChipNames = () =>
   MAINTENANCE_PRESETS.filter((preset) => presetChip(preset.label, preset.monthly).getAttribute('aria-pressed') === 'true').map(
     (preset) => preset.id,
   )
-
-/**
- * The money input belonging to a field label, found through the wrapper the
- * two share. Kept as-is for the fields this file already drove structurally;
- * replacing these helpers with `getByLabelText` across the suite is #166's
- * job. (The comment here used to claim FieldLabel rendered a bare `<label>`
- * with no `htmlFor` — untrue since #94.) The VED field, whose accessible
- * name is the point of the block at the end of this file, is queried by that
- * name instead.
- */
-function fieldInput(labelText: string): HTMLInputElement {
-  const [label] = screen.getAllByText((_, element) => element?.tagName === 'LABEL' && (element.textContent ?? '').startsWith(labelText))
-  const input = label?.parentElement?.querySelector('input')
-  if (!input) throw new Error(`No input found for field labelled "${labelText}"`)
-  return input
-}
 
 /** The text an assistive technology would read as `element`'s description, by resolving aria-describedby. */
 function accessibleDescription(element: HTMLElement): string {
@@ -82,7 +52,6 @@ function accessibleDescription(element: HTMLElement): string {
 describe('VehicleCostsStep', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   describe('the car-age question', () => {
@@ -115,7 +84,7 @@ describe('VehicleCostsStep', () => {
       act(() => {
         fireEvent.change(slider as HTMLInputElement, { target: { value: '7' } })
       })
-      expect(calculator?.state.vehicleAge).toBe(7)
+      expect(calculator().state.vehicleAge).toBe(7)
       expect(ageSlider()?.getAttribute('aria-valuetext')).toBe('7 years')
     })
 
@@ -163,15 +132,15 @@ describe('VehicleCostsStep', () => {
       expect(pressedChipNames()).toEqual([])
 
       fireEvent.click(presetChip(preset.label, preset.monthly))
-      expect(calculator?.state.maintenanceMonthly).toBe(String(preset.monthly))
-      expect(fieldInput(MAINTENANCE_LABEL).value).toBe(String(preset.monthly))
+      expect(calculator().state.maintenanceMonthly).toBe(String(preset.monthly))
+      expect(screen.getByLabelText<HTMLInputElement>(MAINTENANCE_LABEL).value).toBe(String(preset.monthly))
       expect(pressedChipNames()).toEqual([preset.id])
     })
 
     it('lights up the preset a typed amount happens to match', () => {
       const [budget] = MAINTENANCE_PRESETS
       renderCostsStep({ maintenanceMonthly: '' })
-      fireEvent.change(fieldInput(MAINTENANCE_LABEL), { target: { value: String(budget.monthly) } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(MAINTENANCE_LABEL), { target: { value: String(budget.monthly) } })
       expect(pressedChipNames()).toEqual([budget.id])
     })
 
@@ -180,8 +149,8 @@ describe('VehicleCostsStep', () => {
       renderCostsStep({ maintenanceMonthly: String(budget.monthly) })
       expect(pressedChipNames()).toEqual([budget.id])
 
-      fireEvent.change(fieldInput(MAINTENANCE_LABEL), { target: { value: '47' } })
-      expect(calculator?.state.maintenanceMonthly).toBe('47')
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(MAINTENANCE_LABEL), { target: { value: '47' } })
+      expect(calculator().state.maintenanceMonthly).toBe('47')
       expect(pressedChipNames()).toEqual([])
     })
   })
@@ -201,21 +170,21 @@ describe('VehicleCostsStep', () => {
 
     it.each(fields)('writes what is typed in "$label" to $key', ({ label, key, typed }) => {
       renderCostsStep()
-      fireEvent.change(fieldInput(label), { target: { value: typed } })
-      expect(calculator?.state[key]).toBe(typed)
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(label), { target: { value: typed } })
+      expect(calculator().state[key]).toBe(typed)
     })
 
     it.each(fields)('advances to the next step on Enter in "$label"', ({ label }) => {
       const scrollToIndex = vi.fn()
       renderCostsStep({}, scrollToIndex)
-      fireEvent.keyDown(fieldInput(label), { key: 'Enter' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(label), { key: 'Enter' })
       expect(scrollToIndex).toHaveBeenCalledWith(STEP_INDEX + 1)
     })
 
     it('ignores other keys rather than advancing on any keystroke', () => {
       const scrollToIndex = vi.fn()
       renderCostsStep({}, scrollToIndex)
-      fireEvent.keyDown(fieldInput('Average fuel economy'), { key: 'a' })
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>('Average fuel economy'), { key: 'a' })
       expect(scrollToIndex).not.toHaveBeenCalled()
     })
   })
@@ -236,7 +205,7 @@ describe('VehicleCostsStep', () => {
       // And it is the field that actually takes the value, not some other
       // element that happens to carry the name.
       fireEvent.change(input, { target: { value: '275' } })
-      expect(calculator?.state.taxAnnual).toBe('275')
+      expect(calculator().state.taxAnnual).toBe('275')
     })
 
     it('carries the hint as its accessible description instead', () => {

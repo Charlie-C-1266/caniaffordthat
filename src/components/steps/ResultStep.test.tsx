@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { screen, cleanup, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { ResultStep } from './ResultStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import type { CalculatorState } from '../../state/types'
 
 // The calculation engines behind this step are well tested; what wasn't is
@@ -19,24 +18,11 @@ const EMERGENCY_FALLBACK = 'Scroll back up and add your take-home pay and monthl
 const VEHICLE_FALLBACK = "Scroll back up and fill in the car's price and your take-home pay to see your result."
 const GENERIC_FALLBACK = 'Scroll back up and fill in a price and take-home pay to see your result.'
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed the state the earlier steps would have captured. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 function renderResultStep(state: Partial<CalculatorState>) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <ResultStep index={STEP_INDEX} panelRef={noop} scrollToIndex={noop} />
-    </CalculatorProvider>,
-  )
+  renderWithCalculator(<ResultStep index={STEP_INDEX} panelRef={noop} scrollToIndex={noop} />)
   // `revealed` keeps the tile visible; the cards render either way, but this
   // matches how the step is actually reached.
-  act(() => calculator?.setFields({ revealed: { [STEP_INDEX]: true }, ...state }))
+  act(() => calculator().setFields({ revealed: { [STEP_INDEX]: true }, ...state }))
 }
 
 /** The vehicle card, identified by a breakdown heading only it renders. */
@@ -47,7 +33,6 @@ const standardCardIsShown = () => screen.queryByText('SPARE CASH') !== null
 describe('ResultStep routing', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   describe('with complete inputs', () => {
@@ -122,7 +107,7 @@ describe('ResultStep routing', () => {
     renderResultStep({ goalId: 'car', takeHome: '2600' })
     expect(screen.getByText(VEHICLE_FALLBACK)).toBeTruthy()
 
-    act(() => calculator?.setField('itemPrice', '18000'))
+    act(() => calculator().setField('itemPrice', '18000'))
     expect(vehicleCardIsShown()).toBe(true)
     expect(standardCardIsShown()).toBe(false)
     expect(screen.queryByText(VEHICLE_FALLBACK)).toBeNull()

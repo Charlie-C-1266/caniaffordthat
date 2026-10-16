@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { PlanStep } from './PlanStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { monthYearFromMonths } from '../../lib/calculations'
 import type { CalculatorState } from '../../state/types'
 
@@ -34,28 +33,15 @@ const CAPTION_TEXT = /spare cash( a month)?\.$/
 const STEP_INDEX = 3
 const noop = () => {}
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed the budget the earlier steps would have captured. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 /**
  * Renders the Plan step on a saving plan with a known spare cash figure.
  * `monthlyAmount` seeds the fixed-amount field as if the user had already
  * typed into it.
  */
 function renderDurationPlan(monthlyAmount = '') {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <PlanStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} />
-    </CalculatorProvider>,
-  )
+  renderWithCalculator(<PlanStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} />)
   act(() =>
-    calculator?.setFields({
+    calculator().setFields({
       mode: 'save',
       saveFlavor: 'duration',
       takeHome: TAKE_HOME,
@@ -68,19 +54,14 @@ function renderDurationPlan(monthlyAmount = '') {
 
 /** Renders the Plan step with arbitrary seeded state, for the flavours and modes the duration helper doesn't cover. */
 function renderPlanStep(state: Partial<CalculatorState>) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <PlanStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} />
-    </CalculatorProvider>,
-  )
-  act(() => calculator?.setFields(state))
+  renderWithCalculator(<PlanStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} />, state)
 }
 
 const fixedAmountButton = () => screen.getByRole('button', { name: 'Fixed amount' })
 const percentButton = () => screen.getByRole('button', { name: '% of spare cash' })
 /** The "Monthly saving" money input — only rendered while the fixed-amount mode is active. */
-const amountInput = () => screen.getByRole<HTMLInputElement>('spinbutton')
+/** The "Monthly saving" money field, by its own label rather than "the only spinbutton on the step". */
+const amountInput = () => screen.getByLabelText<HTMLInputElement>('Monthly saving')
 const durationButton = () => screen.getByRole('button', { name: 'How long will it take?' })
 const goalDateButton = () => screen.getByRole('button', { name: 'I have a goal date' })
 /** The masked MM-YYYY field — only rendered on the goal-date flavour. */
@@ -93,7 +74,6 @@ const heading = () => screen.getByRole('heading', { level: 2 })
 describe('PlanStep fixed-amount seeding', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('starts on the % slider, with the %-equivalent shown in its read-out', () => {
@@ -161,14 +141,13 @@ describe('PlanStep fixed-amount seeding', () => {
     fireEvent.click(fixedAmountButton())
     fireEvent.change(amountInput(), { target: { value: '275' } })
 
-    expect(calculator?.state.monthlyAmount).toBe('275')
+    expect(calculator().state.monthlyAmount).toBe('275')
   })
 })
 
 describe('PlanStep fixed-amount caption', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('reads the amount back as a share of spare cash', () => {
@@ -215,7 +194,6 @@ describe('PlanStep fixed-amount caption', () => {
 describe('PlanStep goal-date flavour', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('swaps the duration inputs for a goal-date field', () => {
@@ -223,7 +201,7 @@ describe('PlanStep goal-date flavour', () => {
 
     fireEvent.click(goalDateButton())
 
-    expect(calculator?.state.saveFlavor).toBe('goal')
+    expect(calculator().state.saveFlavor).toBe('goal')
     expect(goalDateInput()).toBeTruthy()
     // The % / fixed-amount choice belongs to the duration flavour only.
     expect(screen.queryByRole('button', { name: 'Fixed amount' })).toBeNull()
@@ -237,7 +215,7 @@ describe('PlanStep goal-date flavour', () => {
 
     fireEvent.change(goalDateInput(), { target: { value: monthYearFromMonths(18) } })
 
-    expect(calculator?.state.goalMonths).toBe(18)
+    expect(calculator().state.goalMonths).toBe(18)
   })
 
   it('keeps the savings-interest slider, which both flavours share', () => {
@@ -251,7 +229,7 @@ describe('PlanStep goal-date flavour', () => {
 
     fireEvent.click(durationButton())
 
-    expect(calculator?.state.saveFlavor).toBe('duration')
+    expect(calculator().state.saveFlavor).toBe('duration')
     expect(screen.queryByPlaceholderText('MM-YYYY')).toBeNull()
     expect(percentButton()).toBeTruthy()
   })
@@ -260,7 +238,6 @@ describe('PlanStep goal-date flavour', () => {
 describe('PlanStep savings interest', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   it('writes the chosen rate and reads it back', () => {
@@ -268,7 +245,7 @@ describe('PlanStep savings interest', () => {
 
     fireEvent.change(slider('Expected savings interest (optional)'), { target: { value: '4.5' } })
 
-    expect(calculator?.state.growth).toBe(4.5)
+    expect(calculator().state.growth).toBe(4.5)
     expect(slider('Expected savings interest (optional)').getAttribute('aria-valuetext')).toBe('4.5%')
   })
 
@@ -283,7 +260,6 @@ describe('PlanStep savings interest', () => {
 describe('PlanStep finance mode', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   /** Paying monthly rather than saving up — the step's other half entirely. */
@@ -305,7 +281,7 @@ describe('PlanStep finance mode', () => {
 
     fireEvent.change(slider('Term length'), { target: { value: '36' } })
 
-    expect(calculator?.state.term).toBe(36)
+    expect(calculator().state.term).toBe(36)
     expect(slider('Term length').getAttribute('aria-valuetext')).toBe('36 months')
   })
 
@@ -327,7 +303,7 @@ describe('PlanStep finance mode', () => {
 
     fireEvent.change(slider('Term length'), { target: { value: '60' } })
 
-    expect(calculator?.state.term).toBe(60)
+    expect(calculator().state.term).toBe(60)
     expect(slider('Term length').getAttribute('aria-valuetext')).toBe('60 months')
   })
 
@@ -337,7 +313,7 @@ describe('PlanStep finance mode', () => {
 
     fireEvent.change(slider('Interest rate (APR)'), { target: { value: '9.9' } })
 
-    expect(calculator?.state.growth).toBe(9.9)
+    expect(calculator().state.growth).toBe(9.9)
     expect(slider('Interest rate (APR)').getAttribute('aria-valuetext')).toBe('9.9%')
     expect(slider('Interest rate (APR)').getAttribute('max')).toBe('30')
   })
@@ -347,7 +323,7 @@ describe('PlanStep finance mode', () => {
 
     fireEvent.change(slider('Interest rate (APR)'), { target: { value: '0' } })
 
-    expect(calculator?.state.growth).toBe(0)
+    expect(calculator().state.growth).toBe(0)
     expect(slider('Interest rate (APR)').getAttribute('aria-valuetext')).toBe('0%')
   })
 })

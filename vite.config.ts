@@ -56,7 +56,11 @@ export default defineConfig({
       // to spot. `src/docs/*-main.tsx` covers the three docs pages' entries
       // (sources, salary, vehicle) by the naming convention they share, so a
       // fourth docs page is excluded without touching this list.
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts', 'src/main.tsx', 'src/docs/*-main.tsx'],
+      // `src/test/**` is the shared test plumbing from #166 — test code that
+      // happens not to be named *.test.tsx. It never reaches the bundle, and
+      // measuring it would park a row in the coverage table for the error
+      // paths that exist precisely so they never run.
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/*.d.ts', 'src/main.tsx', 'src/docs/*-main.tsx'],
       reporter: ['text', 'html'],
       /*
        * The gate (#178). A flat 100% on all four metrics: the backlog that

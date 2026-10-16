@@ -131,7 +131,7 @@ test.describe('core flow', () => {
 
     // Swap the % slider for a typed fixed amount, and set £300/month.
     await page.getByRole('button', { name: 'Fixed amount' }).click()
-    const amountInput = page.getByText('Monthly saving', { exact: true }).locator('xpath=following-sibling::div//input')
+    const amountInput = page.getByLabel('Monthly saving')
     await amountInput.fill('300')
 
     await goToResult(page)

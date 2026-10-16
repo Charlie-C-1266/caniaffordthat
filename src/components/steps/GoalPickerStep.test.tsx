@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { GoalPickerStep } from './GoalPickerStep'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { GOALS, INITIAL_CAROUSEL_INDEX, circularOffset, seedFromGoal, type Goal } from '../../lib/goals'
 import type { CalculatorState } from '../../state/types'
 
@@ -29,14 +28,6 @@ const CAR = GOALS[0]
 const HOLIDAY = GOALS[1]
 const MORTGAGE = GOALS[LAST_INDEX]
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed state and read back what the step wrote. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 /** jsdom has no media-query engine, so the reduced-motion check is stubbed per test. */
 function stubReducedMotion(reduce: boolean) {
   vi.stubGlobal(
@@ -46,18 +37,13 @@ function stubReducedMotion(reduce: boolean) {
 }
 
 function renderPicker(state: Partial<CalculatorState> = {}, scrollToIndex: (index: number) => void = noop) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <GoalPickerStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />
-    </CalculatorProvider>,
-  )
+  renderWithCalculator(<GoalPickerStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />)
   // Seeded after mount because the provider hydrates its own initial state
   // from the URL.
-  if (Object.keys(state).length > 0) act(() => calculator?.setFields(state))
+  if (Object.keys(state).length > 0) act(() => calculator().setFields(state))
 }
 
-const carouselIndex = () => calculator?.state.carouselIndex
+const carouselIndex = () => calculator().state.carouselIndex
 
 /** A goal's card, whichever of its three accessible names it currently carries. */
 const cardFor = (goal: Goal) =>
@@ -124,7 +110,6 @@ describe('GoalPickerStep', () => {
 
   afterEach(() => {
     cleanup()
-    calculator = null
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -174,7 +159,7 @@ describe('GoalPickerStep', () => {
     it('stops for good once a goal is selected', () => {
       renderPicker()
       fireEvent.click(cardFor(CAR))
-      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(calculator().state.goalId).toBe(CAR.id)
 
       advanceBy(AUTO_ROTATE_MS * 3)
       expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
@@ -213,7 +198,7 @@ describe('GoalPickerStep', () => {
 
       fireEvent.click(cardFor(HOLIDAY))
       expect(carouselIndex()).toBe(1)
-      expect(calculator?.state.goalId).toBeNull()
+      expect(calculator().state.goalId).toBeNull()
       // It's now the focused card, so a second click would select it.
       expect(cardFor(HOLIDAY).getAttribute('aria-label')).toBe(`Continue with ${HOLIDAY.name}`)
     })
@@ -222,10 +207,10 @@ describe('GoalPickerStep', () => {
       const scrollToIndex = vi.fn()
       renderPicker({}, scrollToIndex)
       fireEvent.click(cardFor(HOLIDAY))
-      expect(calculator?.state.goalId).toBeNull()
+      expect(calculator().state.goalId).toBeNull()
 
       fireEvent.click(cardFor(HOLIDAY))
-      expect(calculator?.state.goalId).toBe(HOLIDAY.id)
+      expect(calculator().state.goalId).toBe(HOLIDAY.id)
       advanceBy(SELECT_SCROLL_DELAY_MS)
       expect(scrollToIndex).toHaveBeenCalledWith(STEP_INDEX + 1)
     })
@@ -237,12 +222,12 @@ describe('GoalPickerStep', () => {
       fireEvent.click(cardFor(CAR))
       const seeds = seedFromGoal(CAR)
       for (const [key, value] of Object.entries(seeds)) {
-        expect(calculator?.state[key as keyof CalculatorState]).toEqual(value)
+        expect(calculator().state[key as keyof CalculatorState]).toEqual(value)
       }
       // The car's seeds are the ones worth naming outright.
-      expect(calculator?.state.mode).toBe('monthly')
-      expect(calculator?.state.term).toBe(48)
-      expect(calculator?.state.growth).toBe(9.9)
+      expect(calculator().state.mode).toBe('monthly')
+      expect(calculator().state.term).toBe(48)
+      expect(calculator().state.growth).toBe(9.9)
     })
 
     it('holds the scroll back for a beat rather than jumping straight on', () => {
@@ -262,7 +247,7 @@ describe('GoalPickerStep', () => {
       const scrollToIndex = vi.fn()
       renderPicker({}, scrollToIndex)
       fireEvent.click(screen.getByRole('button', { name: `Get started with ${CAR.name}` }))
-      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(calculator().state.goalId).toBe(CAR.id)
       advanceBy(SELECT_SCROLL_DELAY_MS)
       expect(scrollToIndex).toHaveBeenCalledWith(STEP_INDEX + 1)
     })
@@ -284,7 +269,7 @@ describe('GoalPickerStep', () => {
       fireEvent.click(cta)
 
       advanceBy(SELECT_SCROLL_DELAY_MS)
-      expect(calculator?.state.goalId).toBeNull()
+      expect(calculator().state.goalId).toBeNull()
       expect(scrollToIndex).not.toHaveBeenCalled()
     })
   })
@@ -340,7 +325,7 @@ describe('GoalPickerStep', () => {
       advanceBy(SELECT_SCROLL_DELAY_MS - 1)
       fireEvent.click(dotFor(HOLIDAY))
       fireEvent.click(cardFor(HOLIDAY))
-      expect(calculator?.state.goalId).toBe(HOLIDAY.id)
+      expect(calculator().state.goalId).toBe(HOLIDAY.id)
 
       // The first click's deadline passes without a scroll: its timer was
       // replaced, not left to fire a beat early.
@@ -387,7 +372,7 @@ describe('GoalPickerStep', () => {
       fireEvent.click(cta)
 
       advanceBy(SELECT_SCROLL_DELAY_MS * 4)
-      expect(calculator?.state.goalId).toBeNull()
+      expect(calculator().state.goalId).toBeNull()
       expect(scrollToIndex).not.toHaveBeenCalled()
       expect(vi.getTimerCount()).toBe(0)
     })
@@ -412,7 +397,7 @@ describe('GoalPickerStep', () => {
 
       // The car's scroll still lands, and the goal is still the car.
       advanceBy(SELECT_SCROLL_DELAY_MS)
-      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(calculator().state.goalId).toBe(CAR.id)
       expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
     })
 
@@ -614,7 +599,7 @@ describe('GoalPickerStep', () => {
       fireEvent.mouseOver(ctaFor(CAR))
       fireEvent.click(ctaFor(CAR))
 
-      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(calculator().state.goalId).toBe(CAR.id)
       advanceBy(SELECT_SCROLL_DELAY_MS)
       expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
     })
@@ -694,7 +679,7 @@ describe('GoalPickerStep', () => {
       fireEvent.click(cta)
 
       expect(ctaTransform(CAR)).toBe(CTA_RESTING)
-      expect(calculator?.state.goalId).toBe(CAR.id)
+      expect(calculator().state.goalId).toBe(CAR.id)
     })
 
     it('still hovers the arrow normally with a mouse after an earlier tap', () => {

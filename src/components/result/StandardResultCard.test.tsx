@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { screen, cleanup } from '@testing-library/react'
+import { renderWithCalculator } from '../../test/renderWithCalculator'
 import { StandardResultCard } from './StandardResultCard'
-import { CalculatorProvider } from '../../state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from '../../state/calculatorContext'
 import { budgetBreakdown } from '../../lib/budgetSplit'
 import { DEFAULT_STATE } from '../../state/defaults'
 import type { DerivedResult } from '../../lib/derive'
@@ -16,14 +15,6 @@ import type { CalculatorState } from '../../state/types'
 // derive(), so a row can be pinned to exactly one field of the result.
 
 const noop = () => {}
-
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so a test can seed the state the earlier steps would have captured. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
 
 /** A plain savings result: no finance totals, no reverse-salary panel. */
 function savingsResult(overrides: Partial<DerivedResult> = {}): DerivedResult {
@@ -57,13 +48,7 @@ function savingsResult(overrides: Partial<DerivedResult> = {}): DerivedResult {
 
 /** Renders the card under a provider seeded with the fields it reads off state. */
 function renderCard(result: DerivedResult, state: Partial<CalculatorState> = {}) {
-  render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <StandardResultCard result={result} scrollToIndex={noop} />
-    </CalculatorProvider>,
-  )
-  act(() => calculator?.setFields(state))
+  renderWithCalculator(<StandardResultCard result={result} scrollToIndex={noop} />, state)
 }
 
 /** The £ value rendered next to a breakdown label, or null when the row is absent. */
@@ -75,7 +60,6 @@ function rowValue(label: string): string | null {
 describe('StandardResultCard', () => {
   afterEach(() => {
     cleanup()
-    calculator = null
   })
 
   describe('the finance-only total rows', () => {

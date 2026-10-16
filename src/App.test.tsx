@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
-import { render, screen, cleanup, fireEvent, act, within } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act, within } from '@testing-library/react'
+import { renderWithCalculator, calculator } from './test/renderWithCalculator'
 import { App } from './App'
-import { CalculatorProvider } from './state/CalculatorProvider'
-import { useCalculator, type CalculatorContextValue } from './state/calculatorContext'
 import { flowForGoal } from './lib/flow'
 import { GOALS, goalById } from './lib/goals'
 
@@ -24,24 +23,11 @@ class FakeIntersectionObserver {
 let scrollTo: MockInstance<typeof window.scrollTo>
 let replaceState: MockInstance<typeof window.history.replaceState>
 
-let calculator: CalculatorContextValue | null = null
-
-/** Exposes the provider's context so the flow can be driven past hydration's own rules. */
-function CaptureContext() {
-  calculator = useCalculator()
-  return null
-}
-
 /** Renders the app at `search`, as if the page had been opened at that URL. */
 function renderApp(search = '') {
   window.history.replaceState({}, '', `/${search}`)
   replaceState.mockClear()
-  return render(
-    <CalculatorProvider>
-      <CaptureContext />
-      <App />
-    </CalculatorProvider>,
-  )
+  return renderWithCalculator(<App />)
 }
 
 /** The step labels the progress rail is currently offering — one per step in the active flow. */
@@ -75,7 +61,6 @@ describe('App', () => {
 
   afterEach(() => {
     cleanup()
-    calculator = null
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
@@ -135,7 +120,7 @@ describe('App', () => {
         const { container } = renderApp()
         // Set through context rather than the URL: hydration refuses a "Soon"
         // goal, and this guard is about the switch, not about hydration.
-        act(() => calculator?.setField('goalId', goalId))
+        act(() => calculator().setField('goalId', goalId))
 
         const expectedFlow = flowForGoal(goalById(goalId))
         const main = container.querySelector('main')
@@ -162,7 +147,7 @@ describe('App', () => {
     for (const goalId of goalIds) {
       it(`has exactly one h1, the landing question, for ${goalId ?? 'no goal'}`, () => {
         renderApp()
-        act(() => calculator?.setField('goalId', goalId))
+        act(() => calculator().setField('goalId', goalId))
 
         const outline = headingOutline()
         expect(outline.filter(([level]) => level === 1)).toEqual([[1, LANDING_QUESTION]])
@@ -177,7 +162,7 @@ describe('App', () => {
       // A full save flow with a result showing — the case the issue measured,
       // where five separate h1s used to appear.
       act(() =>
-        calculator?.setFields({
+        calculator().setFields({
           goalId: 'holiday',
           itemPrice: '4000',
           takeHome: '2600',
@@ -207,7 +192,7 @@ describe('App', () => {
 
     it("keeps the vehicle flow's two bespoke questions at level 2 as well", () => {
       renderApp()
-      act(() => calculator?.setFields({ goalId: 'car', itemPrice: '18000', takeHome: '2600' }))
+      act(() => calculator().setFields({ goalId: 'car', itemPrice: '18000', takeHome: '2600' }))
 
       expect(screen.getByRole('heading', { level: 2, name: 'How are you buying it?' })).toBeTruthy()
       expect(screen.getByRole('heading', { level: 2, name: 'What will it cost to keep on the road?' })).toBeTruthy()
@@ -216,7 +201,7 @@ describe('App', () => {
 
     it('keeps the finance variant of the Plan step at level 2', () => {
       renderApp()
-      act(() => calculator?.setFields({ goalId: 'big', mode: 'monthly', itemPrice: '1200', takeHome: '2000' }))
+      act(() => calculator().setFields({ goalId: 'big', mode: 'monthly', itemPrice: '1200', takeHome: '2000' }))
 
       expect(screen.getByRole('heading', { level: 2, name: 'Term and rate?' })).toBeTruthy()
       expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(1)
@@ -263,13 +248,13 @@ describe('App', () => {
 
     it('resets the calculator state itself, not just the URL', () => {
       renderApp(SHARED_LINK)
-      expect(calculator?.state.itemPrice).toBe('18000')
+      expect(calculator().state.itemPrice).toBe('18000')
 
       fireEvent.click(screen.getByRole('button', { name: 'Start over' }))
 
-      expect(calculator?.state.goalId).toBeNull()
-      expect(calculator?.state.itemPrice).toBe('')
-      expect(calculator?.state.takeHome).toBe('')
+      expect(calculator().state.goalId).toBeNull()
+      expect(calculator().state.itemPrice).toBe('')
+      expect(calculator().state.takeHome).toBe('')
     })
   })
 })

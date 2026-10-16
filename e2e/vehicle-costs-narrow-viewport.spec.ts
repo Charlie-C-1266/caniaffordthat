@@ -19,11 +19,6 @@ const FUEL_FIELDS = [
   { label: 'Fuel price', value: '148.9' },
 ] as const
 
-/** The input under a FieldLabel, found by its label text — as in vehicle-flow.spec.ts. */
-function labelledInput(page: Page, label: string) {
-  return page.getByText(label).locator('xpath=following-sibling::div//input')
-}
-
 /** Lands on the vehicle flow's Running costs step with the car named and priced. */
 async function goToRunningCosts(page: Page) {
   await page.goto('/')
@@ -39,7 +34,7 @@ async function goToRunningCosts(page: Page) {
 
 /** How many columns the fuel grid has resolved to at the current width. */
 async function fuelGridColumnCount(page: Page): Promise<number> {
-  return labelledInput(page, 'Fuel price').evaluate((el) => {
+  return page.getByLabel('Fuel price').evaluate((el) => {
     let node = el.parentElement
     while (node && getComputedStyle(node).display !== 'grid') node = node.parentElement
     if (!node) throw new Error('No grid ancestor found for the fuel fields')
@@ -74,7 +69,7 @@ test.describe('vehicle running costs at a narrow viewport', () => {
     expect(await fuelGridColumnCount(page)).toBe(1)
 
     for (const field of FUEL_FIELDS) {
-      const input = labelledInput(page, field.label)
+      const input = page.getByLabel(field.label)
       await input.fill(field.value)
 
       const { contentWidth, clipped } = await measure(input)
@@ -90,7 +85,7 @@ test.describe('vehicle running costs at a narrow viewport', () => {
     await goToRunningCosts(page)
 
     for (const field of FUEL_FIELDS) {
-      const input = labelledInput(page, field.label)
+      const input = page.getByLabel(field.label)
       await input.fill(field.value)
       const { contentWidth } = await measure(input)
       expect(contentWidth, `${field.label} has no room for its value`).toBeGreaterThan(0)
@@ -102,7 +97,7 @@ test.describe('vehicle running costs at a narrow viewport', () => {
     await goToRunningCosts(page)
 
     for (const [index, field] of FUEL_FIELDS.entries()) {
-      const input = labelledInput(page, field.label)
+      const input = page.getByLabel(field.label)
       await input.fill(field.value)
 
       const unit = page.getByText(['miles', 'mpg', 'p/litre'][index], { exact: true }).last()
@@ -131,7 +126,7 @@ test.describe('vehicle running costs at a narrow viewport', () => {
 
     const xs = []
     for (const field of FUEL_FIELDS) {
-      const box = await labelledInput(page, field.label).boundingBox()
+      const box = await page.getByLabel(field.label).boundingBox()
       expect(box).not.toBeNull()
       xs.push(box!.x)
     }

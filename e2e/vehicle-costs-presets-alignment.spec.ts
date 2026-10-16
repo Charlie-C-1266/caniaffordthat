@@ -29,7 +29,10 @@ async function measure(page: Page): Promise<Metrics> {
   return page.evaluate(() => {
     const labels = [...document.querySelectorAll('label')]
     const labelled = (text: string) => labels.find((l) => l.textContent?.includes(text))
-    const inputFor = (text: string) => labelled(text)?.parentElement?.querySelector('input')
+    // `label.control` is the DOM's own label-to-input link (#94's htmlFor/id),
+    // which is what getByLabel resolves outside evaluate. Walking the markup
+    // instead would break the next time a field is re-wrapped.
+    const inputFor = (text: string) => labelled(text)?.control as HTMLInputElement | null | undefined
 
     const insuranceInput = inputFor('Insurance / year')
     const vedInput = inputFor('Road tax (VED)')
@@ -136,7 +139,7 @@ test.describe('vehicle running costs — preset chips and field alignment', () =
     await goToRunningCosts(page)
 
     // "No behaviour change" is the other half of the issue.
-    const maintenance = page.getByText('Maintenance / month').locator('xpath=following-sibling::div//input')
+    const maintenance = page.getByLabel('Maintenance / month')
     await page.getByRole('button', { name: 'Premium £130' }).click()
     await expect(maintenance).toHaveValue('130')
     await page.getByRole('button', { name: 'Budget £35' }).click()
