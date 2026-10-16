@@ -12,6 +12,12 @@ import type { CalculatorState } from '../state/types'
 // and every label a key, that the default state actually carries them, and
 // that derive.ts really sums exactly this list and no other field.
 
+/** DEFAULT_STATE with the five outgoing fields set to the given amounts. */
+const withOutgoings = (values: Record<OutgoingFieldKey, string>): CalculatorState => ({
+  ...DEFAULT_STATE,
+  ...values,
+})
+
 describe('OUTGOING_FIELD_KEYS', () => {
   it('contains exactly the five outgoing fields, in display order', () => {
     // Order is load-bearing: both grids render in array order, so a reorder is
@@ -35,7 +41,7 @@ describe('OUTGOING_FIELD_LABELS', () => {
   it('has no labels for keys outside OUTGOING_FIELD_KEYS', () => {
     // The other half of the parity check: a label left behind after a key is
     // removed would make the two collections disagree about the field set.
-    expect(Object.keys(OUTGOING_FIELD_LABELS).sort()).toEqual([...OUTGOING_FIELD_KEYS].sort())
+    expect(Object.keys(OUTGOING_FIELD_LABELS).toSorted()).toEqual(OUTGOING_FIELD_KEYS.toSorted())
   })
 
   it('gives each field a distinct label', () => {
@@ -62,11 +68,6 @@ describe('default state coverage', () => {
 })
 
 describe('derive.ts reads exactly these keys', () => {
-  const withOutgoings = (values: Record<OutgoingFieldKey, string>): CalculatorState => ({
-    ...DEFAULT_STATE,
-    ...values,
-  })
-
   it('sums every outgoing key into monthlyOutgoingsOf', () => {
     const state = withOutgoings({ housing: '900', utilities: '150', groceries: '300', transport: '120', debts: '80' })
     expect(monthlyOutgoingsOf(state)).toBe(900 + 150 + 300 + 120 + 80)

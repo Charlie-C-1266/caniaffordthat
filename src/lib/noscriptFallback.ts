@@ -91,7 +91,7 @@ function noscriptStyles(): string {
  * a React app too, so a link would only take a visitor without JavaScript to
  * another copy of this message.
  */
-export function noscriptInnerHtml(): string {
+function noscriptInnerHtml(): string {
   return `
     <style>${noscriptStyles()}</style>
     <div class="${NOSCRIPT_CLASS}">

@@ -51,6 +51,12 @@ function useHarness() {
   return { ...observerApi, activeIndex: state.activeIndex, revealed: state.revealed }
 }
 
+/** One panel registered through a JSX ref, the way React attaches refs during commit. */
+function Panels() {
+  const { registerPanel } = useStepObserver()
+  return <div data-testid="panel-0" ref={registerPanel(0)} />
+}
+
 /**
  * Step 0 registered with no element and step 1 with a real node. React calls
  * a ref callback with null when its element goes away, so this is the shape
@@ -228,10 +234,6 @@ describe('useStepObserver', () => {
     // In a real component tree, React attaches ref callbacks during commit,
     // *before* effects run — so the observer's setup effect must pick up
     // already-registered panels rather than relying on later registration.
-    function Panels() {
-      const { registerPanel } = useStepObserver()
-      return <div data-testid="panel-0" ref={registerPanel(0)} />
-    }
     render(
       <CalculatorProvider>
         <Panels />

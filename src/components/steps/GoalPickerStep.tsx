@@ -248,16 +248,16 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
     prevIndexRef.current = state.carouselIndex
   }, [state.carouselIndex])
 
-  const focus = (index: number) => setField('carouselIndex', wrapIndex(index))
+  const focus = (nextIndex: number) => setField('carouselIndex', wrapIndex(nextIndex))
 
   const move = (delta: number) => {
     setEngaged(true)
     focus(state.carouselIndex + delta)
   }
 
-  const goTo = (index: number) => {
+  const goTo = (nextIndex: number) => {
     setEngaged(true)
-    focus(index)
+    focus(nextIndex)
   }
 
   // The pending post-selection scroll, held so it can be cancelled — see
