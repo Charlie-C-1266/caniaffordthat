@@ -152,3 +152,23 @@ rules.
 
 To force a build anyway, open the deployment in the Vercel dashboard, choose
 **Redeploy**, and untick **Use project's Ignore Build Step**.
+
+### Response headers on Vercel
+
+`vercel.json` also defines the production response headers: the four security
+headers on every route, a year of `immutable` caching for the hashed
+`/assets/`, an hour for the unhashed public files, and `no-cache` for each HTML
+page. These mirror `nginx.conf`, which only reaches self-hosters, so the two
+files must stay in step — `src/lib/vercelHeaders.test.ts` fails if a header is
+added, dropped or changed on one side only, or if the `/assets/` cache value
+drifts. Adding a header is therefore a two-file change.
+
+`trailingSlash: true` is set there too, so `/sources` redirects to `/sources/`
+— the form the canonical URLs and the sitemap use.
+
+After a deploy, `scripts/verify-headers.sh <url>` checks the served headers
+against the same expectations, on Vercel or on a self-hosted container alike.
+Two of its assertions are nginx-only: it expects no `Cache-Control` on a 404,
+which nginx achieves with an `always`-less `add_header`. Vercel matches headers
+by path with no condition on status, so a 404 under `/assets/` or a directory
+without an index carries the rule for its path.
