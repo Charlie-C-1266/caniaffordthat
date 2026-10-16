@@ -4,7 +4,7 @@ export interface SegmentedOption<T extends string> {
   label: string
   /** Button background while this option is selected. */
   activeBackground: string
-  /** Label color while selected (must contrast with `activeBackground`). */
+  /** Label colour while selected (must contrast with `activeBackground`). */
   activeColor: string
 }
 

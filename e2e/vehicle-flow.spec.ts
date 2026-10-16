@@ -80,7 +80,7 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText('TOTAL IF YOU KEEP IT').locator('xpath=following-sibling::span')).toHaveText('£22,000')
 
     // The car's deposit was captured in Details, so Budget never asks twice.
-    await expect(page.getByText('Already saved toward this')).toHaveCount(0)
+    await expect(page.getByText('Already saved towards this')).toHaveCount(0)
   })
 
   test('PCP with an estimated balloon: the preview, deal box and caveat all carry the depreciation estimate', async ({ page }) => {

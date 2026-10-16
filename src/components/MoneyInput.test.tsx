@@ -4,7 +4,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { MoneyInput } from './MoneyInput'
 
-// Sizing props are irrelevant to the behavior under test — one shared set.
+// Sizing props are irrelevant to the behaviour under test — one shared set.
 const SIZING = {
   accentColor: '#fff',
   fontSize: '20px',

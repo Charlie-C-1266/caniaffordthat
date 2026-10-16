@@ -9,7 +9,7 @@ import { THEME_STORAGE_KEY } from './themeStorageKey.ts'
 //
 // It must mirror resolveInitialTheme + applyTheme in theme.ts: it runs
 // before any bundled JS exists, so it can't import them. themeBootstrap.test.ts
-// executes this script and pins its behavior against those helpers.
+// executes this script and pins its behaviour against those helpers.
 
 /** The inline script body: resolve stored choice → OS preference → dark, and pre-paint light via the data-theme attribute. */
 export const THEME_BOOTSTRAP_SCRIPT = `(function () {

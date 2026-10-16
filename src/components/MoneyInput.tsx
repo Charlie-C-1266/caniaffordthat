@@ -28,7 +28,7 @@ interface MoneyInputProps {
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
   accentColor: string
-  /** Border color while unfocused. Pass the same value as `accentColor` for fields that should always show the accent (the hero price/take-home fields don't change on focus). */
+  /** Border colour while unfocused. Pass the same value as `accentColor` for fields that should always show the accent (the hero price/take-home fields don't change on focus). */
   idleColor?: string
   fontSize: string
   fontWeight?: number

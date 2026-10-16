@@ -9,7 +9,7 @@ interface UnderlineInputProps {
   placeholder?: string
   fontSize: string
   accentColor: string
-  /** Border color while unfocused. Defaults to the neutral underline token. */
+  /** Border colour while unfocused. Defaults to the neutral underline token. */
   idleColor?: string
   /** Caps how much the field will accept, matching the cap hydration applies to the same value. */
   maxLength?: number
@@ -17,7 +17,7 @@ interface UnderlineInputProps {
 
 /**
  * A borderless, bottom-underlined text input whose underline switches to the
- * active mode's accent color on focus. Used for the item-name field.
+ * active mode's accent colour on focus. Used for the item-name field.
  */
 export function UnderlineInput({
   id,

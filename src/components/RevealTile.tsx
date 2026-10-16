@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 interface RevealTileProps {
-  /** Whether this step has been centered in the viewport at least once. */
+  /** Whether this step has been centred in the viewport at least once. */
   revealed: boolean
   children: ReactNode
   style?: CSSProperties

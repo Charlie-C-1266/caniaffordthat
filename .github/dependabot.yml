@@ -40,7 +40,7 @@ updates:
       prefix-development: chore(dev-deps)
 
   # GitHub Actions — actions/checkout, actions/setup-node, actions/upload-artifact
-  # and the MegaLinter flavor, across both workflows in .github/workflows.
+  # and the MegaLinter flavour, across both workflows in .github/workflows.
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev

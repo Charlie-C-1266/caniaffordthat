@@ -50,8 +50,8 @@ export function contributionForGoal(target: number, n: number, annualRatePct: nu
 }
 
 /**
- * Monthly payment to amortize `principal` over `n` months (floored at 1) at
- * `annualRatePct` APR, via the standard loan amortization formula.
+ * Monthly payment to amortise `principal` over `n` months (floored at 1) at
+ * `annualRatePct` APR, via the standard loan amortisation formula.
  */
 export function paymentForFinance(principal: number, n: number, annualRatePct: number): number {
   if (principal <= 0) return 0

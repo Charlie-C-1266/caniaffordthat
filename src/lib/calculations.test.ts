@@ -100,7 +100,7 @@ describe('paymentForFinance', () => {
     expect(paymentForFinance(1200, 12, 0)).toBeCloseTo(100, 6)
   })
 
-  it('produces a payment that fully amortizes the principal over n months when compounded', () => {
+  it('produces a payment that fully amortises the principal over n months when compounded', () => {
     const principal = 10_000
     const n = 36
     const rate = 9
@@ -116,7 +116,7 @@ describe('paymentForFinance', () => {
 
 describe('date helpers (anchored to the real current date)', () => {
   beforeEach(() => {
-    // Mid-month on purpose, to prove the helpers normalize to the 1st.
+    // Mid-month on purpose, to prove the helpers normalise to the 1st.
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 6, 15)) // 15 July 2026
   })

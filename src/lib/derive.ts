@@ -87,7 +87,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   const isEmergency = goalById(state.goalId)?.emergency === true
   const isFinance = !isEmergency && state.mode === 'monthly'
   // The emergency fund is save-only but honours the same duration/goal-date
-  // toggle as other saving goals, so its plan flavor follows saveFlavor too.
+  // toggle as other saving goals, so its plan flavour follows saveFlavor too.
   const isDuration = state.mode === 'save' && state.saveFlavor === 'duration'
   const isGoal = state.mode === 'save' && state.saveFlavor === 'goal'
 

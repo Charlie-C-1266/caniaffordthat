@@ -24,7 +24,7 @@ import { THEME_STORAGE_KEY } from './themeStorageKey.ts'
 // initial theme off `document.documentElement.dataset.theme` (set by that
 // script) instead of re-resolving it, so React state can't disagree with
 // what was already painted. themeBootstrap.test.ts executes the generated
-// script and pins its behavior against these helpers, so a change to the
+// script and pins its behaviour against these helpers, so a change to the
 // resolution rules that misses the script fails a test instead of shipping.
 
 /** Type guard for an untrusted value (localStorage, or hand-typed in devtools). */

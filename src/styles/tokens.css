@@ -4,11 +4,11 @@
  * from the handoff verbatim, so do not "round" or reinterpret them here.
  */
 :root {
-  /* Colors — backgrounds */
+  /* Colours — backgrounds */
   --bg-dark-1: #14121f;
   --bg-dark-2: #1b1830;
 
-  /* Colors — text */
+  /* Colours — text */
   --text-primary: #f5f3ff;
   --text-secondary: rgba(245, 243, 255, 0.65);
   --text-secondary-mid: rgba(245, 243, 255, 0.55);
@@ -17,7 +17,7 @@
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
   --text-disabled: rgba(245, 243, 255, 0.45);
 
-  /* Colors — accent (v2 goal-based re-theme). Green is
+  /* Colours — accent (v2 goal-based re-theme). Green is
      the primary/brand + "saving up" accent; violet is "paying monthly". The
      result screen now paints its background the active mode's accent, so the
      verdict (affordable/not) is carried by the small pill icon, not the whole
@@ -34,7 +34,7 @@
   /* Green -> cyan gradient used for the emphasised hero word. */
   --brand-text-gradient: linear-gradient(120deg, #2ed573, #5ee0ff);
   /* Standalone versions of the gradient's two stops, for components that need
-     just one of the colors rather than the gradient (the landing pill's dot
+     just one of the colours rather than the gradient (the landing pill's dot
      text, the depreciation chart's third series). */
   --brand-mint: #9defbe;
   --brand-cyan: #5ee0ff;
@@ -54,7 +54,7 @@
   --accent-save-bg-chip: rgba(46, 213, 115, 0.14);
   --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.35);
 
-  /* Colors — verdict (the result banner only) */
+  /* Colours — verdict (the result banner only) */
   --verdict-affordable: #2ed573;
   --verdict-not-affordable: #ff5c5c;
   /* The verdict banner is always a solid bright green/red fill, in *either*
@@ -65,7 +65,7 @@
   --verdict-on-fill-chip: rgba(20, 18, 31, 0.9);
   --verdict-on-fill-dim: rgba(20, 18, 31, 0.8);
 
-  /* Colors — surfaces */
+  /* Colours — surfaces */
   --tile-bg: rgba(255, 255, 255, 0.04);
   --tile-bg-neutral: rgba(255, 255, 255, 0.03);
   --tile-border: rgba(245, 243, 255, 0.14);
@@ -111,7 +111,7 @@
   --chart-leftover: #008300;
   --chart-over: #ff5c5c;
 
-  /* Colors — misc */
+  /* Colours — misc */
   --badge-alpha-text: #f5a623;
   --badge-alpha-border: rgba(245, 166, 35, 0.5);
 
@@ -183,11 +183,11 @@
  * absent here too — see the comment on them above.
  */
 :root[data-theme='light'] {
-  /* Colors — backgrounds */
+  /* Colours — backgrounds */
   --bg-dark-1: #faf9fc;
   --bg-dark-2: #efebf7;
 
-  /* Colors — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
+  /* Colours — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
   --text-primary: #1b1633;
   --text-secondary: rgba(27, 22, 51, 0.65);
   --text-secondary-mid: rgba(27, 22, 51, 0.55);
@@ -211,8 +211,8 @@
   --accent-save-bg-chip: rgba(46, 213, 115, 0.18);
   --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.28);
 
-  /* Colors — surfaces. The white-overlay "glass" idiom becomes a
-     near-black-overlay one — same felt weight, flipped base color. */
+  /* Colours — surfaces. The white-overlay "glass" idiom becomes a
+     near-black-overlay one — same felt weight, flipped base colour. */
   --tile-bg: rgba(27, 22, 51, 0.035);
   --tile-bg-neutral: rgba(27, 22, 51, 0.025);
   --tile-border: rgba(27, 22, 51, 0.12);
@@ -242,13 +242,13 @@
   --chart-leftover: #0f8a45;
   --chart-over: #d8322f;
 
-  /* Colors — misc */
+  /* Colours — misc */
   --badge-alpha-text: #a5670c;
   --badge-alpha-border: rgba(165, 103, 12, 0.45);
 
   /* Shadows. Dark mode's near-black shadow only reads as a shadow against a
      dark surface — on a light one it needs to be much softer and tinted
-     toward the background's own hue, or every tile looks smudged. */
+     towards the background's own hue, or every tile looks smudged. */
   --shadow-tile: 0 24px 60px rgba(27, 22, 51, 0.14);
   --shadow-card: 0 14px 34px rgba(27, 22, 51, 0.12);
   --shadow-card-focused: 0 22px 56px rgba(46, 213, 115, 0.18);

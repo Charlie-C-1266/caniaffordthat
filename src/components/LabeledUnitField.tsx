@@ -8,7 +8,7 @@ interface LabeledUnitFieldProps {
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
-  /** Underline color while focused. Defaults to the neutral primary-text color, matching LabeledMoneyField. */
+  /** Underline colour while focused. Defaults to the neutral primary-text colour, matching LabeledMoneyField. */
   accentColor?: string
 }
 
