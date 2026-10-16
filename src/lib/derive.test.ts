@@ -4,6 +4,7 @@ import {
   commitmentFitSub,
   deriveResult,
   monthlyOutgoingsOf,
+  pauseOtherSavingHint,
   pauseSavingHint,
   regularSavingOf,
   spareCashOf,
@@ -368,6 +369,121 @@ describe('deriveResult', () => {
       expect(result?.verdictText).toBe('Not by that date.')
       expect(result?.verdictSub).toMatch(/more than your spare cash/)
     })
+
+    it('offers to pause other saving when that alone would hit the date', () => {
+      // spareCash = 2500 - 1000 housing - 400 regular saving = 1100, against a
+      // 3 x 1000 = 3000 cushion over 2 months -> £1,500/mo. The £400 gap is
+      // exactly what goes into other pots each month, so pausing those closes
+      // it — and on this goal that saving is, by the Budget step's own field
+      // hint, money that isn't already going into this cushion.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '2500',
+          housing: '1000',
+          savingsMonthly: '400',
+          coverMonths: 3,
+          goalMonths: 2,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(1500)
+      expect(result?.fits).toBe(false)
+      expect(result?.verdictSub).toContain('£400 more than your spare cash')
+      expect(result?.verdictSub).toContain('a later date needs less each month')
+      expect(result?.verdictSub).toContain('paused the £400/month you put into other savings')
+    })
+
+    it('describes a goal date that fits as a share of take-home pay, in the cushion voice', () => {
+      // grossTarget = 3 x 500 = 1500 over 3 months -> £500/mo: 10% of the
+      // £5,000 take-home and 11% of the £4,500 spare cash, comfortable on both
+      // readings.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '5000',
+          housing: '500',
+          coverMonths: 3,
+          goalMonths: 3,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(500)
+      expect(result?.verdictSub).toBe(
+        '£500/month reaches your cushion by October 2026 — 10% of your take-home pay, comfortably within your £4,500 spare cash.',
+      )
+    })
+
+    it('calls a goal date a good chunk when it lands in the middle income band', () => {
+      // 3 x 1000 = 3000 over 3 months -> £1,000/mo: 25% of a £4,000 take-home
+      // (the middle band) but only 33% of the £3,000 spare cash, so the income
+      // reading is the one that decides it.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '4000',
+          housing: '1000',
+          coverMonths: 3,
+          goalMonths: 3,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(1000)
+      expect(result?.verdictSub).toContain('25% of your take-home pay')
+      expect(result?.verdictSub).toContain('a good chunk of your £3,000 spare cash, but it fits')
+    })
+
+    it('calls a goal date tight when it takes a large share of take-home pay', () => {
+      // 3 x 1000 = 3000 over 2 months -> £1,500/mo: 50% of a £3,000 take-home,
+      // past the 30% ceiling, though it still fits the £2,000 spare cash.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '3000',
+          housing: '1000',
+          coverMonths: 3,
+          goalMonths: 2,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(1500)
+      expect(result?.fits).toBe(true)
+      expect(result?.verdictSub).toContain('reaches your cushion')
+      expect(result?.verdictSub).toContain('50% of your take-home pay')
+      expect(result?.verdictSub).toContain("it fits within your £2,000 spare cash, but it's tight")
+    })
+
+    it('lets the spare-cash headroom floor tighten the cushion verdict too', () => {
+      // £500/mo is 5% of a £10,000 take-home — comfortable on income alone —
+      // but 71% of the £700 spare cash a £9,300 housing cost leaves, so the
+      // floor decides the band exactly as it does in the other flows.
+      // grossTarget = 1 x 9300, less £8,300 already set aside -> £1,000 over 2
+      // months.
+      const result = deriveResult(
+        makeState({
+          goalId: 'emergency',
+          mode: 'save',
+          saveFlavor: 'goal',
+          takeHome: '10000',
+          housing: '9300',
+          savings: '8300',
+          coverMonths: 1,
+          goalMonths: 2,
+          growth: 0,
+        }),
+      )
+      expect(result?.contribution).toBe(500)
+      expect(result?.verdictSub).toContain('5% of your take-home pay')
+      expect(result?.verdictSub).toContain("but it's tight")
+    })
   })
 
   describe('projection', () => {
@@ -444,6 +560,19 @@ describe('pauseSavingHint', () => {
   it('stays quiet when there is nothing to pause, or pausing would not be enough', () => {
     expect(pauseSavingHint(150, 0)).toBe('')
     expect(pauseSavingHint(400, 300)).toBe('')
+  })
+})
+
+describe('pauseOtherSavingHint', () => {
+  it('names the saving as other saving, so it cannot read as pausing the cushion', () => {
+    expect(pauseOtherSavingHint(150, 300)).toContain('£300/month you put into other savings')
+    // Exactly covering the gap still counts — the bound is inclusive.
+    expect(pauseOtherSavingHint(300, 300)).not.toBe('')
+  })
+
+  it('stays quiet when there is nothing to pause, or pausing would not be enough', () => {
+    expect(pauseOtherSavingHint(150, 0)).toBe('')
+    expect(pauseOtherSavingHint(400, 300)).toBe('')
   })
 })
 

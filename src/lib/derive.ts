@@ -280,7 +280,7 @@ interface CopyContext {
   grossTarget: number
   spareCash: number
   essentialSpend: number
-  /** What the user already saves each month — the reversible headroom behind `pauseSavingHint`. */
+  /** What the user already saves each month — the reversible headroom behind the pause hints. */
   regularSaving: number
   takeHome: number
   isFeasible: boolean
@@ -296,14 +296,27 @@ const monthsLabel = (n: number) => `${n} month${n === 1 ? '' : 's'}`
 /** Standard "Yes / No" verdict shared by every non-emergency kind (and the vehicle flow). */
 export const withinReachVerdict = (isAffordable: boolean) => (isAffordable ? "Yes — it's within reach." : "No — that's a stretch.")
 
-/** What a "does this fit?" verdict needs to describe the commitment honestly. */
-export interface FitCopyInput {
+/** The three figures any band reading needs: the £/month, and the two denominators it's measured against. */
+export interface FitReadingInput {
   /** The £/month being weighed up. */
   contribution: number
   spareCash: number
   takeHome: number
+}
+
+/** What a "does this fit?" verdict needs to describe the commitment honestly. */
+export interface FitCopyInput extends FitReadingInput {
   /** What the user already saves each month — the headroom they could free up by pausing it. */
   regularSaving: number
+}
+
+/**
+ * Whether pausing the regular saving would close the gap — the shared
+ * condition behind both pause hints. The bound is inclusive: saving exactly
+ * the shortfall still covers it.
+ */
+function pausingWouldClose(shortfall: number, regularSaving: number): boolean {
+  return regularSaving > 0 && shortfall <= regularSaving
 }
 
 /**
@@ -315,8 +328,47 @@ export interface FitCopyInput {
  * not close the gap.
  */
 export function pauseSavingHint(shortfall: number, regularSaving: number): string {
-  if (!(regularSaving > 0 && shortfall <= regularSaving)) return ''
+  if (!pausingWouldClose(shortfall, regularSaving)) return ''
   return ` It would fit if you paused the ${fmt(regularSaving)}/month you currently save.`
+}
+
+/**
+ * The emergency fund's wording of the same hint. "Other savings" rather than
+ * "you currently save" because on this goal the field cannot mean cushion
+ * money — see the note beside the goal-date verdict in `emergencyCopy`.
+ */
+export function pauseOtherSavingHint(shortfall: number, regularSaving: number): string {
+  if (!pausingWouldClose(shortfall, regularSaving)) return ''
+  return ` It would fit if you paused the ${fmt(regularSaving)}/month you put into other savings.`
+}
+
+/** How comfortably a commitment sits, and the share-of-take-home figure the copy quotes alongside it. */
+interface FitReading {
+  band: FitBand
+  /** The commitment as a fraction of take-home pay. */
+  shareOfTakeHome: number
+}
+
+/**
+ * Places a commitment that already fits spare cash in its band: its share of
+ * take-home pay, tightened by the share-of-spare-cash headroom floor. Shared
+ * so every flow judging a fixed £/month — goal-date saving, finance, the
+ * vehicle flow and the emergency fund's goal date — bands it on the same
+ * terms, whatever sentence each one wraps around the result.
+ */
+function fitReading({ contribution, spareCash, takeHome }: FitReadingInput): FitReading {
+  // Callers reach this only once the commitment fits spare cash, so both
+  // denominators are 0 only when the contribution is 0 too — a 0 share is the
+  // honest answer there rather than a guard against NaN.
+  const shareOfTakeHome = takeHome > 0 ? contribution / takeHome : 0
+  const shareOfSpareCash = spareCash > 0 ? contribution / spareCash : 0
+  return {
+    shareOfTakeHome,
+    band: worseBand(
+      bandFor(shareOfTakeHome, TAKE_HOME_COMFORTABLE_RATIO, TAKE_HOME_TIGHT_RATIO),
+      bandFor(shareOfSpareCash, SPARE_CASH_HEADROOM_COMFORTABLE_RATIO, SPARE_CASH_HEADROOM_TIGHT_RATIO),
+    ),
+  }
 }
 
 /**
@@ -330,15 +382,7 @@ export function commitmentFitSub({ contribution, spareCash, takeHome, regularSav
     const shortfall = contribution - spareCash
     return `${fmt(contribution)}/month is ${fmt(shortfall)} more than your spare cash.${pauseSavingHint(shortfall, regularSaving)}`
   }
-  // Both denominators are only 0 here when the contribution is 0 too (the
-  // branch above catches every other case), so a 0 share is the honest
-  // answer rather than a guard against NaN.
-  const shareOfTakeHome = takeHome > 0 ? contribution / takeHome : 0
-  const shareOfSpareCash = spareCash > 0 ? contribution / spareCash : 0
-  const band = worseBand(
-    bandFor(shareOfTakeHome, TAKE_HOME_COMFORTABLE_RATIO, TAKE_HOME_TIGHT_RATIO),
-    bandFor(shareOfSpareCash, SPARE_CASH_HEADROOM_COMFORTABLE_RATIO, SPARE_CASH_HEADROOM_TIGHT_RATIO),
-  )
+  const { band, shareOfTakeHome } = fitReading({ contribution, spareCash, takeHome })
   const opening = `${fmt(contribution)}/month is ${Math.round(shareOfTakeHome * 100)}% of your take-home pay`
   switch (band) {
     case 'comfortable':
@@ -407,11 +451,27 @@ function emergencyCopy(c: CopyContext): ResultCopy {
   let verdictSub: string
   if (c.isGoal) {
     // Goal-date path: the date is fixed, so affordability is whether the
-    // required monthly saving fits the user's spare cash.
+    // required monthly saving fits the user's spare cash — exactly the
+    // question `commitmentFitSub` answers for goal-date saving and finance.
+    // So this path reads the band the same way (share of take-home pay,
+    // floored by share of spare cash) and only the sentences differ, keeping
+    // the fund's cushion-and-milestone voice.
     isAffordable = c.fits
-    verdictSub = c.fits
-      ? `${fmt(c.contribution)}/month reaches your cushion by ${addMonths(c.months)}, within your ${fmt(c.spareCash)} spare cash.`
-      : `${fmt(c.contribution)}/month to hit ${addMonths(c.months)} is ${fmt(c.contribution - c.spareCash)} more than your spare cash — a later date needs less each month.`
+    if (c.fits) {
+      verdictSub = cushionFitSub(c)
+    } else {
+      const shortfall = c.contribution - c.spareCash
+      // The pause hint was deliberately kept off this flow when it was
+      // introduced: "pause your saving in order to build a savings cushion"
+      // reads as self-contradictory. It belongs here after all, because on
+      // this goal alone the field cannot mean cushion money — the Budget step
+      // asks for saving "that isn't going into this cushion", i.e. other pots
+      // and investments — so pausing it moves money towards the cushion
+      // rather than away from it. The wording says "other savings" so the
+      // sentence can only be read that way, and the later-date route is
+      // offered first: it keeps the other saving intact.
+      verdictSub = `${fmt(c.contribution)}/month to hit ${addMonths(c.months)} is ${fmt(shortfall)} more than your spare cash — a later date needs less each month.${pauseOtherSavingHint(shortfall, c.regularSaving)}`
+    }
   } else {
     isAffordable = c.isFeasible && c.months <= AFFORDABILITY_MONTHS_CAP
     verdictSub = !c.isFeasible
@@ -428,6 +488,24 @@ function emergencyCopy(c: CopyContext): ResultCopy {
     verdictSub,
     verdictText: isAffordable ? 'Yes — you can build this.' : c.isGoal ? 'Not by that date.' : 'This one will take time.',
     resultEyebrow: c.isGoal ? 'Monthly saving needed' : 'Time to build your fund',
+  }
+}
+
+/**
+ * The emergency fund's wording for a goal-date saving that fits: the cushion
+ * and its date lead, then the same band reading every other flow quotes —
+ * the share of take-home pay, and the spare cash it sits inside.
+ */
+function cushionFitSub(c: CopyContext): string {
+  const { band, shareOfTakeHome } = fitReading(c)
+  const opening = `${fmt(c.contribution)}/month reaches your cushion by ${addMonths(c.months)} — ${Math.round(shareOfTakeHome * 100)}% of your take-home pay`
+  switch (band) {
+    case 'comfortable':
+      return `${opening}, comfortably within your ${fmt(c.spareCash)} spare cash.`
+    case 'chunk':
+      return `${opening}, a good chunk of your ${fmt(c.spareCash)} spare cash, but it fits.`
+    case 'tight':
+      return `${opening}, and it fits within your ${fmt(c.spareCash)} spare cash, but it's tight.`
   }
 }
 
