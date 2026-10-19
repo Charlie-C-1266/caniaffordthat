@@ -27,6 +27,10 @@ let captured: CalculatorContextValue | null = null
  */
 // oxlint-disable-next-line react/only-export-components -- test-only module; see above
 function CaptureContext() {
+  // Writing a module-level variable during render is exactly what this
+  // test-only component is for: it mirrors the context out for the test to
+  // read, and nothing renders from it, so render purity doesn't come into it.
+  // oxlint-disable-next-line react/globals -- test-only context capture; see above
   captured = useCalculator()
   return null
 }

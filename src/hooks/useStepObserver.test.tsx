@@ -75,6 +75,9 @@ function elementAtOffsetTop(offsetTop: number): HTMLDivElement {
   return el
 }
 
+/** The fake observer the hook created. */
+const observer = () => FakeIntersectionObserver.instances[0]
+
 describe('useStepObserver', () => {
   beforeEach(() => {
     FakeIntersectionObserver.instances = []
@@ -118,7 +121,6 @@ describe('useStepObserver', () => {
     const { result } = renderHook(() => useHarness(), { wrapper })
     const elA = document.createElement('div')
     const elB = document.createElement('div')
-    const observer = () => FakeIntersectionObserver.instances[0]
 
     act(() => {
       result.current.registerPanel(2)(elA)

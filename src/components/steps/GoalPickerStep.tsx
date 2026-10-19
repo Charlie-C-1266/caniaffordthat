@@ -38,18 +38,19 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
   // this step and let it teleport instead of flying across the stage.
   // `jump` is how far the focus moved, the short way round — the distance
   // every card's offset shifts by, unless it wrapped.
-  const prevIndexRef = useRef(state.carouselIndex)
-  const indexRef = useRef(state.carouselIndex)
-  indexRef.current = state.carouselIndex
-  const prevIndex = prevIndexRef.current
+  //
+  // Held in state and updated during render when the focus moves, React's
+  // pattern for "the previous value of a prop". It used to be a ref read and
+  // written during render, which isn't safe once a render can be thrown away
+  // and retried.
+  const [move, setMove] = useState({ from: state.carouselIndex, to: state.carouselIndex })
+  if (move.to !== state.carouselIndex) setMove({ from: move.to, to: state.carouselIndex })
+  const prevIndex = move.from
   const jump = circularOffset(state.carouselIndex, prevIndex)
-  useEffect(() => {
-    prevIndexRef.current = state.carouselIndex
-  }, [state.carouselIndex])
 
   const focus = (nextIndex: number) => setField('carouselIndex', wrapIndex(nextIndex))
 
-  const move = (delta: number) => {
+  const step = (delta: number) => {
     setEngaged(true)
     focus(state.carouselIndex + delta)
   }
@@ -81,18 +82,27 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
     selectScrollTimer.current = setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
 
+  // One step per AUTO_ROTATE_MS: each step changes the index, which re-arms
+  // the timer from the new position, so the callback never needs to read a
+  // stale index through a ref.
   useEffect(() => {
     if (engaged || hovered || state.goalId !== null) return
     if (prefersReducedMotion()) return
-    const timer = setInterval(() => {
-      setField('carouselIndex', wrapIndex(indexRef.current + 1))
+    const timer = setTimeout(() => {
+      setField('carouselIndex', wrapIndex(state.carouselIndex + 1))
     }, AUTO_ROTATE_MS)
-    return () => clearInterval(timer)
-  }, [engaged, hovered, state.goalId, setField])
+    return () => clearTimeout(timer)
+  }, [engaged, hovered, state.goalId, state.carouselIndex, setField])
 
   // Unmounting inside the selection delay would otherwise still run the
   // scroll against refs the hook has already torn down. Same pattern as
   // ResultActions' revert timer.
+  //
+  // Unmount only, on purpose. The timer's callback captures `scrollToIndex`
+  // and `index`, which the rule reads as dependencies of this cleanup; adding
+  // them would make any change to either cancel a pending post-selection
+  // scroll.
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- unmount-only cleanup; see above
   useEffect(() => () => clearTimeout(selectScrollTimer.current), [])
 
   return (
@@ -171,9 +181,9 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--goal-controls-gap)', marginTop: 26 }}>
-          <RoundButton icon="chevron-left" label="Previous goal" onClick={() => move(-1)} />
+          <RoundButton icon="chevron-left" label="Previous goal" onClick={() => step(-1)} />
           <StartButton goal={focused} onClick={() => select(focused)} />
-          <RoundButton icon="chevron-right" label="Next goal" onClick={() => move(1)} />
+          <RoundButton icon="chevron-right" label="Next goal" onClick={() => step(1)} />
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
