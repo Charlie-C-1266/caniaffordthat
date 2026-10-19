@@ -15,7 +15,7 @@ import {
   SPARE_CASH_HEADROOM_TIGHT_RATIO,
   TAKE_HOME_COMFORTABLE_RATIO,
   TAKE_HOME_TIGHT_RATIO,
-} from '../lib/derive'
+} from '../lib/affordability'
 import {
   DEFAULT_FUEL_PENCE_PER_LITRE,
   EXPENSIVE_CAR_PRICE_THRESHOLD,

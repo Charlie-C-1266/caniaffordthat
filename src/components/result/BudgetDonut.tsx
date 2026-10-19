@@ -9,7 +9,7 @@ import { OUTGOING_SHORT_LABELS, type BudgetBreakdown } from '../../lib/budgetSpl
 // "does this fit alongside everything else I pay?" at a glance, which the
 // balance chart can't. Saving gets its own arc rather than being folded into
 // the essentials ramp, because it is the one slice the user could choose to
-// stop (see `pauseSavingHint` in lib/derive.ts).
+// stop (see `pauseSavingHint` in lib/resultCopy.ts).
 
 const SIZE = 176
 const CENTER = SIZE / 2

@@ -1,5 +1,6 @@
 import { fmt, num, paymentForFinance } from './calculations'
-import { committedOutgoingsOf, regularSavingOf, spareCashOf, commitmentFitSub, withinReachVerdict } from './derive'
+import { committedOutgoingsOf, regularSavingOf, spareCashOf } from './budget'
+import { commitmentFitSub, withinReachVerdict } from './resultCopy'
 import { financeProjection, type Projection } from './projection'
 import { budgetBreakdown, type BudgetBreakdown } from './budgetSplit'
 import type { CalculatorState, VehicleFinanceMethod } from '../state/types'
