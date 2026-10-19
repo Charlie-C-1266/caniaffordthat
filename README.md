@@ -168,7 +168,26 @@ drifts. Adding a header is therefore a two-file change.
 
 After a deploy, `scripts/verify-headers.sh <url>` checks the served headers
 against the same expectations, on Vercel or on a self-hosted container alike.
-Two of its assertions are nginx-only: it expects no `Cache-Control` on a 404,
-which nginx achieves with an `always`-less `add_header`. Vercel matches headers
-by path with no condition on status, so a 404 under `/assets/` or a directory
-without an index carries the rule for its path.
+It recognises Vercel by the `x-vercel-id` header on every response and holds
+any other host to the full nginx list, so a host that drops that header fails
+safe. On Vercel it allows for two differences:
+
+- **The trailing-slash redirect.** Because of `trailingSlash: true`, an
+  extensionless unknown path such as `/does-not-exist` first 308-redirects to
+  `/does-not-exist/`, and only that URL is the 404. The script checks that
+  one redirect, then runs the 404 checks (status, branded body, security
+  headers) on the URL it leads to. A redirect anywhere else, a temporary
+  redirect or a second hop still fails. Vercel's redirect itself carries none
+  of the security headers, which costs nothing because a redirect has no body
+  to frame or sniff.
+- **Four nginx-only checks**, reported as skipped with the reason rather than
+  failed:
+  - three expect no `Cache-Control` on a 404, which nginx achieves with an
+    `always`-less `add_header`. Vercel matches headers by path with no
+    condition on status, so a 404 under `/assets/` or a directory without an
+    index carries the rule for its path;
+  - one expects `Vary: Accept-Encoding` on compressed responses. Vercel's CDN
+    negotiates the encoding itself and sends none.
+
+A clean run against production ends with "All header checks passed …, with 4
+nginx-only checks skipped."
