@@ -33,6 +33,12 @@ playwright/.cache
 *.sln
 *.sw?
 
+# A maintainer's personal agent skills (installed with `npx skills`) and their
+# lockfile. They're tooling for one person's workflow, not part of the app or
+# of what self-hosters and contributors need, so they stay on disk untracked.
+.agents/
+skills-lock.json
+
 # Claude Code's per-machine files. The desktop app runs parallel sessions in git
 # worktrees under .claude/worktrees/, inside this folder, and each one is a full
 # checkout of the repo. Left unignored, they show up in `git status`, and

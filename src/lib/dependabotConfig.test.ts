@@ -167,8 +167,8 @@ describe('the check rejects the mistakes it is meant to catch', () => {
 
   it("rejects a directory typo, by looking for the ecosystem's manifest in it", () => {
     expect(dependabotProblems(asYaml([entry({ directory: '/scr' })]))).toContain('npm: /scr holds no package.json')
-    expect(dependabotProblems(asYaml([entry({ 'package-ecosystem': 'docker', directory: '/docker' })]))).toContain(
-      'docker: /docker holds no Dockerfile',
+    expect(dependabotProblems(asYaml([entry({ 'package-ecosystem': 'docker', directory: '/dokcer' })]))).toContain(
+      'docker: /dokcer holds no Dockerfile',
     )
   })
 

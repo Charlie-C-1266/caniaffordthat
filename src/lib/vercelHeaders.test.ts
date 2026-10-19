@@ -202,7 +202,7 @@ function htmlPageUrls(): string[] {
   })
 }
 
-const NGINX = read('nginx.conf')
+const NGINX = read('docker/nginx.conf')
 const VERCEL = read('vercel.json')
 
 /** The repository's vercel.json with one entry's headers replaced, as a JSON string. */

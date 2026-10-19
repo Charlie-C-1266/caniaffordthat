@@ -1,0 +1,11 @@
+# What the build context leaves out. The context is the repository root, but
+# this file sits beside docker/Dockerfile under the name BuildKit looks for
+# (<Dockerfile>.dockerignore), so it applies to builds of that Dockerfile.
+# Patterns are relative to the context root, as in a root .dockerignore.
+.git
+.agents
+.claude
+node_modules
+dist
+design
+*.md

@@ -61,14 +61,12 @@ if ! git merge-base "$base" HEAD >/dev/null; then
 fi
 
 # This script and its allowlist have to spell the US words out, and the
-# lockfiles and the vendored agent skills aren't ours to edit.
+# lockfile isn't ours to edit.
 if ! diff=$(git -c core.quotePath=false diff --no-color --no-ext-diff \
   --unified=0 "$base...HEAD" -- . \
   ':(exclude)scripts/check-uk-spelling.sh' \
   ':(exclude)scripts/uk-spelling-allow.txt' \
-  ':(exclude)package-lock.json' \
-  ':(exclude)skills-lock.json' \
-  ':(exclude).agents/'); then
+  ':(exclude)package-lock.json'); then
   exit 2
 fi
 
