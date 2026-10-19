@@ -1,9 +1,6 @@
+import { BreakdownRow } from './BreakdownRow'
+
 /** The emphasised, rule-topped bottom line of a BreakdownBox (amount left to save / total monthly cost / total payable). */
 export function TotalRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 9, borderTop: '1px solid var(--tile-border-neutral)' }}>
-      <span style={{ color: 'var(--text-secondary-dim)' }}>{label}</span>
-      <span style={{ color: 'var(--text-primary)' }}>{value}</span>
-    </div>
-  )
+  return <BreakdownRow label={label} value={value} total />
 }

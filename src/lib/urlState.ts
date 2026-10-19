@@ -2,6 +2,15 @@ import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
 import { isMoneyValue, sanitiseItemName } from './fields'
 import { TERM_RANGES } from './vehicle'
+import {
+  APR_RANGE,
+  COVER_MONTHS_RANGE,
+  FINANCE_TERM_RANGE,
+  SAVE_RATE_RANGE,
+  SAVINGS_INTEREST_RANGE,
+  VEHICLE_AGE_RANGE,
+} from './sliderRanges'
+import type { SliderRange } from './sliderRanges'
 import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
@@ -39,21 +48,30 @@ export const STRING_FIELDS = [
  * The numeric planning fields that round-trip, each with the range it's
  * clamped to on hydration. A query string is user-editable input, so an
  * out-of-range value (`coverMonths=999`, `rate=-5`) is pulled back to the
- * matching UI control's own bounds rather than trusted. `goalMonths` has no
- * upper bound because the goal-date field itself accepts any future date.
+ * matching UI control's own bounds rather than trusted. The bounds come from
+ * sliderRanges.ts, the same ranges the sliders use. `goalMonths` has no upper
+ * bound because the goal-date field itself accepts any future date.
+ *
+ * `growth` and `term` each drive more than one slider, so they're clamped here
+ * to the widest of their sliders and narrowed to the one the shared goal and
+ * mode actually show, once those are known (see the end of
+ * `hydrateStateFromUrl`).
  */
 const NUMBER_FIELDS: readonly {
   key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge'
   min: number
   max?: number
 }[] = [
-  { key: 'rate', min: 1, max: 100 }, // "% of spare cash" slider
-  { key: 'growth', min: 0, max: 30 }, // interest sliders (finance APR's max; the save slider stops at 20)
+  { key: 'rate', ...SAVE_RATE_RANGE },
+  { key: 'growth', ...APR_RANGE }, // the wider of the two interest sliders
   { key: 'goalMonths', min: 1 }, // goal-date floor is next month
-  { key: 'term', min: 1, max: 84 }, // longest term slider (the vehicle bank-loan's; others stop at 60)
-  { key: 'coverMonths', min: 1, max: 12 }, // emergency-cover slider
-  { key: 'vehicleAge', min: 0, max: 30 }, // car-age slider stops at 20; allow a little headroom
+  { key: 'term', min: 1, max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)) },
+  { key: 'coverMonths', ...COVER_MONTHS_RANGE },
+  { key: 'vehicleAge', ...VEHICLE_AGE_RANGE },
 ]
+
+/** Pulls a value into a slider's bounds. */
+const clampTo = (value: number, { min, max }: Pick<SliderRange, 'min' | 'max'>) => Math.min(max, Math.max(min, value))
 
 // `carouselIndex` is intentionally *not* shared: on load it's derived from
 // `goalId` so a link always focuses the shared goal, regardless of where the
@@ -167,9 +185,9 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   }
 
   // The 84-month ceiling above exists only for the vehicle bank loan; every
-  // other flow's term slider stops at 60, so a crafted non-vehicle link can't
-  // smuggle in a term the UI couldn't have produced.
-  if (!goal?.vehicle) state.term = Math.min(60, state.term)
+  // other flow's term slider stops at FINANCE_TERM_RANGE's max, so a crafted
+  // non-vehicle link can't smuggle in a term the UI couldn't have produced.
+  if (!goal?.vehicle) state.term = clampTo(state.term, FINANCE_TERM_RANGE)
   // The same reasoning, one level finer, inside the vehicle flow: the term
   // slider only ever offers the active method's own `TERM_RANGES`, so a link
   // must not be able to load a deal the UI could never have produced (an
@@ -177,9 +195,14 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // `cash` has no term range, and `chooseMethod` clamps again on the way back
   // to a finance method, so a cash link's term is left as read.
   else if (state.vehicleMethod !== 'cash') {
-    const { min, max } = TERM_RANGES[state.vehicleMethod]
-    state.term = Math.min(max, Math.max(min, state.term))
+    state.term = clampTo(state.term, TERM_RANGES[state.vehicleMethod])
   }
+
+  // `growth` is the APR whenever the flow is financing, which the vehicle flow
+  // always is, whatever `mode` a link carries. When saving it's the savings
+  // interest, whose slider stops lower, so a crafted saving link is held to
+  // that.
+  if (!goal?.vehicle && state.mode === 'save') state.growth = clampTo(state.growth, SAVINGS_INTEREST_RANGE)
 
   return state
 }

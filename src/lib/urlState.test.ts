@@ -3,6 +3,7 @@ import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } fr
 import { DEFAULT_STATE } from '../state/defaults'
 import { ITEM_NAME_MAX_LENGTH } from './fields'
 import { TERM_RANGES } from './vehicle'
+import { APR_RANGE, COVER_MONTHS_RANGE, SAVE_RATE_RANGE, SAVINGS_INTEREST_RANGE, VEHICLE_AGE_RANGE } from './sliderRanges'
 
 describe('hydrateStateFromUrl', () => {
   it('returns the defaults untouched when neither goalId nor itemPrice is present', () => {
@@ -76,7 +77,36 @@ describe('hydrateStateFromUrl', () => {
     expect(state.goalMonths).toBe(1)
     expect(state.term).toBe(60) // no vehicle goal in the link -> the standard sliders' max
     expect(state.coverMonths).toBe(12)
-    expect(state.vehicleAge).toBe(30)
+    expect(state.vehicleAge).toBe(VEHICLE_AGE_RANGE.max) // the car-age slider's own max, with no headroom past it
+  })
+
+  it('clamps every slider-driven field to the range its slider uses', () => {
+    // The clamps and the sliders read the same ranges (sliderRanges.ts), so a
+    // link can never load a value its slider couldn't show. Over the top of
+    // each range by a clear margin, and under the bottom:
+    const over = hydrateStateFromUrl(
+      `?goalId=emergency&mode=save&rate=${SAVE_RATE_RANGE.max + 50}&coverMonths=${COVER_MONTHS_RANGE.max + 50}&vehicleAge=${VEHICLE_AGE_RANGE.max + 5}`,
+    )
+    expect(over.rate).toBe(SAVE_RATE_RANGE.max)
+    expect(over.coverMonths).toBe(COVER_MONTHS_RANGE.max)
+    expect(over.vehicleAge).toBe(VEHICLE_AGE_RANGE.max)
+    const under = hydrateStateFromUrl('?goalId=emergency&mode=save&rate=-1&coverMonths=-1&vehicleAge=-1')
+    expect(under.rate).toBe(SAVE_RATE_RANGE.min)
+    expect(under.coverMonths).toBe(COVER_MONTHS_RANGE.min)
+    expect(under.vehicleAge).toBe(VEHICLE_AGE_RANGE.min)
+  })
+
+  it("holds growth to the slider the link's flow shows: savings interest when saving, APR when financing", () => {
+    // Savings interest stops lower than the APR slider, and before the ranges
+    // were shared a saving link could carry 25%, which its slider can't show.
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&growth=25').growth).toBe(SAVINGS_INTEREST_RANGE.max)
+    expect(hydrateStateFromUrl('?goalId=emergency&mode=save&growth=25').growth).toBe(SAVINGS_INTEREST_RANGE.max)
+    // Financing, the same 25% is a legitimate APR.
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=25').growth).toBe(25)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=99').growth).toBe(APR_RANGE.max)
+    // The vehicle flow is always financing, so a car link's growth is an APR
+    // even if the link claims to be saving.
+    expect(hydrateStateFromUrl('?goalId=car&mode=save&itemPrice=9000&vehicleMethod=hp&growth=25').growth).toBe(25)
   })
 
   it('allows terms up to 84 months only for vehicle links — the bank-loan slider is the only UI that goes there', () => {

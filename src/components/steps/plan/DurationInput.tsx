@@ -5,6 +5,7 @@ import { useCalculator } from '../../../state/calculatorContext'
 import { spareCashOf } from '../../../lib/derive'
 import { fmt, num } from '../../../lib/calculations'
 import type { RateMode } from '../../../state/types'
+import { SAVE_RATE_RANGE } from '../../../lib/sliderRanges'
 
 /**
  * The "how long will it take?" input: the user sets their monthly saving either
@@ -66,9 +67,7 @@ export function DurationInput({ accentColor }: { accentColor: string }) {
         <SliderField
           label="Share of spare cash you'll save"
           valueLabel={rateValueLabel}
-          min={1}
-          max={100}
-          step={1}
+          {...SAVE_RATE_RANGE}
           value={state.rate}
           accentColor={accentColor}
           onChange={(value) => setField('rate', value)}

@@ -79,6 +79,22 @@ describe('BreakdownBox', () => {
 describe('BreakdownRow and TotalRow', () => {
   afterEach(cleanup)
 
+  it('set only the total row off with a rule above it', () => {
+    // TotalRow is a BreakdownRow with `total` set, so the rule is the one
+    // thing that tells the bottom line apart from the rows above it.
+    const { container } = render(
+      <>
+        <BreakdownRow label="FUEL" value="£90" />
+        <TotalRow label="TOTAL / MONTH" value="£389" />
+      </>,
+    )
+    const [row, total] = Array.from(container.children).map((el) => (el as HTMLElement).style)
+    expect(row.borderTop).toBe('')
+    expect(row.paddingTop).toBe('')
+    expect(total.borderTop).toBe('1px solid var(--tile-border-neutral)')
+    expect(total.paddingTop).toBe('9px')
+  })
+
   it('render the label before the value', () => {
     const { container } = render(
       <>
