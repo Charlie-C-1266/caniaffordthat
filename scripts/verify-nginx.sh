@@ -16,7 +16,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST="$REPO_ROOT/dist"
-CONF="$REPO_ROOT/nginx.conf"
+CONF="$REPO_ROOT/docker/nginx.conf"
 PORT="${1:-8089}"
 BASE="http://127.0.0.1:$PORT"
 

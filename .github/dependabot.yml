@@ -57,7 +57,7 @@ updates:
 
   # Docker — the node and nginx base images in the Dockerfile's two stages.
   - package-ecosystem: docker
-    directory: /
+    directory: /docker
     target-branch: dev
     schedule:
       interval: weekly

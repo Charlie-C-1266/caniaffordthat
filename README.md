@@ -27,9 +27,11 @@ docker compose up -d --build
 ```
 
 This serves on <http://localhost:4321>. Change the left half of the port mapping
-in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken.
+in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken. The
+`Dockerfile` and its build-context ignore file live in `docker/`, which needs
+BuildKit, Docker's default builder since Engine 23.
 
-The container's nginx config (`nginx.conf`) gzips text responses, caches
+The container's nginx config (`docker/nginx.conf`) gzips text responses, caches
 Vite's hashed `/assets/` for a year while holding HTML at `no-cache`, sends
 `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and a
 `frame-ancestors` CSP, and returns a real 404 for unknown paths rather than
@@ -40,7 +42,7 @@ npm run build
 scripts/verify-nginx.sh      # needs nginx on PATH; CI runs this too
 ```
 
-`verify-nginx.sh` is mostly a harness: it boots `nginx.conf` against `./dist`
+`verify-nginx.sh` is mostly a harness: it boots `docker/nginx.conf` against `./dist`
 and hands the URL to `scripts/verify-headers.sh`, which holds the assertions
 and takes a base URL of its own. (It adds one nginx-only check, that a direct
 request for `/404.html` is a 404.) So the same expectations can be checked
@@ -158,7 +160,7 @@ To force a build anyway, open the deployment in the Vercel dashboard, choose
 `vercel.json` also defines the production response headers: the four security
 headers on every route, a year of `immutable` caching for the hashed
 `/assets/`, an hour for the unhashed public files, and `no-cache` for each HTML
-page. These mirror `nginx.conf`, which only reaches self-hosters, so the two
+page. These mirror `docker/nginx.conf`, which only reaches self-hosters, so the two
 files must stay in step — `src/lib/vercelHeaders.test.ts` fails if a header is
 added, dropped or changed on one side only, or if the `/assets/` cache value
 drifts. Adding a header is therefore a two-file change.

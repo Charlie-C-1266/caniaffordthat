@@ -52,12 +52,11 @@ is_non_app() {
   # A change to this script should prove itself with a build.
   scripts/vercel-ignore-build.sh) return 1 ;;
   # Tests, tooling and docs that never reach the deployed site.
-  e2e/* | scripts/* | docs/* | .github/* | .agents/* | .claude/*) return 0 ;;
+  e2e/* | scripts/* | docs/* | docker/* | .github/* | .claude/*) return 0 ;;
   *.md) return 0 ;;
-  Dockerfile | docker-compose.yml | .dockerignore | nginx.conf | .hadolint.yaml) return 0 ;;
-  playwright.config.ts | eslint.config.js | .oxlintrc.json) return 0 ;;
-  .prettierrc.json | .prettierignore | .markdownlint.json | .yamllint.yml) return 0 ;;
-  .mega-linter.yml | .gitignore | .git-blame-ignore-revs | skills-lock.json) return 0 ;;
+  docker-compose.yml | playwright.config.ts | eslint.config.js | .oxlintrc.json) return 0 ;;
+  .prettierrc.json | .prettierignore | .mega-linter.yml) return 0 ;;
+  .gitignore | .git-blame-ignore-revs) return 0 ;;
   # Everything else builds: the HTML entries (index.html, sources/,
   # methodology/), package.json and its lockfile, vite.config.ts,
   # tsconfig*.json, vercel.json, and any path this list doesn't know about.

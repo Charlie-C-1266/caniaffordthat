@@ -1,7 +1,0 @@
-.git
-.agents
-.claude
-node_modules
-dist
-design
-*.md

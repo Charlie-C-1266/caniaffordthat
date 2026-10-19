@@ -18,7 +18,7 @@ const readRepoFile = (path: string) => readFileSync(fileURLToPath(new URL(`../..
 
 const HTML = readRepoFile('public/404.html')
 const SITEMAP = readRepoFile('public/sitemap.xml')
-const NGINX_CONF = readRepoFile('nginx.conf')
+const NGINX_CONF = readRepoFile('docker/nginx.conf')
 const TOKENS = readRepoFile('src/styles/tokens.css')
 
 const doc = new window.DOMParser().parseFromString(HTML, 'text/html')
