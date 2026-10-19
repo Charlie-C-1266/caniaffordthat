@@ -7,7 +7,7 @@
 # builder since Engine 23) reads in place of a root .dockerignore.
 
 # ── Stage 1: Build the static site ───────────────────────────────────────────
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 
 WORKDIR /build
 COPY package.json package-lock.json ./
