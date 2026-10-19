@@ -11,6 +11,9 @@ import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
 import { MethodChip } from './vehiclePurchase/MethodChip'
 import { METHOD_OPTIONS } from './vehiclePurchase/methodOptions'
+import { TextLink } from '../TextLink'
+import { AprSlider } from '../AprSlider'
+import { VehicleAgeSlider } from '../VehicleAgeSlider'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon, vehicleAgeAskedOnPurchase } from '../../lib/vehicle'
@@ -135,16 +138,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                 />
               </div>
               <div style={{ marginBottom: method === 'pcp' ? 26 : 0 }}>
-                <SliderField
-                  label="Interest rate (APR)"
-                  valueLabel={`${state.growth}%`}
-                  min={0}
-                  max={30}
-                  step={0.5}
-                  value={state.growth}
-                  accentColor={accent}
-                  onChange={(value) => setField('growth', value)}
-                />
+                <AprSlider accentColor={accent} />
               </div>
 
               {method === 'pcp' && (
@@ -185,16 +179,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                   ) : (
                     <>
                       <div style={{ marginBottom: 18 }}>
-                        <SliderField
-                          label="How old is the car now?"
-                          valueLabel={state.vehicleAge === 0 ? 'Brand new' : `${state.vehicleAge} year${state.vehicleAge === 1 ? '' : 's'}`}
-                          min={0}
-                          max={20}
-                          step={1}
-                          value={state.vehicleAge}
-                          accentColor={accent}
-                          onChange={(value) => setField('vehicleAge', value)}
-                        />
+                        <VehicleAgeSlider label="How old is the car now?" accentColor={accent} />
                       </div>
                       <div style={{ maxWidth: 320, marginBottom: 18 }}>
                         <LabeledUnitField
@@ -212,14 +197,9 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                             payment — estimated from a generic depreciation curve, assuming{' '}
                             {(num(state.annualMiles) > 0 ? num(state.annualMiles) : UK_AVERAGE_ANNUAL_MILES).toLocaleString('en-GB')} miles
                             a year (you can adjust that on the next step).{' '}
-                            <a
-                              href="/methodology/vehicle/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
-                            >
+                            <TextLink href="/methodology/vehicle/" newTab>
                               How we estimate this
-                            </a>
+                            </TextLink>
                           </>
                         ) : (
                           <>Add the car's price in the previous step and we'll estimate the final payment for you.</>

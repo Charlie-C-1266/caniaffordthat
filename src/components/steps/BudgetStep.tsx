@@ -8,6 +8,7 @@ import { FieldGroupHeading } from '../FieldGroupHeading'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
+import { TextLink } from '../TextLink'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
@@ -216,14 +217,9 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                     /month take-home after tax &amp; NI
                     <div style={{ marginTop: 5, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)', fontWeight: 600 }}>
                       England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, no student loan or pension.{' '}
-                      <a
-                        href="/methodology/salary/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
-                      >
+                      <TextLink href="/methodology/salary/" newTab>
                         How this is worked out →
-                      </a>
+                      </TextLink>
                     </div>
                   </div>
                 )}

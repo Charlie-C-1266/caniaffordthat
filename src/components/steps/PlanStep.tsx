@@ -6,10 +6,12 @@ import { SliderField } from '../SliderField'
 import { DurationInput } from './plan/DurationInput'
 import { GoalDateInput } from './plan/GoalDateInput'
 import { ToggleButton } from './plan/ToggleButton'
+import { AprSlider } from '../AprSlider'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
 import type { SaveFlavor } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
+import { FINANCE_TERM_RANGE, SAVINGS_INTEREST_RANGE } from '../../lib/sliderRanges'
 
 interface PlanStepProps {
   /** Position in the active flow — drives the eyebrow number. */
@@ -66,9 +68,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
               <SliderField
                 label="Expected savings interest (optional)"
                 valueLabel={`${state.growth}%`}
-                min={0}
-                max={20}
-                step={0.5}
+                {...SAVINGS_INTEREST_RANGE}
                 value={state.growth}
                 accentColor={accent}
                 onChange={(value) => setField('growth', value)}
@@ -92,24 +92,13 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                 <SliderField
                   label="Term length"
                   valueLabel={`${state.term} month${state.term === 1 ? '' : 's'}`}
-                  min={1}
-                  max={60}
-                  step={1}
+                  {...FINANCE_TERM_RANGE}
                   value={state.term}
                   accentColor={accent}
                   onChange={(value) => setField('term', value)}
                 />
               </div>
-              <SliderField
-                label="Interest rate (APR)"
-                valueLabel={`${state.growth}%`}
-                min={0}
-                max={30}
-                step={0.5}
-                value={state.growth}
-                accentColor={accent}
-                onChange={(value) => setField('growth', value)}
-              />
+              <AprSlider accentColor={accent} />
             </>
           )}
           <div style={{ marginTop: 26, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)' }}>↓ Scroll for your result</div>

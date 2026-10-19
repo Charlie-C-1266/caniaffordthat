@@ -113,16 +113,24 @@ expect_status() {
   fi
 }
 
+# Prints a response header's value for a path, or nothing when it's absent,
+# with optional extra curl args after the header name. `|| true`: an absent
+# header is a normal answer, and grep's exit 1 for "no match" would otherwise
+# end the script under `set -e -o pipefail`.
+header_of() {
+  local path=$1 header=$2
+  shift 2
+  curl -sS -D - -o /dev/null "$@" "$BASE$path" |
+    tr -d '\r' | { grep -i "^$header:" || true; } | head -1 | sed 's/^[^:]*: *//'
+}
+
 # Asserts a response header is absent.
 # Only ever called through nginx_only, which shellcheck can't see through.
 # shellcheck disable=SC2317
 expect_no_header() {
   local label=$1 path=$2 header=$3
   local got
-  # `|| true`: an absent header is the passing case here, and grep's exit 1
-  # for "no match" would otherwise end the script under `set -e -o pipefail`.
-  got="$(curl -sS -D - -o /dev/null "$BASE$path" |
-    tr -d '\r' | { grep -i "^$header:" || true; } | head -1 | sed "s/^[^:]*: *//")"
+  got="$(header_of "$path" "$header")"
   if [[ -z $got ]]; then
     pass "$label (no $header)"
   else
@@ -135,8 +143,7 @@ expect_header() {
   local label=$1 path=$2 header=$3 regex=$4
   shift 4
   local got
-  got="$(curl -sS -D - -o /dev/null "$@" "$BASE$path" |
-    tr -d '\r' | { grep -i "^$header:" || true; } | head -1 | sed "s/^[^:]*: *//")"
+  got="$(header_of "$path" "$header" "$@")"
   if [[ $got =~ $regex ]]; then
     pass "$label ($header: $got)"
   else
@@ -162,8 +169,7 @@ expect_slash_redirect() {
   local label=$1 path=$2
   local code loc
   code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE$path")"
-  loc="$(curl -sS -D - -o /dev/null "$BASE$path" |
-    tr -d '\r' | { grep -i '^location:' || true; } | head -1 | sed 's/^[^:]*: *//')"
+  loc="$(header_of "$path" Location)"
   if [[ $code != 301 && $code != 308 ]]; then
     fail "$label" "$BASE$path: status expected a 301 or 308 to $path/, got $code"
   elif [[ $loc != "$path/" && $loc != "$BASE$path/" ]]; then
@@ -218,8 +224,7 @@ code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/sources")"
 case $code in
 200) pass "/sources served directly (200)" ;;
 301 | 302 | 308)
-  loc="$(curl -sS -D - -o /dev/null "$BASE/sources" |
-    tr -d '\r' | { grep -i '^location:' || true; } | head -1 | sed 's/^[^:]*: *//')"
+  loc="$(header_of /sources Location)"
   if [[ $loc == */sources/ ]]; then
     pass "/sources redirects to $loc"
   else
@@ -410,8 +415,7 @@ if [[ $BASE == https://* ]]; then
   echo "== HSTS (https only) =="
   # Compared as a number, not matched as a pattern: a regex for "at least
   # 31536000" is easy to get subtly wrong at the digit boundaries.
-  hsts="$(curl -sS -D - -o /dev/null "$BASE/" |
-    tr -d '\r' | { grep -i '^strict-transport-security:' || true; } | head -1 | sed 's/^[^:]*: *//')"
+  hsts="$(header_of / Strict-Transport-Security)"
   if [[ $hsts =~ max-age=([0-9]+) ]] && ((10#${BASH_REMATCH[1]} >= 31536000)); then
     pass "HSTS is set for at least a year (Strict-Transport-Security: $hsts)"
   else

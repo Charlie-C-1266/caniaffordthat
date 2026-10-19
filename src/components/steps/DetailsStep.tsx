@@ -21,6 +21,7 @@ import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
+import { COVER_MONTHS_RANGE } from '../../lib/sliderRanges'
 
 interface DetailsStepProps {
   /** Position in the active flow — drives the eyebrow number and where auto-advance lands. */
@@ -123,9 +124,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     <SliderField
                       label="Months of cover"
                       valueLabel={`${state.coverMonths} month${state.coverMonths === 1 ? '' : 's'}`}
-                      min={1}
-                      max={12}
-                      step={1}
+                      {...COVER_MONTHS_RANGE}
                       value={state.coverMonths}
                       accentColor={accent}
                       onChange={(value) => setField('coverMonths', value)}
