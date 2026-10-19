@@ -23,7 +23,10 @@ COPY --from=build /build/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+# Exec form, as hadolint's DL3025 asks. The `|| exit 1` still needs a shell:
+# Docker reads exit code 1 as unhealthy, while wget reports some failures
+# with other codes.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -q -O /dev/null http://127.0.0.1:80/ || exit 1
+    CMD ["sh", "-c", "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"]
 
 CMD ["nginx", "-g", "daemon off;"]

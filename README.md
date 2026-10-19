@@ -113,7 +113,12 @@ shellcheck, UK spelling, test, build, e2e) must pass before merging.
 
 Dependency and GitHub Actions updates arrive on their own: Dependabot
 (`.github/dependabot.yml`) opens weekly PRs into `dev` for npm, the Dockerfile
-base images and the pinned actions, with minor and patch bumps grouped.
+base images and the pinned actions, with minor and patch bumps grouped. The
+workflows pin every action to a full commit SHA, with its release as a trailing
+comment (`uses: actions/checkout@<sha> # v7.0.1`), so a moved tag can't change
+what CI runs; Dependabot updates the SHA and the comment together. The
+workflows also grant their token only `contents: read`, and don't leave it in
+the checkout. MegaLinter's zizmor audit holds them to all three.
 
 ## Branching and releases
 
