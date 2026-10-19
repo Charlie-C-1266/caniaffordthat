@@ -1,20 +1,22 @@
-import { test, expect, devices } from '@playwright/test'
+import { test, expect, devices, type Locator } from '@playwright/test'
 
 // A real touch device, not synthetic events. Playwright's `tap()` on a
 // `hasTouch` context fires the genuine touchstart/touchend/synthetic-
-// mouseenter order that leaves a mouse-driven hover style stuck on after a
-// tap (#116, and #158 for the theme toggle). The unit tests reproduce that
-// order by hand; this proves the order itself is what a browser sends, and
-// that all three top-right controls now survive it together.
+// mouseenter order that used to leave a mouse-driven hover style stuck on
+// after a tap (#116, and #158 for the theme toggle). The hover is now CSS
+// behind `@media (hover: hover)`, which a touch screen doesn't match, so these
+// check what the user actually sees, the computed background, rather than
+// any inline style. hover-styles.spec.ts proves the same hover does still
+// apply for a real mouse.
 //
 // A whole spec file rather than a `describe` block: `test.use` with a device
 // profile has to be top-level, since changing the browser type forces a new
 // worker.
 test.use({ ...devices['Pixel 7'] })
 
-/** The inline `background` the component sets, which is what these controls drive off `hovered`. */
-async function background(locator: import('@playwright/test').Locator): Promise<string | null> {
-  return locator.evaluate((element) => (element as HTMLElement).style.background)
+/** The background the user sees, resolved from whatever CSS applies. */
+async function background(locator: Locator): Promise<string> {
+  return locator.evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
 test.describe('top-right controls after a real tap', () => {
@@ -23,30 +25,30 @@ test.describe('top-right controls after a real tap', () => {
     await page.goto('/')
 
     const toggle = page.getByTestId('theme-toggle')
-    expect(await background(toggle)).toBe('var(--pill-bg)')
-
     await toggle.tap()
 
-    // The tap still does its job — the hover fix must not swallow the click.
+    // The tap still does its job: the theme flipped.
     await expect(toggle).toHaveAttribute('aria-label', 'Switch to dark theme')
     expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('light')
 
-    // ...and the button is not left lit.
-    expect(await background(toggle)).toBe('var(--pill-bg)')
+    // ...and the button is not left lit. The resting background is read after
+    // the tap, because the flip changed the theme and with it the pill colour;
+    // moving focus and the pointer away settles any hover the tap left behind.
+    const afterTap = await background(toggle)
+    await page.mouse.move(0, 0)
+    await toggle.blur()
+    expect(await background(toggle)).toBe(afterTap)
   })
 
-  test('the sources link beside it does not stick after a tap gesture either', async ({ page }) => {
-    // The toggle's neighbour, fixed in #119: with both now on usePillHover,
-    // neither is left lit after a tap.
+  test('the sources link beside it is not lit by a pointer resting on it', async ({ page }) => {
+    // Tapping it would navigate (target=_blank), so the pointer is moved onto
+    // it instead: on a touch screen, nothing short of that could hover it.
     await page.goto('/')
 
     const link = page.getByRole('link', { name: 'Our sources' })
-    // Tapping it would navigate (target=_blank), so dispatch the tap gesture
-    // without following the link, which is all the hover state needs.
-    await link.dispatchEvent('touchstart')
-    await link.dispatchEvent('touchend')
-    await link.dispatchEvent('mouseenter')
+    const resting = await background(link)
+    await link.hover()
 
-    expect(await background(link)).toBe('var(--pill-bg)')
+    expect(await background(link)).toBe(resting)
   })
 })

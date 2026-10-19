@@ -1,12 +1,8 @@
 import { Icon } from '../../Icon'
-import { usePillHover } from '../../../hooks/usePillHover'
 import type { Goal } from '../../../lib/goals'
 
 /** The primary landing CTA. Text stays a static "Get started" so it never overflows or reads awkwardly per goal; the focused goal's name rides along in the aria-label for screen readers (clicking the focused card selects it too). */
 export function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
-  // See RoundButton: without this the CTA stayed lifted after a tap, and was
-  // still lifted on scrolling back up to it (#205).
-  const { hovered, hoverHandlers } = usePillHover()
   const disabled = Boolean(goal.soon)
 
   return (
@@ -18,7 +14,9 @@ export function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label={disabled ? undefined : `Get started with ${goal.name}`}
-      {...hoverHandlers}
+      // The hover lift is CSS (`.goal-cta` in index.css): a mouse-driven lift
+      // stayed on after a tap, and was still on when scrolling back up (#205).
+      className="goal-cta"
       style={{
         minWidth: 'var(--goal-cta-min-width)',
         display: 'inline-flex',
@@ -33,8 +31,6 @@ export function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void
         fontWeight: 800,
         fontFamily: 'inherit',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transform: hovered && !disabled ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'transform var(--duration-hover) ease',
         background: disabled ? 'var(--pill-bg)' : 'var(--accent-save-gradient)',
         color: disabled ? 'var(--text-disabled)' : 'var(--on-accent-save)',
         boxShadow: disabled ? 'none' : 'var(--accent-save-shadow-strong)',

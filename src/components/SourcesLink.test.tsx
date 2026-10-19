@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 import { SourcesLink } from './SourcesLink'
 
 const getLink = () => screen.getByTestId('sources-link')
@@ -22,53 +22,15 @@ describe('SourcesLink', () => {
     expect(link.textContent).toBe('Our sources')
   })
 
-  it('rests on the plain pill background', () => {
+  it('takes its background from the `.pill-control` class, not an inline style, so the CSS hover can apply', () => {
+    // jsdom can't evaluate `:hover` or media queries, so the hover itself, and
+    // that a tap can't set it off, is proven in a real browser by
+    // e2e/pill-hover-touch.spec.ts. What can be pinned here is the part that
+    // would silently break it: an inline background beats any CSS rule.
     render(<SourcesLink />)
-    expect(getLink().style.background).toBe('var(--pill-bg)')
-  })
-
-  it('swaps to the hover background while moused over and back on leave', () => {
-    render(<SourcesLink />)
-    const link = getLink()
-    fireEvent.mouseEnter(link)
-    expect(link.style.background).toBe('var(--pill-bg-hover)')
-    fireEvent.mouseLeave(link)
-    expect(link.style.background).toBe('var(--pill-bg)')
-  })
-
-  it('does not stick in the hover background after a touch tap', () => {
-    // A real tap fires touchstart/touchend and *then* a synthetic mouseenter,
-    // with no mouseleave until the user taps elsewhere — so replay that exact
-    // order. Anything that lights the pill up here would leave it looking
-    // stuck/broken on a phone.
-    render(<SourcesLink />)
-    const link = getLink()
-    fireEvent.touchStart(link)
-    fireEvent.touchEnd(link)
-    fireEvent.mouseEnter(link)
-    expect(link.style.background).toBe('var(--pill-bg)')
-  })
-
-  it('still hovers normally with a mouse after an earlier touch tap', () => {
-    // Hybrid touch-and-mouse devices must not lose hover permanently just
-    // because the pill was tapped once.
-    render(<SourcesLink />)
-    const link = getLink()
-    fireEvent.touchStart(link)
-    fireEvent.touchEnd(link)
-    fireEvent.mouseEnter(link)
-    fireEvent.mouseLeave(link)
-
-    fireEvent.mouseEnter(link)
-    expect(link.style.background).toBe('var(--pill-bg-hover)')
-  })
-
-  it('drops the hover background when focus leaves', () => {
-    render(<SourcesLink />)
-    const link = getLink()
-    fireEvent.mouseEnter(link)
-    fireEvent.blur(link)
-    expect(link.style.background).toBe('var(--pill-bg)')
+    const control = getLink()
+    expect(control.classList.contains('pill-control')).toBe(true)
+    expect(control.style.background).toBe('')
   })
 
   it('renders with no props and keeps the pill border token', () => {

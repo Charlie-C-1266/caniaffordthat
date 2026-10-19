@@ -168,3 +168,46 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * Hover states for the controls that change on hover: the three top-right
+ * pills (sources link, theme toggle, start over), the goal carousel's arrows,
+ * and its "Get started" button, which lifts.
+ *
+ * Inline styles can't express `:hover`, so these used to track hover in React
+ * state. On a touch screen that state got stuck on after a tap (the tap's
+ * synthetic `mouseenter` arrives, and its `mouseleave` may never come), which
+ * took three separate fixes (#119, #163, #206). `(hover: hover)` only matches
+ * a device whose primary pointer can hover, so a tap on a phone can't set
+ * these off at all.
+ *
+ * Each class carries the resting value as well as the hover one: the property
+ * can't also be set inline, because an inline style beats a `:hover` rule.
+ */
+.pill-control {
+  background: var(--pill-bg);
+}
+
+.carousel-arrow {
+  background: var(--tile-bg);
+}
+
+.goal-cta {
+  transform: translateY(0);
+  transition: transform var(--duration-hover) ease;
+}
+
+@media (hover: hover) {
+  .pill-control:hover {
+    background: var(--pill-bg-hover);
+  }
+
+  .carousel-arrow:hover {
+    background: var(--surface-selected);
+  }
+
+  /* A disabled "Coming soon" CTA never lifts. */
+  .goal-cta:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+}

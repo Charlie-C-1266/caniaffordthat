@@ -1,6 +1,5 @@
 import { Icon } from './Icon'
 import { useTheme } from '../hooks/useTheme'
-import { usePillHover } from '../hooks/usePillHover'
 
 /**
  * The persistent light/dark toggle — a bare icon button (not a third
@@ -9,12 +8,12 @@ import { usePillHover } from '../hooks/usePillHover'
  * the icon for the theme you'd *switch to* (moon while light, sun while
  * dark), the more common icon-toggle convention.
  *
- * Shares its touch-safe hover handling with the two pills beside it: see
- * usePillHover for why a tap must not leave this lit (#116, #158).
+ * Shares its touch-safe hover with the two pills beside it: see
+ * `.pill-control` in index.css for why a tap must not leave this lit (#116,
+ * #158).
  */
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
-  const { hovered, hoverHandlers } = usePillHover()
   const switchTo = theme === 'light' ? 'dark' : 'light'
 
   return (
@@ -23,7 +22,7 @@ export function ThemeToggle() {
       data-testid="theme-toggle"
       aria-label={`Switch to ${switchTo} theme`}
       onClick={toggleTheme}
-      {...hoverHandlers}
+      className="pill-control"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -32,7 +31,6 @@ export function ThemeToggle() {
         height: 'var(--theme-toggle-size)',
         flexShrink: 0,
         borderRadius: 20,
-        background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
         border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
         cursor: 'pointer',
