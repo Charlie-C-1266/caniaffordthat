@@ -4,13 +4,13 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { InfoHint } from '../InfoHint'
-import { Icon } from '../Icon'
-import type { IconName } from '../iconRegistry'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
+import { MethodChip } from './vehiclePurchase/MethodChip'
+import { METHOD_OPTIONS } from './vehiclePurchase/methodOptions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon, vehicleAgeAskedOnPurchase } from '../../lib/vehicle'
@@ -24,62 +24,6 @@ interface VehiclePurchaseStepProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
-}
-
-/** The four ways people actually buy cars in the UK, each with a one-line honest description of the trade. */
-const METHOD_OPTIONS: readonly { value: VehicleFinanceMethod; label: string; icon: IconName; blurb: string }[] = [
-  { value: 'cash', label: 'Cash', icon: 'banknote', blurb: 'Pay the full price upfront — no borrowing, no interest.' },
-  { value: 'pcp', label: 'PCP', icon: 'key-round', blurb: 'Lower monthly payments, then a big optional final payment to keep the car.' },
-  {
-    value: 'hp',
-    label: 'Hire purchase',
-    icon: 'calendar-clock',
-    blurb: 'Equal instalments against the car — it becomes yours after the last one.',
-  },
-  { value: 'loan', label: 'Bank loan', icon: 'landmark', blurb: 'Borrow the money separately and own the car from day one.' },
-]
-
-interface MethodChipProps {
-  option: (typeof METHOD_OPTIONS)[number]
-  active: boolean
-  accentColor: string
-  onSelect: () => void
-}
-
-/**
- * One selectable purchase-method chip: icon + name only, in a single row of
- * four. Each option's full blurb sits in its `title` (a hover tooltip, same
- * pattern as VehicleCostsStep's maintenance presets) and is shown as body
- * text once, for whichever method is active — four full two-line
- * descriptions stacked in a 2x2 grid was the single biggest contributor to
- * this tile outgrowing the viewport.
- */
-function MethodChip({ option, active, accentColor, onSelect }: MethodChipProps) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      title={option.blurb}
-      onClick={onSelect}
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 6,
-        padding: '12px 8px',
-        borderRadius: 12,
-        border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'var(--surface-selected)' : 'transparent',
-        color: 'var(--text-primary)',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      <Icon name={option.icon} size={18} color={active ? accentColor : 'var(--text-tertiary)'} />
-      <span style={{ fontSize: 12.5, fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{option.label}</span>
-    </button>
-  )
 }
 
 /**
