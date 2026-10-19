@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { GOALS, INITIAL_CAROUSEL_INDEX, circularOffset, goalById, seedFromGoal, wrapIndex } from './goals'
+import {
+  GOALS,
+  INITIAL_CAROUSEL_INDEX,
+  KIND_PRESENTATION,
+  circularOffset,
+  goalById,
+  presentationFor,
+  seedFromGoal,
+  wrapIndex,
+} from './goals'
 import type { GoalId } from '../state/types'
 
 describe('GOALS config', () => {
@@ -13,9 +22,11 @@ describe('GOALS config', () => {
 
   it('marks the car as the vehicle flow with a deposit field and no generic mode toggle', () => {
     const car = goalById('car')
-    expect(car?.vehicle).toBe(true)
+    expect(car?.kind).toBe('vehicle')
     expect(car?.soon).toBeFalsy()
-    expect(car?.deposit).toBe(true)
+    // Only the vehicle kind carries a deposit label, so the narrowing is the check.
+    if (car?.kind !== 'vehicle') throw new Error('expected the car to be the vehicle goal')
+    expect(car.depositLabel).toBe('Deposit / part-exchange')
     // "How are you paying?" lives in the vehicle purchase step, so the
     // generic save/finance toggle would double up.
     expect(car?.allowModeToggle).toBe(false)
@@ -28,7 +39,7 @@ describe('GOALS config', () => {
 
   it('gives every standard (non-emergency, selectable) goal a price headline', () => {
     for (const goal of GOALS) {
-      if (goal.soon || goal.emergency) continue
+      if (goal.soon || goal.kind === 'emergency') continue
       expect(goal.priceHeadline, `${goal.id} should have a price headline`).toBeTruthy()
     }
   })
@@ -43,10 +54,40 @@ describe('GOALS config', () => {
 
   it('marks the emergency fund save-only with no price and no mode toggle', () => {
     const emergency = goalById('emergency')
-    expect(emergency?.emergency).toBe(true)
+    expect(emergency?.kind).toBe('emergency')
     expect(emergency?.allowModeToggle).toBe(false)
     expect(emergency?.priceHeadline).toBeUndefined()
     expect(emergency?.seeds.mode).toBe('save')
+  })
+})
+
+describe('goal kinds', () => {
+  it('makes the car the only vehicle and the fund the only emergency goal; every other goal is standard', () => {
+    const ofKind = (kind: string) => GOALS.filter((goal) => goal.kind === kind).map((goal) => goal.id)
+    expect(ofKind('vehicle')).toEqual(['car'])
+    expect(ofKind('emergency')).toEqual(['emergency'])
+    expect(ofKind('standard')).toEqual(['holiday', 'luxury', 'big', 'mortgage'])
+  })
+})
+
+describe('presentationFor', () => {
+  it("reads the goal's kind, and the standard presentation before a goal is chosen", () => {
+    expect(presentationFor(null)).toBe(KIND_PRESENTATION.standard)
+    expect(presentationFor(goalById('holiday'))).toBe(KIND_PRESENTATION.standard)
+    expect(presentationFor(goalById('emergency'))).toBe(KIND_PRESENTATION.emergency)
+    expect(presentationFor(goalById('car'))).toBe(KIND_PRESENTATION.vehicle)
+  })
+
+  it("collects the emergency fund's essentials in Details, so Budget asks for none", () => {
+    expect(KIND_PRESENTATION.emergency.budget.asksOutgoings).toBe(false)
+    expect(KIND_PRESENTATION.standard.budget.asksOutgoings).toBe(true)
+    expect(KIND_PRESENTATION.vehicle.budget.asksOutgoings).toBe(true)
+  })
+
+  it("doesn't ask the car for savings in Budget (its deposit is the same figure) and relabels its transport", () => {
+    expect(KIND_PRESENTATION.vehicle.budget.savingsLabel).toBeNull()
+    expect(KIND_PRESENTATION.vehicle.budget.outgoingOverrides.transport?.label).toBe('Transport (other than this car)')
+    expect(KIND_PRESENTATION.standard.budget.outgoingOverrides).toEqual({})
   })
 })
 

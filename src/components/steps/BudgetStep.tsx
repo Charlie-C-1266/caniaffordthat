@@ -14,7 +14,7 @@ import { fmt, num } from '../../lib/calculations'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL, type OutgoingFieldKey } from '../../lib/budget'
-import { goalById } from '../../lib/goals'
+import { goalById, presentationFor } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
 import type { TakeHomeMode } from '../../state/types'
@@ -81,13 +81,12 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
     }
   }
 
-  const isEmergency = goal?.emergency === true
-  // The car's savings is its Details deposit; don't ask for it twice.
-  const showSavings = !goal?.deposit
-  const savingsLabel = isEmergency ? 'Already set aside' : 'Already saved towards this'
-  // Emergency essentials live in Details; other goals collect outgoings here.
-  const outgoings: readonly OutgoingFieldKey[] = isEmergency ? [] : OUTGOING_FIELD_KEYS
-  const visibleKeys: BudgetFieldKey[] = [...outgoings, 'savingsMonthly', ...(showSavings ? (['savings'] as const) : [])]
+  // What differs by kind of goal: see KIND_PRESENTATION in lib/goals.ts.
+  const presentation = presentationFor(goal).budget
+  // `null` when another step asks for the same figure, as the car's deposit does.
+  const { savingsLabel } = presentation
+  const outgoings: readonly OutgoingFieldKey[] = presentation.asksOutgoings ? OUTGOING_FIELD_KEYS : []
+  const visibleKeys: BudgetFieldKey[] = [...outgoings, 'savingsMonthly', ...(savingsLabel !== null ? (['savings'] as const) : [])]
 
   // The user's current savings rate, shown back to them as they type. Without
   // it the field is just another box; with it they can see what share of
@@ -97,31 +96,9 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   const savingRateCaption =
     takeHomeMonthly > 0 && regularSaving > 0 ? `That's ${Math.round((regularSaving / takeHomeMonthly) * 100)}% of your take-home pay.` : ''
 
-  // Anything already deducted from the payslip must not be entered again: in
-  // take-home mode the figure typed in is net of a workplace pension already,
-  // and in salary mode the tax engine models no pension at all (see
-  // lib/salary.ts), so counting one here would be wrong in both directions.
-  // The emergency fund has a second trap of its own — saving already going
-  // into the cushion being built is the very thing this goal is about.
-  const regularSavingHint = isEmergency
-    ? "Money you put away each month that isn't going into this cushion — other savings pots or investments. Leave out anything already taken off your payslip, like a workplace pension."
-    : 'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension.'
-
-  // The vehicle flow already itemises this car's fuel, insurance, tax and
-  // finance payment on its own steps — without a note, "Transport" here reads
-  // ambiguously (does it include the car being evaluated, or not?) and risks
-  // double-counting it. Relabel the field for that goal only, rather than
-  // hiding it: other transport spend (public transport, a second car) still
-  // belongs in spare cash.
-  const outgoingLabel = (key: OutgoingFieldKey): string =>
-    key === 'transport' && goal?.vehicle ? 'Transport (other than this car)' : OUTGOING_FIELD_LABELS[key]
-
-  // Passed to LabeledMoneyField's `hint` rather than built into the label:
-  // inside the label it would become part of the input's accessible name.
-  const outgoingHint = (key: OutgoingFieldKey): string | undefined =>
-    key === 'transport' && goal?.vehicle
-      ? "This car's fuel, insurance, tax and finance payment are already counted on the previous steps — put anything else here, like public transport or another vehicle."
-      : undefined
+  const { regularSavingHint } = presentation
+  const outgoingLabel = (key: OutgoingFieldKey): string => presentation.outgoingOverrides[key]?.label ?? OUTGOING_FIELD_LABELS[key]
+  const outgoingHint = (key: OutgoingFieldKey): string | undefined => presentation.outgoingOverrides[key]?.hint
 
   const isComplete = num(state.takeHome) > 0 && visibleKeys.every((key) => state[key] !== '')
 
@@ -129,7 +106,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
     if (event.key === 'Enter' && isComplete) scrollToIndex(index + 1)
   }
 
-  const savingsField = showSavings && (
+  const savingsField = savingsLabel !== null && (
     <LabeledMoneyField
       label={savingsLabel}
       value={state.savings}
@@ -186,7 +163,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
               margin: '0 0 30px',
             }}
           >
-            {isEmergency ? "What's coming in?" : "What's coming in, and going out?"}
+            {presentation.heading}
           </h2>
 
           <div style={{ marginBottom: 24 }}>

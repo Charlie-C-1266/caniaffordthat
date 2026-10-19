@@ -511,6 +511,32 @@ describe('deriveResult', () => {
 
 // The branches that only appear when a plan can't work, or when a figure lands
 // exactly on a boundary. All of these were previously unexercised.
+describe('deriveResult — the breakdown rows', () => {
+  // The standard card's GOAL row and already-saved label. The emergency fund
+  // has no item name and is "set aside" rather than saved towards, so it words
+  // both its own way.
+  const takeHome = '2000'
+
+  it('names the fund, its gross target and its months of cover for an emergency fund', () => {
+    const result = deriveResult(makeState({ goalId: 'emergency', mode: 'save', coverMonths: 6, housing: '750', takeHome }))
+    expect(result?.goalRowValue).toBe('Emergency fund — £4,500 (6 mo)')
+    expect(result?.savedRowLabel).toBe('ALREADY SET ASIDE')
+  })
+
+  it("names the user's own item for an ordinary goal", () => {
+    const result = deriveResult(makeState({ goalId: 'holiday', itemName: 'Japan trip', itemPrice: '10000', takeHome }))
+    expect(result?.goalRowValue).toBe('Japan trip — £10,000')
+    expect(result?.savedRowLabel).toBe('ALREADY SAVED')
+  })
+
+  it('falls back to the goal name when no item name was typed, and to "Your goal" with no goal at all', () => {
+    expect(deriveResult(makeState({ goalId: 'holiday', itemName: '', itemPrice: '10000', takeHome }))?.goalRowValue).toBe(
+      'Holiday — £10,000',
+    )
+    expect(deriveResult(makeState({ goalId: null, itemName: '', itemPrice: '10000', takeHome }))?.goalRowValue).toBe('Your goal — £10,000')
+  })
+})
+
 describe('deriveResult — infeasible and boundary plans', () => {
   beforeEach(() => {
     vi.useFakeTimers()

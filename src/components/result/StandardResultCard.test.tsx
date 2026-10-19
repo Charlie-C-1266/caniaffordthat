@@ -38,6 +38,8 @@ function savingsResult(overrides: Partial<DerivedResult> = {}): DerivedResult {
     subheadline: 'Saving £400 a month gets you there.',
     contributionRowLabel: 'MONTHLY SAVING',
     targetRowLabel: 'LEFT TO SAVE',
+    goalRowValue: 'Holiday — £10,000',
+    savedRowLabel: 'ALREADY SAVED',
     // Kept null so these tests exercise the card, not the chart; ResultChart's
     // own branches are covered in ResultChart.test.tsx.
     projection: null,
@@ -119,28 +121,18 @@ describe('StandardResultCard', () => {
     })
   })
 
-  describe('the GOAL row label', () => {
-    it('reads the goal name, gross target and cover months for an emergency fund', () => {
-      renderCard(savingsResult({ grossTarget: 4500 }), { goalId: 'emergency', coverMonths: 6 })
+  describe('the GOAL and already-saved rows', () => {
+    // deriveResult words both rows, since it knows the goal's kind (see
+    // derive.test.ts). The card shows them as given, beside what's saved.
+    it("shows the result's GOAL row and its already-saved label, with the savings from state", () => {
+      renderCard(savingsResult({ goalRowValue: 'Emergency fund — £4,500 (6 mo)', savedRowLabel: 'ALREADY SET ASIDE' }), {
+        goalId: 'emergency',
+        savings: '500',
+      })
 
       expect(rowValue('GOAL')).toBe('Emergency fund — £4,500 (6 mo)')
-      // Emergency funds are "set aside", not "saved towards this".
-      expect(screen.getByText('ALREADY SET ASIDE')).toBeTruthy()
+      expect(rowValue('ALREADY SET ASIDE')).toBe('£500')
       expect(screen.queryByText('ALREADY SAVED')).toBeNull()
-    })
-
-    it("reads the user's own item name for an ordinary goal", () => {
-      renderCard(savingsResult({ grossTarget: 10000 }), { goalId: 'holiday', itemName: 'Japan trip', savings: '2000' })
-
-      expect(rowValue('GOAL')).toBe('Japan trip — £10,000')
-      expect(rowValue('ALREADY SAVED')).toBe('£2,000')
-      expect(screen.queryByText('ALREADY SET ASIDE')).toBeNull()
-    })
-
-    it('falls back to the goal name when no item name was typed', () => {
-      renderCard(savingsResult({ grossTarget: 10000 }), { goalId: 'holiday', itemName: '' })
-
-      expect(rowValue('GOAL')).toBe('Holiday — £10,000')
     })
   })
 
