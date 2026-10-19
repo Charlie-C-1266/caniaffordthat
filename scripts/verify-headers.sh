@@ -5,11 +5,20 @@
 # unknown paths instead of an SPA fallback — served with the branded
 # public/404.html body rather than a server's default error page.
 #
-# It knows nothing about how the site is being served. scripts/verify-nginx.sh
-# boots the repository's own nginx.conf against ./dist and points this script
-# at it, and the same script can be pointed at a staging or production
-# deployment after a deploy — so one list of expectations covers both, and a
-# CDN's header policy can't quietly drift away from nginx.conf.
+# scripts/verify-nginx.sh boots the repository's own nginx.conf against ./dist
+# and points this script at it, and the same script can be pointed at a
+# staging or production deployment after a deploy — so one list of
+# expectations covers both, and a CDN's header policy can't quietly drift away
+# from nginx.conf.
+#
+# The list is nginx's, and every host is held to it except Vercel, which is
+# recognised by the `x-vercel-id` header it puts on every response. Vercel
+# differs from nginx in a few ways no configuration can change, and each check
+# that branches on it says why: the four checks that cannot hold there are
+# reported as skipped rather than failed, and an extensionless unknown path is
+# followed through Vercel's one trailing-slash redirect before its 404 is
+# checked. A host that doesn't send the header gets the full nginx list, so
+# losing it fails safe.
 #
 # Everything is discovered from the URL: the hashed asset paths come out of the
 # served HTML, so no build directory is needed.
@@ -57,11 +66,38 @@ if ! reach_err="$(curl -sS -o /dev/null --max-time 20 "$BASE/" 2>&1)"; then
   exit 1
 fi
 
+# Read into a variable before matching: `curl | grep -q` lets grep exit at the
+# first match, and curl's resulting write error would then fail the whole
+# pipeline under `pipefail`, so a Vercel response could be taken for nginx's.
+home_headers="$(curl -sS -D - -o /dev/null --max-time 20 "$BASE/" | tr -d '\r')"
+SERVED_BY=nginx
+if grep -qi '^x-vercel-id:' <<<"$home_headers"; then
+  SERVED_BY=vercel
+fi
+
 FAILED=0
+SKIPPED=0
 pass() { printf '  \033[32mok\033[0m   %s\n' "$1"; }
 fail() {
   printf '  \033[31mFAIL\033[0m %s\n       %s\n' "$1" "$2" >&2
   FAILED=1
+}
+skip() {
+  printf '  --   %s (skipped: %s)\n' "$1" "$2"
+  SKIPPED=$((SKIPPED + 1))
+}
+
+# Runs the assertion that follows the reason only against nginx. On Vercel it
+# is reported as skipped, with the reason it cannot hold there, so a pass is
+# never mistaken for having checked it.
+nginx_only() {
+  local reason=$1
+  shift
+  if [[ $SERVED_BY == nginx ]]; then
+    "$@"
+  else
+    skip "$2" "$reason"
+  fi
 }
 
 # Asserts an HTTP status for a path, with optional extra curl args.
@@ -78,6 +114,8 @@ expect_status() {
 }
 
 # Asserts a response header is absent.
+# Only ever called through nginx_only, which shellcheck can't see through.
+# shellcheck disable=SC2317
 expect_no_header() {
   local label=$1 path=$2 header=$3
   local got
@@ -116,6 +154,25 @@ expect_body() {
   fi
 }
 
+# Asserts that a path permanently redirects to the same path with a trailing
+# slash on the same site, which is what Vercel's `trailingSlash: true` does.
+# Only a permanent status passes: a 302 would tell a crawler to keep the
+# unslashed URL. The Location may be relative or absolute.
+expect_slash_redirect() {
+  local label=$1 path=$2
+  local code loc
+  code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE$path")"
+  loc="$(curl -sS -D - -o /dev/null "$BASE$path" |
+    tr -d '\r' | { grep -i '^location:' || true; } | head -1 | sed 's/^[^:]*: *//')"
+  if [[ $code != 301 && $code != 308 ]]; then
+    fail "$label" "$BASE$path: status expected a 301 or 308 to $path/, got $code"
+  elif [[ $loc != "$path/" && $loc != "$BASE$path/" ]]; then
+    fail "$label" "$BASE$path: Location was '${loc:-<absent>}', expected $path/"
+  else
+    pass "$label ($path -> $code to $loc)"
+  fi
+}
+
 # A string that appears only in public/404.html, so a server's plain error
 # body (or the calculator served by mistake) fails the body assertions below.
 NOT_FOUND_MARKER="This page doesn't exist"
@@ -135,7 +192,11 @@ if [[ -z $ASSET_JS ]]; then
   exit 1
 fi
 
-echo "Checking $BASE"
+if [[ $SERVED_BY == vercel ]]; then
+  echo "Checking $BASE (Vercel, recognised by x-vercel-id: nginx-only checks are skipped)"
+else
+  echo "Checking $BASE"
+fi
 
 echo
 echo "== pages resolve =="
@@ -171,30 +232,50 @@ expect_status 'following the redirect lands on the page' /sources 200 -L
 
 echo
 echo "== unknown paths 404 instead of serving the SPA =="
-expect_status 'unknown path' /does-not-exist 404
+# The two extensionless unknown paths the 404 checks below are run against.
+# nginx answers each with a 404 directly. Vercel's `trailingSlash: true` first
+# redirects each to its slashed form, the same redirect that takes /sources to
+# /sources/, and only that URL is the 404. So on Vercel that one hop is
+# checked here and every 404 check below runs against the URL it leads to.
+# Nothing else is followed: a redirect anywhere else, or a second hop from the
+# slashed URL, still fails the checks below.
+MISSING_PAGE=/does-not-exist
+MISSING_TYPO=/sources/typo
+if [[ $SERVED_BY == vercel ]]; then
+  expect_slash_redirect 'unknown path redirects to its slashed form' "$MISSING_PAGE"
+  expect_slash_redirect 'typo under a real directory redirects to its slashed form' "$MISSING_TYPO"
+  MISSING_PAGE+=/
+  MISSING_TYPO+=/
+fi
+expect_status 'unknown path' "$MISSING_PAGE" 404
 expect_status 'unknown script' /nope.js 404
-expect_status 'typo under a real directory' /sources/typo 404
+expect_status 'typo under a real directory' "$MISSING_TYPO" 404
 expect_status 'missing hashed asset' /assets/does-not-exist.js 404
 # A 404 must never be cached: under /assets/ it would be pinned as immutable
-# for a year, and elsewhere it would hide a page published later.
-expect_no_header 'a missing hashed asset is not cached' /assets/does-not-exist.js Cache-Control
-expect_no_header 'an unknown path is not cached' /does-not-exist Cache-Control
+# for a year, and elsewhere it would hide a page published later. nginx
+# manages that by leaving `always` off its Cache-Control headers. Vercel can't
+# match a header on status, only on path, so its 404s carry their path's rule.
+NO_CACHE_404_REASON="Vercel matches headers by path, not status, so a 404 carries its path's Cache-Control"
+nginx_only "$NO_CACHE_404_REASON" \
+  expect_no_header 'a missing hashed asset is not cached' /assets/does-not-exist.js Cache-Control
+nginx_only "$NO_CACHE_404_REASON" \
+  expect_no_header 'an unknown path is not cached' "$MISSING_PAGE" Cache-Control
 
 echo
 echo "== the branded 404 body =="
 # The status must stay 404 alongside the branded body: a 200 here would tell a
 # crawler the mistyped URL is a real page.
-for path in /does-not-exist /nope.js /sources/typo; do
+for path in "$MISSING_PAGE" /nope.js "$MISSING_TYPO"; do
   expect_status "status stays 404 on $path" "$path" 404
   expect_body "branded body on $path" "$path" "$NOT_FOUND_MARKER"
   expect_body "a way back on $path" "$path" 'href="/"'
 done
-expect_header 'the 404 body is HTML' /does-not-exist Content-Type '^text/html'
+expect_header 'the 404 body is HTML' "$MISSING_PAGE" Content-Type '^text/html'
 # nginx's own plain error body is what the branded page replaces, so its
 # tell-tale must be gone — otherwise a broken `error_page` would pass the
 # checks above on a page that still says "404 Not Found" in Times New Roman.
-if curl -sS "$BASE/does-not-exist" | grep -qF '<center>'; then
-  fail "the 404 body is the branded page" "$BASE/does-not-exist: still a server's default error page"
+if curl -sS "$BASE$MISSING_PAGE" | grep -qF '<center>'; then
+  fail "the 404 body is the branded page" "$BASE$MISSING_PAGE: still a server's default error page"
 else
   pass "the 404 body is not a server's default error page"
 fi
@@ -207,7 +288,8 @@ fi
 # the same answer.
 expect_status 'a directory without an index is a 404, not a 403' /methodology/ 404
 expect_body 'the branded body on a directory without an index' /methodology/ "$NOT_FOUND_MARKER"
-expect_no_header 'a directory 404 is not cached' /methodology/ Cache-Control
+nginx_only "$NO_CACHE_404_REASON" \
+  expect_no_header 'a directory 404 is not cached' /methodology/ Cache-Control
 # Without the trailing slash the server redirects to the slashed form, which
 # must end on the branded 404 too — so there is no 403 on either spelling.
 expect_status 'the same directory without a trailing slash ends on the 404 too' /methodology 404 -L
@@ -280,7 +362,11 @@ echo "== compression =="
 # of the same files may prefer Brotli.
 expect_header 'JS is compressed when offered' "$ASSET_JS" Content-Encoding '^(br|gzip)$' -H 'Accept-Encoding: br, gzip'
 expect_header 'HTML is compressed when offered' / Content-Encoding '^(br|gzip)$' -H 'Accept-Encoding: br, gzip'
-expect_header 'JS advertises Vary' "$ASSET_JS" Vary 'Accept-Encoding' -H 'Accept-Encoding: br, gzip'
+# Vary tells a shared cache between the server and the visitor to keep the
+# compressed and plain copies apart. Vercel sends none: its CDN negotiates the
+# encoding itself, so over HTTPS only a cache past that edge could mix them up.
+nginx_only "Vercel's CDN negotiates the encoding itself and sends no Vary" \
+  expect_header 'JS advertises Vary' "$ASSET_JS" Vary 'Accept-Encoding' -H 'Accept-Encoding: br, gzip'
 if [[ -n $ASSET_CSS ]]; then
   expect_header 'CSS is compressed when offered' "$ASSET_CSS" Content-Encoding '^(br|gzip)$' -H 'Accept-Encoding: br, gzip'
 else
@@ -301,11 +387,14 @@ for path in / /sources/ "$ASSET_JS" /robots.txt /sitemap.xml /og-image.png; do
   expect_header "frame-ancestors on $path" "$path" Content-Security-Policy "frame-ancestors 'none'"
 done
 # The headers carry `always` in nginx.conf precisely so an error response keeps
-# them; a 404 is the one error response we can ask for on demand.
-expect_header 'security headers survive a 404' /does-not-exist X-Content-Type-Options '^nosniff$'
-expect_header 'Referrer-Policy survives a 404' /does-not-exist Referrer-Policy 'strict-origin-when-cross-origin'
-expect_header 'X-Frame-Options survives a 404' /does-not-exist X-Frame-Options '^DENY$'
-expect_header 'frame-ancestors survives a 404' /does-not-exist Content-Security-Policy "frame-ancestors 'none'"
+# them; a 404 is the one error response we can ask for on demand. On Vercel
+# this is the slashed URL's 404: the redirect in front of it is Vercel's own
+# and carries none of the headers, which costs nothing, as a redirect has no
+# body to frame or sniff.
+expect_header 'security headers survive a 404' "$MISSING_PAGE" X-Content-Type-Options '^nosniff$'
+expect_header 'Referrer-Policy survives a 404' "$MISSING_PAGE" Referrer-Policy 'strict-origin-when-cross-origin'
+expect_header 'X-Frame-Options survives a 404' "$MISSING_PAGE" X-Frame-Options '^DENY$'
+expect_header 'frame-ancestors survives a 404' "$MISSING_PAGE" Content-Security-Policy "frame-ancestors 'none'"
 # The directory case reaches the 404 body through a different route (a
 # rewritten 403, not a `try_files` miss), so its headers are asserted too
 # rather than assumed to follow.
@@ -331,7 +420,9 @@ if [[ $BASE == https://* ]]; then
 fi
 
 echo
-if [[ $FAILED -eq 0 ]]; then
+if [[ $FAILED -eq 0 && $SKIPPED -gt 0 ]]; then
+  echo "All header checks passed against $BASE, with $SKIPPED nginx-only checks skipped."
+elif [[ $FAILED -eq 0 ]]; then
   echo "All header checks passed against $BASE."
 else
   echo "Some header checks failed against $BASE (see above)." >&2
