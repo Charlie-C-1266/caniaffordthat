@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { formatMonthYearDraft, monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
 
 interface MonthYearInputProps {
@@ -27,9 +27,14 @@ export function MonthYearInput({ id, months, minMonths, accentColor, onChange }:
 
   // Stay in sync with external changes (e.g. "Start over") but only while
   // the user isn't actively typing, so we don't clobber an in-progress edit.
-  useEffect(() => {
-    if (!focused) setDraft(monthYearFromMonths(months))
-  }, [months, focused])
+  // Adjusted during render rather than in an effect, React's pattern for state
+  // that follows a prop, which saves the extra render an effect would cost.
+  // Blurring needs nothing here: handleBlur snaps the draft back itself.
+  const [syncedMonths, setSyncedMonths] = useState(months)
+  if (months !== syncedMonths && !focused) {
+    setSyncedMonths(months)
+    setDraft(monthYearFromMonths(months))
+  }
 
   const commitIfValid = (value: string) => {
     const parsed = monthsFromMonthYear(value)

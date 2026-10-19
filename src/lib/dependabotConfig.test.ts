@@ -127,18 +127,18 @@ function asYaml(updates: Record<string, unknown>[], version: unknown = 2): strin
   return JSON.stringify({ version, updates }, null, 2)
 }
 
+const entry = (overrides: Record<string, unknown> = {}) => ({
+  'package-ecosystem': 'npm',
+  directory: '/',
+  'target-branch': TARGET_BRANCH,
+  schedule: { interval: 'weekly' },
+  'open-pull-requests-limit': 5,
+  ...overrides,
+})
+
 // The check is only worth as much as its willingness to reject the mistakes
 // it describes, so each failure mode is pinned against a fixture.
 describe('the check rejects the mistakes it is meant to catch', () => {
-  const entry = (overrides: Record<string, unknown> = {}) => ({
-    'package-ecosystem': 'npm',
-    directory: '/',
-    'target-branch': TARGET_BRANCH,
-    schedule: { interval: 'weekly' },
-    'open-pull-requests-limit': 5,
-    ...overrides,
-  })
-
   it('accepts a sound config', () => {
     expect(dependabotProblems(asYaml([entry()]))).toEqual([])
   })

@@ -28,7 +28,7 @@ describe('ResultCard', () => {
     const text = document.body.textContent ?? ''
     const order = [RESULT.verdictText, RESULT.headline, "The card's own body"].map((part) => text.indexOf(part))
     expect(order.every((at) => at >= 0)).toBe(true)
-    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(order.toSorted((a, b) => a - b)).toEqual(order)
     expect(screen.getByText(RESULT.subheadline)).toBeTruthy()
   })
 

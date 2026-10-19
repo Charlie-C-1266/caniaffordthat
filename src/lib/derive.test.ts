@@ -537,6 +537,19 @@ describe('deriveResult — the breakdown rows', () => {
   })
 })
 
+/** A duration plan saving nothing each month, so the target is never reached. */
+const savingNothing = (overrides: Partial<CalculatorState> = {}) =>
+  makeState({
+    goalId: 'holiday',
+    mode: 'save',
+    saveFlavor: 'duration',
+    itemPrice: '4000',
+    takeHome: '2000',
+    rateMode: 'amount',
+    monthlyAmount: '0',
+    ...overrides,
+  })
+
 describe('deriveResult — infeasible and boundary plans', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -546,19 +559,6 @@ describe('deriveResult — infeasible and boundary plans', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
-
-  /** A duration plan saving nothing each month, so the target is never reached. */
-  const savingNothing = (overrides: Partial<CalculatorState> = {}) =>
-    makeState({
-      goalId: 'holiday',
-      mode: 'save',
-      saveFlavor: 'duration',
-      itemPrice: '4000',
-      takeHome: '2000',
-      rateMode: 'amount',
-      monthlyAmount: '0',
-      ...overrides,
-    })
 
   it('marks a duration plan saving £0/month infeasible, with no headline and no Infinity', () => {
     const result = deriveResult(savingNothing())
