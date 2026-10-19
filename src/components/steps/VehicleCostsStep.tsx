@@ -3,7 +3,6 @@ import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
-import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SliderField } from '../SliderField'
@@ -115,7 +114,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <Tile maxWidth={680} padding="40px 48px">
           <Eyebrow color={accent}>Step {index} — Running costs</Eyebrow>
-          <h1
+          <h2
             style={{
               fontSize: 'var(--fs-h1-sm)',
               lineHeight: 1.15,
@@ -125,10 +124,17 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             }}
           >
             What will it cost to keep on the road?
-          </h1>
+          </h2>
 
           <SectionLabel>Fuel</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px 18px', marginBottom: 12 }}>
+          {/*
+            Three equal tracks fit comfortably at the tile's full width, but
+            on a phone they'd each be ~56px — too narrow for a value plus its
+            unit however the gutter is sized. `auto-fit` + a 150px floor drops
+            to two tracks, then one, as the room runs out, and resolves to the
+            same three tracks from tablet widths up.
+          */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px 18px', marginBottom: 12 }}>
             <LabeledUnitField
               label="Miles you drive / year"
               unit="miles"
@@ -166,7 +172,12 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
                 onKeyDown={handleEnterAdvance}
               />
             </div>
-            <div style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
+            {/* The chips row wraps in its own right: the outer row only wraps the
+                whole group below the field, so without flexWrap the three chips
+                stayed on one line and the last ran out past the tile's rounded
+                edge at phone widths (21px past it at 360px). At desktop widths
+                they still fit beside the field on a single row. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 2 }}>
               {MAINTENANCE_PRESETS.map((preset) => (
                 <PresetChip
                   key={preset.id}
@@ -184,7 +195,12 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
           </div>
 
           <SectionLabel>Insurance &amp; tax</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px', marginBottom: 12 }}>
+          {/* alignItems:'end' bottom-aligns the pair. "Road tax (VED) / year" plus
+              its "?" hint wraps onto one more line than "Insurance / year", and
+              top-aligned grid items left the two £ amounts 17px out of line with
+              each other. Aligning on the inputs rather than the labels keeps them
+              level whatever the labels wrap to. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 18px', marginBottom: 12, alignItems: 'end' }}>
             <LabeledMoneyField
               label="Insurance / year"
               value={state.insuranceAnnual}
@@ -192,15 +208,8 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
               onKeyDown={handleEnterAdvance}
             />
             <LabeledMoneyField
-              label={
-                <>
-                  Road tax (VED) / year{' '}
-                  <InfoHint
-                    size={14}
-                    text={`£${STANDARD_VED_ANNUAL}/year is the standard rate for most cars. Brand-new cars over £${EXPENSIVE_CAR_PRICE_THRESHOLD.toLocaleString('en-GB')} list price also pay a £${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement in years 2–6 — we add that automatically.`}
-                  />
-                </>
-              }
+              label="Road tax (VED) / year"
+              hint={`£${STANDARD_VED_ANNUAL}/year is the standard rate for most cars. Brand-new cars over £${EXPENSIVE_CAR_PRICE_THRESHOLD.toLocaleString('en-GB')} list price also pay a £${EXPENSIVE_CAR_SUPPLEMENT_ANNUAL}/year supplement in years 2–6 — we add that automatically.`}
               value={state.taxAnnual}
               onChange={(value) => setField('taxAnnual', value)}
               onKeyDown={handleEnterAdvance}

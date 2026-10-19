@@ -11,7 +11,11 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     steps:
+      # Full history, so the UK-spelling step below can find the merge base
+      # with the PR's target branch.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -29,8 +33,40 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
+      # shellcheck is preinstalled on the ubuntu-latest image.
+      - name: Shellcheck
+        run: shellcheck scripts/*.sh
+
+      # Fails on US spellings in the lines a PR adds, with each one as an
+      # annotation on the diff. Only PRs into dev: a dev → main release PR
+      # carries lines that were already checked on their way into dev, plus
+      # some from before this check existed, which a release shouldn't block on.
+      - name: UK spelling (added lines)
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+        run: scripts/check-uk-spelling.sh origin/dev
+
+      # One run does both jobs: it fails the build on a failing test exactly as
+      # `npm test` would, and the `text` reporter prints the per-file coverage
+      # table straight into this job's log, so a reviewer can see a 0%-covered
+      # file without reproducing the run locally. Since #178 it is also the
+      # gate: `coverage.thresholds` in vite.config.ts is a flat 100 on all
+      # four metrics, so this step fails the build on the first uncovered
+      # line. (When everything is covered the table prints empty — that is
+      # the reporter showing a fully covered tree, not a broken run.)
+      - name: Test (with coverage)
+        run: npm run test:coverage
+
+      # The same run's `html` reporter output, kept browsable from the Actions
+      # run. `if: always()` so the report still lands when a test fails —
+      # that's exactly when the numbers are worth looking at.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Build
         run: npx vite build
@@ -40,3 +76,29 @@ jobs:
 
       - name: E2E test
         run: npm run test:e2e
+
+  nginx:
+    name: Self-hosted nginx config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npx vite build
+
+      - name: Install nginx
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nginx-light
+
+      # Serves the real ./dist through the repository's own nginx.conf and
+      # asserts the cache, compression, security-header and 404 behaviour.
+      - name: Verify nginx.conf
+        run: bash scripts/verify-nginx.sh

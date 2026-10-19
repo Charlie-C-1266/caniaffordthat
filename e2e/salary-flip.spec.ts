@@ -4,7 +4,7 @@ import { goToPlan, goToResult } from './helpers'
 test.describe('reverse "what salary?" flip panel', () => {
   test('the result shows the salary a plan would take, and the gap to current pay', async ({ page }) => {
     await goToPlan(page, { itemName: 'New sofa', itemPrice: '1200', takeHome: '2000' })
-    // Goal-date flavor gives a deterministic fixed monthly saving.
+    // Goal-date flavour gives a deterministic fixed monthly saving.
     await page.getByRole('button', { name: 'I have a goal date' }).click()
     await goToResult(page)
 

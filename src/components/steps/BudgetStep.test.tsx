@@ -1,0 +1,553 @@
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach } from 'vitest'
+import { screen, cleanup, fireEvent } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
+import { BudgetStep } from './BudgetStep'
+import { monthlyTakeHomeFromGross } from '../../lib/salary'
+import { fmt } from '../../lib/calculations'
+import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
+import { OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL } from '../../lib/budget'
+import type { CalculatorState, GoalId } from '../../state/types'
+
+// Two pieces of real logic live in this step beyond form rendering: the
+// salary -> take-home sync (typing a salary writes both fields; clearing it
+// must clear the derived one rather than leave a stale figure), and the
+// goal-driven show/hide/relabel of the outgoing fields, which also decides
+// what `isComplete` gates Enter-to-advance on. Neither had any coverage.
+//
+// Also covered here, so every field and branch the step renders is exercised:
+// the two money fields the user types into directly (take-home and savings),
+// the derived "~ £x/month" summary that only appears once a salary is in, the
+// per-goal heading, and the Enter gate's rejections.
+//
+// Expected take-home figures are computed with the same engine the step uses
+// rather than hard-coded, so a tax-table change updates both together.
+
+const STEP_INDEX = 4
+const noop = () => {}
+
+const SALARY_MODE_LABEL = 'Annual salary'
+const TAKE_HOME_MODE_LABEL = 'Monthly take-home'
+const SAVINGS_LABEL = 'Already saved towards this'
+const SET_ASIDE_LABEL = 'Already set aside'
+const VEHICLE_TRANSPORT_LABEL = 'Transport (other than this car)'
+// The heading wraps on a U+2028 line separator, so match across the break
+// rather than pinning the exact character.
+const BOTH_HALVES_HEADING = /^What's coming in,\s*and going out\?$/
+
+/** Mirrors the step's own roundPence, so the expectation is the value it should store. */
+const expectedTakeHome = (grossAnnual: number) => String(Math.round(monthlyTakeHomeFromGross(grossAnnual) * 100) / 100)
+
+/** Every index the step asked to scroll to, so the Enter gate can be read off it. */
+const advanced: number[] = []
+
+function renderBudgetStep(state: Partial<CalculatorState> = {}) {
+  renderWithCalculator(<BudgetStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={(i) => advanced.push(i)} />, state)
+}
+
+/** Renders the step for a goal, with a price so it looks like a real run-through. */
+const renderForGoal = (goalId: GoalId, state: Partial<CalculatorState> = {}) =>
+  renderBudgetStep({ goalId, itemPrice: '18000', takeHome: '2600', ...state })
+
+const modeButton = (label: string) => screen.getByRole('button', { name: label })
+/** The take-home money input — only rendered while take-home mode is active. */
+const takeHomeInput = () => screen.getByLabelText<HTMLInputElement>('Take-home pay / month')
+
+/** The text an assistive technology would read as `element`'s description, by resolving aria-describedby. */
+function accessibleDescription(element: HTMLElement): string {
+  const ids = (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+  return ids
+    .map((id) => element.ownerDocument.getElementById(id)?.textContent?.trim() ?? '')
+    .join(' ')
+    .trim()
+}
+
+describe('BudgetStep', () => {
+  afterEach(() => {
+    cleanup()
+    advanced.length = 0
+  })
+
+  describe('the salary to take-home sync', () => {
+    it('writes the rounded monthly take-home alongside the salary typed', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '60000' } })
+
+      expect(calculator().state.grossSalary).toBe('60000')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(60000))
+      // Sanity-check the figure is a real one, not an artefact of both sides
+      // calling the same broken helper.
+      expect(Number(calculator().state.takeHome)).toBeGreaterThan(3000)
+      expect(Number(calculator().state.takeHome)).toBeLessThan(4000)
+    })
+
+    it('keeps the two in step as the salary is edited', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
+
+      fireEvent.change(input, { target: { value: '60000' } })
+      fireEvent.change(input, { target: { value: '35000' } })
+
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(35000))
+    })
+
+    it('clears take-home rather than leaving a stale figure when the salary is emptied', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
+
+      fireEvent.change(input, { target: { value: '60000' } })
+      fireEvent.change(input, { target: { value: '' } })
+
+      expect(calculator().state.grossSalary).toBe('')
+      expect(calculator().state.takeHome).toBe('')
+    })
+  })
+
+  describe('switching take-home entry mode', () => {
+    it('re-syncs take-home from a salary already typed', () => {
+      // A salary typed earlier, then a detour through take-home mode: coming
+      // back must restore the derived figure, not whatever was typed over it.
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', grossSalary: '45000', takeHome: '1200' })
+
+      fireEvent.click(modeButton(SALARY_MODE_LABEL))
+
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(45000))
+    })
+
+    it('leaves a typed take-home alone when there is no salary to sync from', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', grossSalary: '', takeHome: '1800' })
+
+      fireEvent.click(modeButton(SALARY_MODE_LABEL))
+
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe('1800')
+    })
+
+    it('leaves take-home alone when switching back the other way', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000', takeHome: '2500' })
+
+      fireEvent.click(modeButton(TAKE_HOME_MODE_LABEL))
+
+      expect(calculator().state.takeHomeMode).toBe('takehome')
+      expect(calculator().state.takeHome).toBe('2500')
+    })
+  })
+
+  describe('which fields the goal asks for', () => {
+    it('asks an ordinary goal for all five outgoings and what it has already saved', () => {
+      renderForGoal('holiday')
+
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(false)
+    })
+
+    it('asks the emergency fund for nothing but what it has set aside', () => {
+      // Its essentials were collected in DetailsStep; asking again here would
+      // double-count them.
+      renderForGoal('emergency')
+
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(false)
+    })
+
+    it('does not ask a vehicle goal for savings, which its Details deposit already captured', () => {
+      renderForGoal('car')
+
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(SET_ASIDE_LABEL).length > 0).toBe(false)
+      // The outgoings themselves are still asked for.
+      expect(screen.queryAllByLabelText(OUTGOING_FIELD_LABELS.housing).length > 0).toBe(true)
+    })
+
+    it('qualifies the Transport field for a vehicle goal, and only for one', () => {
+      renderForGoal('car')
+
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(true)
+      expect(screen.getByRole('button', { name: /already counted on the previous steps/ })).toBeTruthy()
+
+      cleanup()
+      renderForGoal('holiday')
+
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(false)
+      expect(screen.queryAllByLabelText(OUTGOING_FIELD_LABELS.transport).length > 0).toBe(true)
+    })
+
+    it('writes each outgoing to its own field', () => {
+      renderForGoal('holiday')
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { target: { value: '900' } })
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.groceries), { target: { value: '320' } })
+
+      expect(calculator().state.housing).toBe('900')
+      expect(calculator().state.groceries).toBe('320')
+      expect(calculator().state.utilities).toBe('0')
+    })
+  })
+
+  describe('typing into the money fields', () => {
+    it('writes a directly typed take-home', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      fireEvent.change(takeHomeInput(), { target: { value: '2450' } })
+
+      expect(calculator().state.takeHome).toBe('2450')
+      // Nothing derived it, so the salary field stays empty.
+      expect(calculator().state.grossSalary).toBe('')
+    })
+
+    it('writes what has already been saved towards the goal', () => {
+      renderForGoal('holiday')
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(SAVINGS_LABEL), { target: { value: '3200' } })
+
+      expect(calculator().state.savings).toBe('3200')
+    })
+
+    it("writes the emergency fund's set-aside amount to the same field", () => {
+      // Different label, same `savings` field — the rest of the app reads only
+      // the one key, so a second field here would strand the figure.
+      renderForGoal('emergency')
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>(SET_ASIDE_LABEL), { target: { value: '1500' } })
+
+      expect(calculator().state.savings).toBe('1500')
+    })
+  })
+
+  describe('the derived take-home summary', () => {
+    it('shows the monthly figure, the tax-year caveat and the methodology link once a salary is in', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000' })
+
+      expect(screen.getByText(fmt(monthlyTakeHomeFromGross(45000)))).toBeTruthy()
+      expect(screen.getByText(new RegExp(CURRENT_TAX_YEAR.label))).toBeTruthy()
+      expect(screen.getByRole('link', { name: /How this is worked out/ }).getAttribute('href')).toBe('/methodology/salary/')
+    })
+
+    it('shows nothing before a salary is typed', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '' })
+
+      expect(screen.queryByRole('link', { name: /How this is worked out/ })).toBeNull()
+    })
+
+    it('shows nothing for a salary of zero', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '0' } })
+
+      expect(calculator().state.takeHome).toBe('')
+      expect(screen.queryByRole('link', { name: /How this is worked out/ })).toBeNull()
+    })
+
+    it('is absent in take-home mode, where nothing is derived', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', grossSalary: '45000' })
+
+      expect(screen.queryByRole('link', { name: /How this is worked out/ })).toBeNull()
+    })
+  })
+
+  describe('salaries at the edges of the tax tables', () => {
+    it('hands back the whole salary below the personal allowance', () => {
+      // No income tax and no NI is due under £12,570, so take-home is just
+      // the gross split over twelve months.
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '10000' } })
+
+      expect(calculator().state.takeHome).toBe('833.33')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(10000))
+    })
+
+    it('stays finite and well under gross on a seven-figure salary', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '1000000' } })
+
+      const takeHome = Number(calculator().state.takeHome)
+      expect(Number.isFinite(takeHome)).toBe(true)
+      // Comfortably inside the additional rate, so a long way below gross/12.
+      expect(takeHome).toBeGreaterThan(0)
+      expect(takeHome).toBeLessThan(1000000 / 12)
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(1000000))
+    })
+
+    it('clamps a typed minus sign to zero rather than deriving from it', () => {
+      // MoneyInput clamps the negative before the step sees it; the point here
+      // is that the derived take-home clears rather than keeping a stale value.
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+      const input = screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)')
+
+      fireEvent.change(input, { target: { value: '45000' } })
+      fireEvent.change(input, { target: { value: '-1' } })
+
+      expect(calculator().state.grossSalary).toBe('0')
+      expect(calculator().state.takeHome).toBe('')
+    })
+
+    it('survives being toggled back and forth without drifting', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000', takeHome: expectedTakeHome(45000) })
+
+      for (let i = 0; i < 3; i += 1) {
+        fireEvent.click(modeButton(TAKE_HOME_MODE_LABEL))
+        fireEvent.click(modeButton(SALARY_MODE_LABEL))
+      }
+
+      expect(calculator().state.takeHomeMode).toBe('salary')
+      expect(calculator().state.takeHome).toBe(expectedTakeHome(45000))
+    })
+  })
+
+  describe('the heading', () => {
+    it('drops the outgoings half for the emergency fund, which is not asked for any', () => {
+      renderForGoal('emergency')
+
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("What's coming in?")
+    })
+
+    it('asks about both halves for every other goal', () => {
+      renderForGoal('holiday')
+
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(BOTH_HALVES_HEADING)
+    })
+  })
+
+  describe('with no goal chosen', () => {
+    it('falls back to the full question set rather than rendering nothing', () => {
+      // `goalId` is null until the carousel is used, and hydrateStateFromUrl
+      // can leave it that way; the step must still be usable.
+      renderBudgetStep({ goalId: null, takeHome: '2600' })
+
+      expect(screen.getByRole('heading', { level: 2 }).textContent).toMatch(BOTH_HALVES_HEADING)
+      for (const label of Object.values(OUTGOING_FIELD_LABELS)) expect(screen.queryAllByLabelText(label).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(SAVINGS_LABEL).length > 0).toBe(true)
+      expect(screen.queryAllByLabelText(VEHICLE_TRANSPORT_LABEL).length > 0).toBe(false)
+    })
+  })
+
+  describe('Enter to advance', () => {
+    it('is gated on the fields the goal actually shows', () => {
+      // An emergency fund shows no outgoings, so a blank one must not hold it
+      // back — only take-home and what it has set aside count.
+      renderBudgetStep({ goalId: 'emergency', takeHome: '2600', housing: '', savings: '500' })
+
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(SET_ASIDE_LABEL), { key: 'Enter' })
+
+      expect(advanced).toEqual([STEP_INDEX + 1])
+    })
+
+    it('holds back while a visible field is still blank', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHome: '2600', housing: '' })
+
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
+
+      expect(advanced).toEqual([])
+    })
+
+    it('holds back on a take-home of zero, with every other field filled', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHome: '0' })
+
+      fireEvent.keyDown(takeHomeInput(), { key: 'Enter' })
+
+      expect(advanced).toEqual([])
+    })
+
+    it('ignores every key that is not Enter', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHome: '2600' })
+
+      fireEvent.keyDown(takeHomeInput(), { key: 'Tab' })
+      fireEvent.keyDown(takeHomeInput(), { key: 'a' })
+
+      expect(advanced).toEqual([])
+    })
+
+    it('advances from the salary field too', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000', takeHome: expectedTakeHome(45000) })
+
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { key: 'Enter' })
+
+      expect(advanced).toEqual([STEP_INDEX + 1])
+    })
+
+    it('advances from an outgoing field once nothing is blank', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHome: '2600' })
+
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(OUTGOING_FIELD_LABELS.housing), { key: 'Enter' })
+
+      expect(advanced).toEqual([STEP_INDEX + 1])
+    })
+
+    it('advances from the savings field', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHome: '2600' })
+
+      fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>(SAVINGS_LABEL), { key: 'Enter' })
+
+      expect(advanced).toEqual([STEP_INDEX + 1])
+    })
+  })
+
+  // #167: the step's most important field had no accessible name at all —
+  // the visible FieldLabel above it was not linked to the input, so a screen
+  // reader announced it as a bare "spin button". These query the way a screen
+  // reader resolves a name, so they fail on the unlinked markup.
+  describe('the income field is named by its visible label', () => {
+    it('take-home mode names it "Take-home pay / month"', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      const field = screen.getByRole('spinbutton', { name: 'Take-home pay / month' })
+      expect(field).toBe(screen.getByLabelText('Take-home pay / month'))
+    })
+
+    it('salary mode names the same field "Annual salary (before tax)"', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+
+      expect(screen.getByRole('spinbutton', { name: 'Annual salary (before tax)' })).toBeDefined()
+      // The other label belongs to an input that isn't rendered in this mode.
+      expect(screen.queryByLabelText('Take-home pay / month')).toBeNull()
+    })
+
+    it('names the input that actually takes the value', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      fireEvent.change(screen.getByLabelText('Take-home pay / month'), { target: { value: '2450' } })
+
+      expect(calculator().state.takeHome).toBe('2450')
+    })
+
+    it('gives the label a for that resolves to the input, not a dangling id', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome' })
+
+      const field = screen.getByLabelText('Take-home pay / month')
+      const label = document.querySelector('label[for]')
+      expect(label?.getAttribute('for')).toBe(field.id)
+      expect(field.id).not.toBe('')
+    })
+  })
+})
+
+// For the car goal the transport field is relabelled and carries a "?" hint
+// explaining what it excludes. The hint sits inside the field's <label>, and
+// a <label for> names its input from the label's whole content — so before
+// #201 the field was announced as its name followed by that whole sentence.
+describe("the car goal's transport field", () => {
+  const TRANSPORT_LABEL = 'Transport (other than this car)'
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('is named by the label text alone, not the label plus the hint', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+
+    // Exact-string `name`: one character of the hint leaking in fails this.
+    const input = screen.getByRole('spinbutton', { name: TRANSPORT_LABEL })
+    expect(input.getAttribute('aria-labelledby')).toBeTruthy()
+    // And it is the field that actually takes the value.
+    fireEvent.change(input, { target: { value: '85' } })
+    expect(calculator().state.transport).toBe('85')
+  })
+
+  it('carries the hint as its accessible description instead', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+    const input = screen.getByRole('spinbutton', { name: TRANSPORT_LABEL })
+
+    const description = accessibleDescription(input)
+    expect(description).toContain('already counted on the previous steps')
+    expect(description).toContain('public transport or another vehicle')
+  })
+
+  it('leaves the other outgoing fields with no description and their plain names', () => {
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+
+    // Only the hinted field gains a description — the change must not have
+    // wired one onto every LabeledMoneyField.
+    const housing = screen.getByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.housing })
+    expect(housing.getAttribute('aria-describedby')).toBeNull()
+    expect(housing.getAttribute('aria-labelledby')).toBeNull()
+  })
+
+  it('uses the plain "Transport" name, with no hint, for a non-vehicle goal', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2600' })
+
+    const input = screen.getByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.transport })
+    expect(input.getAttribute('aria-describedby')).toBeNull()
+    expect(accessibleDescription(input)).toBe('')
+  })
+})
+
+// The regular-saving field is the one money field here that is neither an
+// essential nor an asset: it comes off spare cash but must stay out of the
+// emergency fund's cushion basis. These cover what the step itself owns —
+// the live savings-rate caption, the two hint variants (the emergency fund
+// has its own double-counting trap), and the field showing for every goal
+// including the one whose outgoings live on another step.
+describe('the regular-saving field', () => {
+  afterEach(cleanup)
+
+  it('writes to savingsMonthly, leaving the already-saved lump sum alone', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }), { target: { value: '250' } })
+    expect(calculator().state.savingsMonthly).toBe('250')
+    expect(calculator().state.savings).toBe('0')
+  })
+
+  it('shows the saving as a share of take-home pay once both figures are in', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000', savingsMonthly: '300' })
+    expect(screen.getByText("That's 15% of your take-home pay.")).toBeTruthy()
+  })
+
+  it('holds the caption back until there is something to work out', () => {
+    // Nothing saved yet…
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+    expect(screen.queryByText(/of your take-home pay\./)).toBeNull()
+    cleanup()
+
+    // …and no take-home to measure it against.
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '', savingsMonthly: '300' })
+    expect(screen.queryByText(/of your take-home pay\./)).toBeNull()
+  })
+
+  it('warns against entering anything already taken off the payslip', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000' })
+
+    const description = accessibleDescription(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }))
+    expect(description).toContain('workplace pension')
+    expect(description).not.toContain('this cushion')
+  })
+
+  it("tells the emergency fund's users to leave out what is going into the cushion itself", () => {
+    renderBudgetStep({ goalId: 'emergency', takeHome: '2000' })
+
+    const description = accessibleDescription(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL }))
+    expect(description).toContain("isn't going into this cushion")
+    expect(description).toContain('workplace pension')
+  })
+
+  it('is asked for even by the goals that collect their other money fields elsewhere', () => {
+    // The emergency fund's essentials live on the Details step and the car's
+    // deposit is its "already saved", so both render a shortened grid here —
+    // regular saving still has to appear in it.
+    renderBudgetStep({ goalId: 'emergency', takeHome: '2000' })
+    expect(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })).toBeTruthy()
+    expect(screen.queryByRole('spinbutton', { name: OUTGOING_FIELD_LABELS.housing })).toBeNull()
+    cleanup()
+
+    renderBudgetStep({ goalId: 'car', itemPrice: '22000', takeHome: '2600' })
+    expect(screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })).toBeTruthy()
+  })
+
+  it('gates Enter-to-advance on it like every other visible field', () => {
+    renderBudgetStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2000', savingsMonthly: '' })
+    const input = screen.getByRole('spinbutton', { name: REGULAR_SAVING_LABEL })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(advanced).toEqual([])
+
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(advanced).toEqual([STEP_INDEX + 1])
+  })
+})

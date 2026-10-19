@@ -1,0 +1,733 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
+import { GoalPickerStep } from './GoalPickerStep'
+import { GOALS, INITIAL_CAROUSEL_INDEX, circularOffset, seedFromGoal, type Goal } from '../../lib/goals'
+import type { CalculatorState } from '../../state/types'
+
+// The carousel's pure helpers (`wrapIndex`, `circularOffset`, `seedFromGoal`)
+// are covered in lib/goals.test.ts; the component's own state wiring around
+// them had no coverage at all. What's tested here is the timing- and
+// internal-state-driven behaviour e2e can't reach at this granularity: the
+// auto-rotate lifecycle (engage / hover / goal-picked / reduced-motion), the
+// teleport-on-wrap flag, focus-vs-select on a card click, and the delayed
+// scroll after a goal is selected.
+
+const STEP_INDEX = 0
+const noop = () => {}
+
+// Mirrors the component's own constants (both are module-private there).
+const AUTO_ROTATE_MS = 3200
+const SELECT_SCROLL_DELAY_MS = 260
+/** Cards this far from the focused one are faded out and non-interactive. */
+const MAX_VISIBLE_OFFSET = 2
+
+const LAST_INDEX = GOALS.length - 1
+const CAR = GOALS[0]
+const HOLIDAY = GOALS[1]
+const MORTGAGE = GOALS[LAST_INDEX]
+
+/** jsdom has no media-query engine, so the reduced-motion check is stubbed per test. */
+function stubReducedMotion(reduce: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({ matches: reduce && query.includes('reduce'), media: query })),
+  )
+}
+
+function renderPicker(state: Partial<CalculatorState> = {}, scrollToIndex: (index: number) => void = noop) {
+  renderWithCalculator(<GoalPickerStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={scrollToIndex} />)
+  // Seeded after mount because the provider hydrates its own initial state
+  // from the URL.
+  if (Object.keys(state).length > 0) act(() => calculator().setFields(state))
+}
+
+const carouselIndex = () => calculator().state.carouselIndex
+
+/** A goal's card, whichever of its three accessible names it currently carries. */
+const cardFor = (goal: Goal) =>
+  screen.getByRole('button', {
+    name: goal.soon ? `${goal.name} (coming soon)` : new RegExp(`^(Focus|Continue with) ${goal.name}$`),
+  })
+
+const dotFor = (goal: Goal) => screen.getByRole('button', { name: `Go to ${goal.name}` })
+const arrow = (label: 'Previous goal' | 'Next goal') => screen.getByRole('button', { name: label })
+
+/** The landing CTA. A "Soon" goal's is named by its visible text, since it deliberately carries no aria-label. */
+const ctaFor = (goal: Goal) => screen.getByRole('button', { name: goal.soon ? 'Coming soon' : `Get started with ${goal.name}` })
+
+/** The inline `background` an arrow drives off its own hover state. */
+const arrowBackground = (label: 'Previous goal' | 'Next goal') => arrow(label).style.background
+/** The inline `transform` the CTA drives off its own hover state. */
+const ctaTransform = (goal: Goal) => ctaFor(goal).style.transform
+
+const ARROW_RESTING = 'var(--tile-bg)'
+const ARROW_HOVERED = 'var(--surface-selected)'
+const CTA_RESTING = 'translateY(0)'
+const CTA_LIFTED = 'translateY(-2px)'
+
+/** The stage div carrying the hover handlers — two levels up from any card. */
+function carouselStage(): HTMLElement {
+  const stage = cardFor(CAR).parentElement?.parentElement
+  if (!stage) throw new Error('Could not find the carousel stage')
+  return stage
+}
+
+/** Advances the fake clock inside act, so React flushes whatever the timer wrote. */
+function advanceBy(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms)
+  })
+}
+
+/** Cards that jump across the wrap seam drop `transform` from their transition. */
+const teleportingGoals = () => GOALS.filter((goal) => !cardFor(goal).style.transition.includes('transform')).map((goal) => goal.id)
+
+// With six cards, every single-step move sends exactly one card across the wrap
+// seam — the one diametrically opposite the focus, which flips from the far end
+// of the strip (offset +3, fully faded out) to the near edge of the other side,
+// or back. That card is the only one allowed to jump, and because one end of
+// its move is past the visible band it fades in or out in place rather than
+// flying across the stage.
+//
+// Derived independently of the component (#156): a card that stays put
+// relative to the strip shifts by exactly the jump, the other way to the
+// focus, so anything else wrapped. Works for any jump size, not just one.
+const seamCrossers = (from: number, to: number) => {
+  const jump = circularOffset(to, from)
+  return GOALS.filter((_, i) => circularOffset(i, to) - circularOffset(i, from) !== -jump).map((goal) => goal.id)
+}
+
+/** Whether card `i` is inside the faded-in band when card `centre` is focused. */
+const visibleAt = (i: number, centre: number) => Math.abs(circularOffset(i, centre)) <= MAX_VISIBLE_OFFSET
+
+describe('GoalPickerStep', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    stubReducedMotion(false)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  describe('auto-rotate', () => {
+    it('advances the focused card on its own, once per interval', () => {
+      renderPicker()
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+
+      advanceBy(AUTO_ROTATE_MS)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+
+      advanceBy(AUTO_ROTATE_MS)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 2)
+    })
+
+    it('does not advance before the interval is up', () => {
+      renderPicker()
+      advanceBy(AUTO_ROTATE_MS - 1)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+    })
+
+    it('wraps back round to the first card past the last', () => {
+      renderPicker({ carouselIndex: LAST_INDEX })
+      advanceBy(AUTO_ROTATE_MS)
+      expect(carouselIndex()).toBe(0)
+    })
+
+    it('stops for good once the user clicks a dot', () => {
+      renderPicker()
+      fireEvent.click(dotFor(HOLIDAY))
+      expect(carouselIndex()).toBe(1)
+
+      advanceBy(AUTO_ROTATE_MS * 3)
+      expect(carouselIndex()).toBe(1)
+    })
+
+    it('stops for good once the user clicks an arrow', () => {
+      renderPicker()
+      fireEvent.click(arrow('Next goal'))
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+
+      advanceBy(AUTO_ROTATE_MS * 3)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+    })
+
+    it('stops for good once a goal is selected', () => {
+      renderPicker()
+      fireEvent.click(cardFor(CAR))
+      expect(calculator().state.goalId).toBe(CAR.id)
+
+      advanceBy(AUTO_ROTATE_MS * 3)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+    })
+
+    it('never starts when a goal is already chosen — e.g. someone arriving on a shared link', () => {
+      renderPicker({ goalId: HOLIDAY.id })
+      advanceBy(AUTO_ROTATE_MS * 2)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+    })
+
+    it('pauses while the carousel is hovered and resumes on mouse-leave', () => {
+      renderPicker()
+      // React derives onMouseEnter/onMouseLeave from mouseover/mouseout.
+      fireEvent.mouseOver(carouselStage())
+      advanceBy(AUTO_ROTATE_MS * 2)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+
+      fireEvent.mouseOut(carouselStage())
+      advanceBy(AUTO_ROTATE_MS)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+    })
+
+    it('never starts when the visitor prefers reduced motion', () => {
+      stubReducedMotion(true)
+      renderPicker()
+      advanceBy(AUTO_ROTATE_MS * 3)
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX)
+    })
+  })
+
+  describe('clicking a card', () => {
+    it('only focuses a card that is not already focused', () => {
+      renderPicker()
+      expect(cardFor(HOLIDAY).getAttribute('aria-label')).toBe(`Focus ${HOLIDAY.name}`)
+
+      fireEvent.click(cardFor(HOLIDAY))
+      expect(carouselIndex()).toBe(1)
+      expect(calculator().state.goalId).toBeNull()
+      // It's now the focused card, so a second click would select it.
+      expect(cardFor(HOLIDAY).getAttribute('aria-label')).toBe(`Continue with ${HOLIDAY.name}`)
+    })
+
+    it('selects the card that is already focused — a second click gets you moving', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(HOLIDAY))
+      expect(calculator().state.goalId).toBeNull()
+
+      fireEvent.click(cardFor(HOLIDAY))
+      expect(calculator().state.goalId).toBe(HOLIDAY.id)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledWith(STEP_INDEX + 1)
+    })
+  })
+
+  describe('selecting a goal', () => {
+    it("applies the goal's seeds to state", () => {
+      renderPicker()
+      fireEvent.click(cardFor(CAR))
+      const seeds = seedFromGoal(CAR)
+      for (const [key, value] of Object.entries(seeds)) {
+        expect(calculator().state[key as keyof CalculatorState]).toEqual(value)
+      }
+      // The car's seeds are the ones worth naming outright.
+      expect(calculator().state.mode).toBe('monthly')
+      expect(calculator().state.term).toBe(48)
+      expect(calculator().state.growth).toBe(9.9)
+    })
+
+    it('holds the scroll back for a beat rather than jumping straight on', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(CAR))
+      expect(scrollToIndex).not.toHaveBeenCalled()
+
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+
+      advanceBy(1)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('can be driven from the "Get started" button instead of the card', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(screen.getByRole('button', { name: `Get started with ${CAR.name}` }))
+      expect(calculator().state.goalId).toBe(CAR.id)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledWith(STEP_INDEX + 1)
+    })
+
+    it('is a no-op for a "Soon" goal, from either the card or the CTA', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+
+      // Focus the Mortgage card the way a user would — via its dot.
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      const card = cardFor(MORTGAGE)
+      expect(card.hasAttribute('disabled')).toBe(true)
+      fireEvent.click(card)
+
+      const cta = screen.getByRole('button', { name: 'Coming soon' })
+      expect(cta.hasAttribute('disabled')).toBe(true)
+      fireEvent.click(cta)
+
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(calculator().state.goalId).toBeNull()
+      expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('the pending scroll after a selection', () => {
+    it('schedules exactly one scroll when the focused card is clicked twice inside the delay', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+
+      // Focus it, then select it twice in quick succession — a double-click
+      // on the focused card, or an impatient second press.
+      fireEvent.click(cardFor(HOLIDAY))
+      fireEvent.click(cardFor(HOLIDAY))
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      fireEvent.click(cardFor(HOLIDAY))
+
+      // Only one timer is ever pending, so the clock holds a single scroll
+      // rather than one per click.
+      expect(vi.getTimerCount()).toBe(1)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+
+      // And nothing fires later either — a second scroll landing after the
+      // user has moved on is the bug this guards.
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).toHaveBeenCalledTimes(1)
+    })
+
+    it('schedules exactly one scroll when Enter is pressed twice on the focused card', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(HOLIDAY))
+
+      // A keyboard user holding Enter: the browser fires a click per
+      // keypress, which is the path the issue names alongside a double-click.
+      const card = cardFor(HOLIDAY)
+      fireEvent.keyDown(card, { key: 'Enter' })
+      fireEvent.click(card)
+      fireEvent.keyDown(card, { key: 'Enter' })
+      fireEvent.click(card)
+
+      expect(vi.getTimerCount()).toBe(1)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('restarts the delay from the second selection, not the first', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(screen.getByRole('button', { name: `Get started with ${CAR.name}` }))
+
+      // 1ms before the first click's deadline, pick a different goal.
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      fireEvent.click(dotFor(HOLIDAY))
+      fireEvent.click(cardFor(HOLIDAY))
+      expect(calculator().state.goalId).toBe(HOLIDAY.id)
+
+      // The first click's deadline passes without a scroll: its timer was
+      // replaced, not left to fire a beat early.
+      advanceBy(1)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+
+      // A full delay after the *second* click, and then exactly one scroll.
+      advanceBy(SELECT_SCROLL_DELAY_MS - 1)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('leaves no scroll pending when the step unmounts inside the delay', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(CAR))
+      expect(vi.getTimerCount()).toBe(1)
+
+      cleanup()
+      // Cleared on unmount, so the callback never runs against refs the hook
+      // has already torn down.
+      expect(vi.getTimerCount()).toBe(0)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+
+    it('a focused "Soon" goal has no select handler, so nothing can start it', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+
+      // Focus it the way a user would, via its dot.
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      const card = cardFor(MORTGAGE)
+      const cta = screen.getByRole('button', { name: 'Coming soon' })
+      // Two independent reasons it can't be started, which together are what
+      // replaced the unreachable `if (goal.soon) return` inside select():
+      // both controls are disabled...
+      expect(card.hasAttribute('disabled')).toBe(true)
+      expect(cta.hasAttribute('disabled')).toBe(true)
+      // ...and the card's click would focus rather than select even if they
+      // weren't, so no amount of clicking seeds a "Soon" goal.
+      fireEvent.click(card)
+      fireEvent.click(cta)
+
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(calculator().state.goalId).toBeNull()
+      expect(scrollToIndex).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('does not cancel a pending scroll when a "Soon" goal is interacted with', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(cardFor(CAR))
+      expect(vi.getTimerCount()).toBe(1)
+
+      // A "Soon" card that isn't focused is not disabled — clicking it
+      // focuses it, which is a real path a user can take inside the delay.
+      fireEvent.click(cardFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      // Now focused, both its card and the CTA are disabled, and the card
+      // does not even have `onSelect` wired (#207) — so `select` cannot run
+      // for it, which is what keeps the car's pending scroll intact.
+      expect(cardFor(MORTGAGE).hasAttribute('disabled')).toBe(true)
+      fireEvent.click(cardFor(MORTGAGE))
+      fireEvent.click(screen.getByRole('button', { name: 'Coming soon' }))
+
+      // The car's scroll still lands, and the goal is still the car.
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(calculator().state.goalId).toBe(CAR.id)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('schedules no scroll at all when only a "Soon" goal is reached for', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.click(dotFor(MORTGAGE))
+      fireEvent.click(cardFor(MORTGAGE))
+      fireEvent.click(screen.getByRole('button', { name: 'Coming soon' }))
+
+      expect(vi.getTimerCount()).toBe(0)
+      advanceBy(SELECT_SCROLL_DELAY_MS * 4)
+      expect(scrollToIndex).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('the teleport-on-wrap flag', () => {
+    it('leaves every card animating before anything has moved', () => {
+      renderPicker()
+      expect(teleportingGoals()).toEqual([])
+    })
+
+    it('times the slide with the --duration-carousel token, so reduced motion can collapse it', () => {
+      // tokens.css drops the token to 0.01ms under prefers-reduced-motion; a
+      // hard-coded duration here would quietly bypass that.
+      renderPicker()
+      for (const goal of GOALS) expect(cardFor(goal).style.transition).toContain('transform var(--duration-carousel) ')
+    })
+
+    it('teleports only the card crossing the seam on a one-step move', () => {
+      renderPicker()
+      fireEvent.click(arrow('Next goal'))
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, INITIAL_CAROUSEL_INDEX + 1)
+      expect(crossing).toHaveLength(1)
+      expect(teleportingGoals()).toEqual(crossing)
+    })
+
+    it('teleports only the card crossing the seam when wrapping off the first card', () => {
+      renderPicker()
+      fireEvent.click(arrow('Previous goal'))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, LAST_INDEX)
+      expect(crossing).toHaveLength(1)
+      expect(teleportingGoals()).toEqual(crossing)
+    })
+
+    it.each([
+      { label: 'forwards', arrowLabel: 'Next goal' as const, to: INITIAL_CAROUSEL_INDEX + 1 },
+      { label: 'backwards, over the wrap seam', arrowLabel: 'Previous goal' as const, to: LAST_INDEX },
+    ])('never teleports a card the user watches move all the way through ($label)', ({ arrowLabel, to }) => {
+      renderPicker()
+      fireEvent.click(arrow(arrowLabel))
+      // Cards on screen at both ends of the move are the ones whose travel is
+      // actually watched; every one of them has to animate.
+      const watched = GOALS.filter((_, i) => visibleAt(i, INITIAL_CAROUSEL_INDEX) && visibleAt(i, to)).map((goal) => goal.id)
+      expect(watched.length).toBeGreaterThan(1)
+      for (const id of teleportingGoals()) expect(watched).not.toContain(id)
+    })
+
+    it('teleports only the seam-crossers on a jump of more than one position (#156)', () => {
+      renderPicker()
+      // Two dots along — far enough that no card is making a single step.
+      const target = INITIAL_CAROUSEL_INDEX + 2
+      fireEvent.click(dotFor(GOALS[target]))
+      expect(carouselIndex()).toBe(target)
+
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, target)
+      // The bug this replaces: every card teleported, so nothing slid. The
+      // count is asserted so a fix that simply never teleports would fail too.
+      expect(crossing).toHaveLength(2)
+      expect(crossing.length).toBeLessThan(GOALS.length)
+      expect(teleportingGoals()).toEqual(crossing)
+    })
+
+    it('slides the card gaining focus and the one losing it on a multi-position jump (#156)', () => {
+      // The user-visible half of #156, and what the issue measured: the card
+      // arriving at centre stage has to travel there. Note this is a weaker
+      // claim than "nothing visible at both ends teleports", which holds for
+      // single steps only — on a two-step jump the card at the far faded edge
+      // (offset -2) wraps to the opposite edge (+2) and is visible, dimly, at
+      // both ends. Sliding it would drag it straight through the focused
+      // card, so teleporting it is right.
+      renderPicker()
+      const target = INITIAL_CAROUSEL_INDEX + 2
+      fireEvent.click(dotFor(GOALS[target]))
+
+      expect(teleportingGoals()).not.toContain(GOALS[target].id)
+      expect(teleportingGoals()).not.toContain(GOALS[INITIAL_CAROUSEL_INDEX].id)
+    })
+
+    it('teleports only the seam-crossers on a backwards multi-position jump too', () => {
+      // Backwards over the seam is the other direction `jump` has to get
+      // right: `circularOffset` returns a negative jump here.
+      renderPicker()
+      const target = LAST_INDEX - 1
+      fireEvent.click(dotFor(GOALS[target]))
+      expect(carouselIndex()).toBe(target)
+
+      const crossing = seamCrossers(INITIAL_CAROUSEL_INDEX, target)
+      expect(crossing.length).toBeLessThan(GOALS.length)
+      expect(teleportingGoals()).toEqual(crossing)
+    })
+  })
+  // The two sets of hover handlers in this file (#179). Each one's state only
+  // shows up as an inline style, so these assert the style the user would see
+  // rather than the component's internal flag — and that hovering never
+  // interferes with the click the control exists for.
+  describe('the carousel arrows', () => {
+    it('lights up while hovered and goes back to its resting background on leave', () => {
+      renderPicker()
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+
+      fireEvent.mouseOver(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.mouseOut(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+    })
+
+    it('lights up again on a second hover, rather than latching after the first', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Previous goal'))
+      fireEvent.mouseOut(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+
+      fireEvent.mouseOver(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.mouseOut(arrow('Previous goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+    })
+
+    it('hovering one arrow leaves the other alone', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Next goal'))
+      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
+    })
+
+    it('still moves the carousel when clicked mid-hover — the hover must not swallow the click', () => {
+      renderPicker()
+      fireEvent.mouseOver(arrow('Next goal'))
+      fireEvent.click(arrow('Next goal'))
+
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+      // And it stays lit, since the pointer hasn't left.
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('wraps rather than clamping: previous from the first goal lands on the last', () => {
+      renderPicker()
+      fireEvent.click(dotFor(CAR))
+      expect(carouselIndex()).toBe(0)
+
+      fireEvent.click(arrow('Previous goal'))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+    })
+
+    it('wraps rather than clamping: next from the last goal lands on the first', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(carouselIndex()).toBe(LAST_INDEX)
+
+      fireEvent.click(arrow('Next goal'))
+      expect(carouselIndex()).toBe(0)
+    })
+  })
+
+  describe('the "Get started" CTA', () => {
+    it('names the focused goal for screen readers, while its visible text stays put', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      expect(cta.getAttribute('aria-label')).toBe(`Get started with ${CAR.name}`)
+      expect(cta.textContent).toContain('Get started')
+      expect(cta.hasAttribute('disabled')).toBe(false)
+    })
+
+    it('lifts while hovered and settles back on leave', () => {
+      renderPicker()
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+
+      fireEvent.mouseOver(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+
+      fireEvent.mouseOut(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+    })
+
+    it('lifts again on a second hover', () => {
+      renderPicker()
+      fireEvent.mouseOver(ctaFor(CAR))
+      fireEvent.mouseOut(ctaFor(CAR))
+      fireEvent.mouseOver(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+    })
+
+    it('still selects the goal when clicked mid-hover', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      fireEvent.mouseOver(ctaFor(CAR))
+      fireEvent.click(ctaFor(CAR))
+
+      expect(calculator().state.goalId).toBe(CAR.id)
+      advanceBy(SELECT_SCROLL_DELAY_MS)
+      expect(scrollToIndex).toHaveBeenCalledExactlyOnceWith(STEP_INDEX + 1)
+    })
+
+    it('carries no aria-label for a "Soon" goal, so its visible text is the whole name', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+
+      const cta = ctaFor(MORTGAGE)
+      expect(cta.hasAttribute('aria-label')).toBe(false)
+      expect(cta.textContent).toBe('Coming soon')
+      expect(cta.hasAttribute('disabled')).toBe(true)
+    })
+
+    it('does not lift when hovered while disabled — nothing suggests it can be pressed', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+
+      fireEvent.mouseOver(ctaFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+      expect(ctaFor(MORTGAGE).style.cursor).toBe('not-allowed')
+
+      fireEvent.mouseOut(ctaFor(MORTGAGE))
+      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
+    })
+
+    it('is a focusable native button, so Enter and Space activate it', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      // Keyboard activation is the browser's own for a <button>, which jsdom
+      // doesn't synthesise — e2e/core-flow.spec.ts presses the keys for real.
+      // What's worth pinning here is that it stays a plain focusable button
+      // rather than becoming a div with a click handler.
+      expect(cta.tagName).toBe('BUTTON')
+      expect(cta.getAttribute('type')).toBe('button')
+      cta.focus()
+      expect(document.activeElement).toBe(cta)
+    })
+
+    it('is not focusable while disabled', () => {
+      renderPicker()
+      fireEvent.click(dotFor(MORTGAGE))
+      const cta = ctaFor(MORTGAGE)
+      cta.focus()
+      expect(document.activeElement).not.toBe(cta)
+    })
+  })
+  // A tap fires a synthetic mouseenter *after* touchend, and the matching
+  // mouseleave may never arrive — so before #205 both controls stayed in
+  // their hover style after a tap, reading as a stuck button. Both now use
+  // usePillHover; these mirror StartOverButton.test.tsx's touch-order tests,
+  // which pin the same contract for the top-right pills.
+  describe('hover state after a touch tap', () => {
+    it('leaves the arrow on its resting background after a tap', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      // The event order a real tap produces: touchstart/touchend, then a
+      // synthetic mouseenter, and no mouseleave.
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseEnter(next)
+      fireEvent.click(next)
+
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+      // The tap still did its job — the hover guard must not swallow the move.
+      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
+    })
+
+    it('leaves the CTA unlifted after a tap', () => {
+      const scrollToIndex = vi.fn()
+      renderPicker({}, scrollToIndex)
+      const cta = ctaFor(CAR)
+      fireEvent.touchStart(cta)
+      fireEvent.touchEnd(cta)
+      fireEvent.mouseEnter(cta)
+      fireEvent.click(cta)
+
+      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+      expect(calculator().state.goalId).toBe(CAR.id)
+    })
+
+    it('still hovers the arrow normally with a mouse after an earlier tap', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseEnter(next)
+      fireEvent.mouseLeave(next)
+
+      fireEvent.mouseEnter(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('still lifts the CTA with a mouse after an earlier tap', () => {
+      renderPicker()
+      const cta = ctaFor(CAR)
+      fireEvent.touchStart(cta)
+      fireEvent.touchEnd(cta)
+      fireEvent.mouseEnter(cta)
+      fireEvent.mouseLeave(cta)
+
+      fireEvent.mouseEnter(ctaFor(CAR))
+      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
+    })
+
+    it('still hovers after a tap whose synthetic mouseenter never arrived', () => {
+      // The touch mark must not outlive the next mouseleave, or it would
+      // swallow the following real hover and a hybrid touch-and-mouse device
+      // would get a control that never lights up.
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.touchStart(next)
+      fireEvent.touchEnd(next)
+      fireEvent.mouseLeave(next)
+
+      fireEvent.mouseEnter(arrow('Next goal'))
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('drops the arrow hover when focus leaves', () => {
+      renderPicker()
+      const next = arrow('Next goal')
+      fireEvent.mouseEnter(next)
+      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+
+      fireEvent.blur(next)
+      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
+    })
+  })
+})

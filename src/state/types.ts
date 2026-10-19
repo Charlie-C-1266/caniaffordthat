@@ -1,6 +1,6 @@
 export type Mode = 'save' | 'monthly'
 export type SaveFlavor = 'duration' | 'goal'
-/** Duration flavor: whether the monthly saving is entered as a share of spare cash (`rate`) or a fixed amount (`monthlyAmount`). */
+/** Duration flavour: whether the monthly saving is entered as a share of spare cash (`rate`) or a fixed amount (`monthlyAmount`). */
 export type RateMode = 'percent' | 'amount'
 /** How take-home pay is entered on the Budget step: typed directly, or worked out from an annual gross salary via the tax engine. */
 export type TakeHomeMode = 'takehome' | 'salary'
@@ -46,19 +46,27 @@ export interface CalculatorState {
   groceries: string
   transport: string
   debts: string
-  /** Amount already saved toward this item — reduces the target, not a monthly outgoing. */
+  /** Amount already saved towards this item — reduces the target, not a monthly outgoing. */
   savings: string
+  /**
+   * Money the user already puts into savings, investments or a pension each
+   * month. Deliberately *not* one of the five essentials: it is committed
+   * spending for spare-cash purposes, but it is not spending you would need
+   * to replace if your income stopped, so it must stay out of the emergency
+   * fund's cushion basis (see `monthlyOutgoingsOf` vs `committedOutgoingsOf`).
+   */
+  savingsMonthly: string
   /** Emergency fund only: months of essential spending to hold as a cushion (1-12). Drives the derived target; ignored by other goals. */
   coverMonths: number
-  /** % of spare cash to save per month (1-100). Duration flavor, `rateMode === 'percent'`. */
+  /** % of spare cash to save per month (1-100). Duration flavour, `rateMode === 'percent'`. */
   rate: number
-  /** How the monthly saving is entered in the duration flavor: a % of spare cash, or a fixed amount. */
+  /** How the monthly saving is entered in the duration flavour: a % of spare cash, or a fixed amount. */
   rateMode: RateMode
-  /** Fixed £/month to save. Duration flavor, `rateMode === 'amount'`. Bound to an <input>, so a string (see the note above). */
+  /** Fixed £/month to save. Duration flavour, `rateMode === 'amount'`. Bound to an <input>, so a string (see the note above). */
   monthlyAmount: string
   /** APR %, used as either savings interest or finance interest depending on `mode`. */
   growth: number
-  /** Months until the goal date. Goal flavor only. */
+  /** Months until the goal date. Goal flavour only. */
   goalMonths: number
   /** Finance term in months. Finance mode and the vehicle flow's HP/PCP/loan methods. */
   term: number
@@ -85,7 +93,7 @@ export interface CalculatorState {
   insuranceAnnual: string
   /** Annual road tax (VED), before the over-£40k supplement which is applied automatically. */
   taxAnnual: string
-  /** Index (0-4) of the step currently centered in the viewport. */
+  /** Index (0-4) of the step currently centred in the viewport. */
   activeIndex: number
   /** Steps that have animated into view at least once; they stay revealed once scrolled past. */
   revealed: Record<number, true>

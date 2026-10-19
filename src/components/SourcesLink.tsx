@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { usePillHover } from '../hooks/usePillHover'
 
 /**
  * Small persistent top-right link (styled to match "Start over") straight to
@@ -8,26 +8,27 @@ import { useState } from 'react'
  * lost to the navigation.
  */
 export function SourcesLink() {
-  const [hovered, setHovered] = useState(false)
+  const { hovered, hoverHandlers } = usePillHover()
 
   return (
     <a
       href="/sources/"
       target="_blank"
       rel="noopener noreferrer"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      data-testid="sources-link"
+      {...hoverHandlers}
       style={{
         display: 'inline-block',
         background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
         border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
-        fontSize: 12.5,
+        fontSize: 'var(--pill-font-size)',
         fontWeight: 600,
-        padding: '8px 14px',
+        padding: 'var(--pill-padding-block) var(--pill-padding-inline)',
         borderRadius: 20,
         textDecoration: 'none',
         fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
       }}
     >
       Our sources

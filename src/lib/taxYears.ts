@@ -10,6 +10,9 @@
 //   - Income tax: 20% to £50,270, 40% to £125,140, 45% above.
 //   - Employee (Class 1) NI: 8% between £12,570 and £50,270, 2% above.
 //   - All thresholds frozen until 2030/31 (Autumn 2022 / Spring 2024).
+// The freeze covers income tax and NI only. Student loan thresholds do not share
+// it — Plan 1 and Plan 4 move every April — so adding them here also adds a real
+// annual maintenance obligation this table does not currently carry.
 // Verified against GOV.UK income-tax-rates and national-insurance-rates for
 // the 2026/27 year.
 
@@ -45,7 +48,8 @@ export interface TaxYear {
 // the personal allowance). The 20% band is the £37,700 basic-rate band; the
 // 40% band runs up to £125,140, the point at which the allowance is fully
 // tapered and the 45% additional rate begins (see taperThreshold below).
-const TAX_YEAR_2026_27: TaxYear = {
+/** The current year's table. Exported so a data-integrity test can assert `CURRENT_TAX_YEAR` still points at the year it claims to. */
+export const TAX_YEAR_2026_27: TaxYear = {
   id: '2026-27',
   label: '2026/27',
   personalAllowance: 12570,

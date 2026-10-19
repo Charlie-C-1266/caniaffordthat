@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useCalculator } from '../state/calculatorContext'
 import type { DivRefCallback } from '../lib/refs'
+import { scrollBehaviour } from '../lib/motion'
 
-// Centers the intersection "trigger zone" on the middle 40% of the viewport,
+// Centres the intersection "trigger zone" on the middle 40% of the viewport,
 // so whichever step's panel occupies that band is treated as active.
 const OBSERVER_ROOT_MARGIN = '-30% 0px -30% 0px'
 
 /**
  * Wires the scrollytelling reveal/progress mechanics described in the design
  * doc: an IntersectionObserver watches each step's pinned panel, and
- * whichever one is centered in the viewport is reported to shared state via
+ * whichever one is centred in the viewport is reported to shared state via
  * `revealStep` (which sets `activeIndex` and permanently marks the step
  * `revealed`). Also returns `scrollToIndex`, shared by the progress rail and
  * the auto-advance logic built in later steps.
@@ -71,10 +72,11 @@ export function useStepObserver() {
 
   // Steps 0-3 scroll to the top of their oversized wrapper (so the sticky
   // panel then pins naturally); the final step has no wrapper, so it scrolls
-  // to the panel itself.
+  // to the panel itself. The jump is instant rather than smooth for anyone
+  // who has asked their OS for reduced motion (WCAG 2.3.3).
   const scrollToIndex = useCallback((index: number) => {
     const target = wrapperEls.current[index] ?? panelEls.current[index]
-    if (target) window.scrollTo({ top: target.offsetTop, behavior: 'smooth' })
+    if (target) window.scrollTo({ top: target.offsetTop, behavior: scrollBehaviour() })
   }, [])
 
   return { registerPanel, registerWrapper, scrollToIndex }

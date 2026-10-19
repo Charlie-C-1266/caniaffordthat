@@ -20,6 +20,10 @@ import { paymentForFinance } from './calculations'
 import { DEFAULT_STATE } from '../state/defaults'
 import type { CalculatorState } from '../state/types'
 
+/** The balloon estimate for a £10k car of this age, as a share of its price. */
+const shareOfPrice = (ageYears: number) =>
+  estimateBalloon({ price: 10000, ageYears, currentMileage: 0, termMonths: 36, annualMiles: 8000 }) / 10000
+
 /** A car-flow state with all running costs zeroed, so finance-side tests see clean numbers. */
 function makeCarState(overrides: Partial<CalculatorState>): CalculatorState {
   return {
@@ -95,8 +99,6 @@ describe('estimateBalloon', () => {
   })
 
   it('has a brand-new car keep less of its price over the term than a used one (it sheds the steep first-year drop)', () => {
-    const shareOfPrice = (ageYears: number) =>
-      estimateBalloon({ price: 10000, ageYears, currentMileage: 0, termMonths: 36, annualMiles: 8000 }) / 10000
     expect(shareOfPrice(0)).toBeLessThan(shareOfPrice(1))
     // Past year one the curve decays geometrically, so the share is steady.
     expect(shareOfPrice(5)).toBeCloseTo(shareOfPrice(1), 2)

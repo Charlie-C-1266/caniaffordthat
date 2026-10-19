@@ -7,6 +7,7 @@ import { Formula } from './article/Formula'
 import { DataTable } from './article/DataTable'
 import { Num } from './article/Num'
 import { PageHeader } from './article/PageHeader'
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
 import { fmt } from '../lib/calculations'
 import { incomeTaxOn, nationalInsuranceOn, netFromGross, grossFromNet, marginalNetRate } from '../lib/salary'
 import { CURRENT_TAX_YEAR } from '../lib/taxYears'
@@ -88,10 +89,10 @@ export function SalaryMethodologyPage() {
           <P>
             First we work out the monthly <Strong>take-home</Strong> the plan needs. Every plan already produces a monthly commitment — a
             saving, a finance payment, or a car's total monthly cost — and your <Strong>spare cash</Strong> is take-home pay minus the
-            essential outgoings you entered. So the take-home a plan needs is your essentials plus enough spare cash to cover the
-            commitment:
+            essential outgoings you entered and minus any regular saving you already do. So the take-home a plan needs is everything already
+            committed plus enough spare cash to cover the commitment:
           </P>
-          <Formula>{`required take-home = essentials + required spare cash`}</Formula>
+          <Formula>{`required take-home = essentials + regular saving + required spare cash`}</Formula>
           <P>Exactly what “required spare cash” means depends on how the plan is judged:</P>
           <DataTable
             head={['Plan type', 'What the salary has to cover']}
@@ -255,8 +256,7 @@ export function SalaryMethodologyPage() {
           </P>
           <P>
             Spotted something wrong, or a rate that's moved? Email{' '}
-            <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Salary%20methodology">hello@caniaffordthat.co.uk</ExternalLink> —
-            corrections are very welcome.
+            <ExternalLink href={contactMailto('Salary methodology')}>{CONTACT_EMAIL}</ExternalLink> — corrections are very welcome.
           </P>
         </Section>
       </main>

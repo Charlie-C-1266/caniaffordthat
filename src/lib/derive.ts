@@ -13,40 +13,88 @@ import type { CalculatorState } from '../state/types'
 // mode assumes.
 const AFFORDABILITY_MONTHS_CAP = 60
 
-// No UK body publishes a rule of thumb framed exactly as "% of leftover cash
-// after essentials" (our "spare cash"), so these are derived from two UK
-// ones that are, both converted the same way: Halifax's 50/30/20 split (50%
-// needs, 30% wants, 20% savings/future) puts spare cash at roughly 50% of
-// take-home pay, so a share-of-income figure X% becomes a share-of-spare-cash
-// figure of X / 0.5:
-//   - 0.4 (comfortable cutoff) = 20% of income / 50% = the 50/30/20 split's
-//     own "savings/future" bucket. A commitment at or under this could be
-//     absorbed there alone, without touching the "wants" bucket at all.
-//   - 0.6 (tight cutoff) = 30% of income / 50% = MoneyHelper's own named
-//     "30% rule" for rent affordability (a ceiling for a single major line
-//     item — moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford).
+// How comfortably a commitment fits is judged as a share of *take-home pay*.
+// Both UK rules of thumb behind the bands are published as shares of income,
+// so measuring the commitment the same way quotes them directly:
+//   - 0.2 (comfortable cutoff) = the "savings/future" bucket of Halifax's
+//     50/30/20 split (50% needs, 30% wants, 20% savings/future). A commitment
+//     at or under this could be absorbed by that bucket alone, without
+//     touching the "wants" bucket at all.
+//   - 0.3 (tight cutoff) = MoneyHelper's own named "30% rule" for rent
+//     affordability, its ceiling for a single major line item
+//     (moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford).
 //     Above this, the commitment alone already exceeds what MoneyHelper
-//     considers the ceiling for one major item, independent of anything
-//     else in the budget.
+//     considers reasonable for one major item, independent of anything else
+//     in the budget.
 // Below the first threshold is "comfortable", between the two is a "good
 // chunk", above the second is "tight". See the in-app "Our sources" button
 // for the actual linked pages.
+//
+// These were previously stated as shares of spare cash (0.4 and 0.6),
+// converted from the figures above via "spare cash is roughly 50% of
+// take-home pay". That conversion only held while spare cash meant "income
+// less essentials": once regular saving is deducted too (see
+// `committedOutgoingsOf`) the denominator is no longer ~50% of income, and
+// holding the same absolute cut-offs would have pushed the ratios to 0.67 and
+// 1.0 — collapsing the "tight" band into "anything that fits at all". So the
+// bands are anchored to the figure the sources themselves use. Whether a
+// commitment *fits* is still judged against spare cash; these bands only
+// describe how comfortably it does.
 // Exported so the methodology page quotes the bands actually in force.
-export const SPARE_CASH_COMFORTABLE_RATIO = 0.4
-export const SPARE_CASH_TIGHT_RATIO = 0.6
+export const TAKE_HOME_COMFORTABLE_RATIO = 0.2
+export const TAKE_HOME_TIGHT_RATIO = 0.3
 
-/** Sum of the five monthly outgoing fields (housing…debts). Also the emergency fund's "essential spend". */
+// A share of income on its own can still flatter a stretched budget: £360/mo
+// is 18% of a £2,000 take-home — "comfortable" by the bands above — but if
+// £1,500 of that pay is already spoken for it is 72% of what's left, and
+// calling it comfortable would be wrong. So the share-of-spare-cash reading
+// is kept as a floor: the verdict takes whichever of the two readings is
+// worse, and this pair can only ever make a description stricter.
+//
+// Unlike the pair above these are not a published rule of thumb. They are the
+// ratios this calculator used before the bands moved to income, retained
+// deliberately: they were sound as a description of how much headroom a
+// commitment eats, and only ever unsound as a restatement of the UK
+// 20%/30%-of-income guidance, which is the job they no longer do.
+export const SPARE_CASH_HEADROOM_COMFORTABLE_RATIO = 0.4
+export const SPARE_CASH_HEADROOM_TIGHT_RATIO = 0.6
+
+/**
+ * Sum of the five essential monthly outgoing fields (housing…debts), and the
+ * emergency fund's "essential spend". Regular saving is deliberately not part
+ * of this — see `committedOutgoingsOf`.
+ */
 export function monthlyOutgoingsOf(state: CalculatorState): number {
   return OUTGOING_FIELD_KEYS.reduce((sum, key) => sum + num(state[key]), 0)
 }
 
-/** Monthly spare cash: take-home minus outgoings, floored at 0. */
+/** What the user already puts into savings, investments or a pension each month. */
+export function regularSavingOf(state: CalculatorState): number {
+  return num(state.savingsMonthly)
+}
+
+/**
+ * Everything already spoken for each month: the five essentials plus any
+ * regular saving. This is what spare cash is measured against, and it is
+ * deliberately a different figure from `monthlyOutgoingsOf`. A cushion has to
+ * replace the spending you could not stop, and saving is the first thing
+ * anyone pauses when their income goes away — folding it into the essentials
+ * sum would inflate the emergency fund's target by `coverMonths` times the
+ * amount saved, for money the user would not actually need to replace.
+ */
+export function committedOutgoingsOf(state: CalculatorState): number {
+  return monthlyOutgoingsOf(state) + regularSavingOf(state)
+}
+
+/** Monthly spare cash: take-home minus everything already committed, floored at 0. */
 export function spareCashOf(state: CalculatorState): number {
-  return Math.max(0, num(state.takeHome) - monthlyOutgoingsOf(state))
+  return Math.max(0, num(state.takeHome) - committedOutgoingsOf(state))
 }
 
 export interface DerivedResult {
   spareCash: number
+  /** What the user already saves each month, carried through so the result can show it alongside the essentials it sits next to. */
+  regularSaving: number
   /** The full goal amount before subtracting anything already saved (item price, or the emergency fund's derived target). */
   grossTarget: number
   target: number
@@ -81,17 +129,23 @@ export interface DerivedResult {
  * should show the "fill these in first" fallback in that case.
  */
 export function deriveResult(state: CalculatorState): DerivedResult | null {
-  // The emergency fund has no price: its target is a multiple of essential
-  // monthly spending, and it's always a saving goal (see design/adr/0004).
+  // The emergency fund has no price: its target is derived from essential
+  // monthly spending x coverMonths, and it is always a saving goal — you
+  // cannot finance a cash buffer, so the mode toggle never applies to it.
   const isEmergency = goalById(state.goalId)?.emergency === true
   const isFinance = !isEmergency && state.mode === 'monthly'
   // The emergency fund is save-only but honours the same duration/goal-date
-  // toggle as other saving goals, so its plan flavor follows saveFlavor too.
+  // toggle as other saving goals, so its plan flavour follows saveFlavor too.
   const isDuration = state.mode === 'save' && state.saveFlavor === 'duration'
   const isGoal = state.mode === 'save' && state.saveFlavor === 'goal'
 
   const savings = num(state.savings)
   const essentialSpend = monthlyOutgoingsOf(state)
+  const regularSaving = regularSavingOf(state)
+  // The affordability boundary is take-home less *everything* committed, so
+  // the reverse "what salary?" maths below has to add back the same figure
+  // spareCashOf subtracts — essentials alone would understate it.
+  const committedSpend = committedOutgoingsOf(state)
 
   const takeHome = num(state.takeHome)
   const grossTarget = isEmergency ? state.coverMonths * essentialSpend : num(state.itemPrice)
@@ -153,10 +207,10 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     if (isDuration) {
       if (state.rateMode === 'percent' && state.rate > 0) {
         const requiredContribution = contributionForGoal(target, AFFORDABILITY_MONTHS_CAP, state.growth)
-        requiredTakeHomeMonthly = essentialSpend + requiredContribution / (state.rate / 100)
+        requiredTakeHomeMonthly = committedSpend + requiredContribution / (state.rate / 100)
       }
     } else {
-      requiredTakeHomeMonthly = essentialSpend + contribution
+      requiredTakeHomeMonthly = committedSpend + contribution
     }
   }
 
@@ -171,6 +225,8 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     grossTarget,
     spareCash,
     essentialSpend,
+    regularSaving,
+    takeHome,
     isFeasible,
     fits,
     isGoal,
@@ -180,6 +236,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
 
   return {
     spareCash,
+    regularSaving,
     grossTarget,
     target,
     months,
@@ -223,6 +280,9 @@ interface CopyContext {
   grossTarget: number
   spareCash: number
   essentialSpend: number
+  /** What the user already saves each month — the reversible headroom behind the pause hints. */
+  regularSaving: number
+  takeHome: number
   isFeasible: boolean
   fits: boolean
   /** Emergency fund only: goal-date sub-mode vs the open-ended "how long" one. */
@@ -236,23 +296,125 @@ const monthsLabel = (n: number) => `${n} month${n === 1 ? '' : 's'}`
 /** Standard "Yes / No" verdict shared by every non-emergency kind (and the vehicle flow). */
 export const withinReachVerdict = (isAffordable: boolean) => (isAffordable ? "Yes — it's within reach." : "No — that's a stretch.")
 
+/** The three figures any band reading needs: the £/month, and the two denominators it's measured against. */
+export interface FitReadingInput {
+  /** The £/month being weighed up. */
+  contribution: number
+  spareCash: number
+  takeHome: number
+}
+
+/** What a "does this fit?" verdict needs to describe the commitment honestly. */
+export interface FitCopyInput extends FitReadingInput {
+  /** What the user already saves each month — the headroom they could free up by pausing it. */
+  regularSaving: number
+}
+
+/**
+ * Whether pausing the regular saving would close the gap — the shared
+ * condition behind both pause hints. The bound is inclusive: saving exactly
+ * the shortfall still covers it.
+ */
+function pausingWouldClose(shortfall: number, regularSaving: number): boolean {
+  return regularSaving > 0 && shortfall <= regularSaving
+}
+
+/**
+ * Regular saving is the one committed outgoing in this budget that is
+ * genuinely reversible — nobody can pause their rent, but anyone can pause an
+ * ISA standing order. So when a plan misses only by an amount the user is
+ * already putting away, saying so is more useful than a flat "no". Returns a
+ * trailing sentence, or '' when they save nothing or pausing it still would
+ * not close the gap.
+ */
+export function pauseSavingHint(shortfall: number, regularSaving: number): string {
+  if (!pausingWouldClose(shortfall, regularSaving)) return ''
+  return ` It would fit if you paused the ${fmt(regularSaving)}/month you currently save.`
+}
+
+/**
+ * The emergency fund's wording of the same hint. "Other savings" rather than
+ * "you currently save" because on this goal the field cannot mean cushion
+ * money — see the note beside the goal-date verdict in `emergencyCopy`.
+ */
+export function pauseOtherSavingHint(shortfall: number, regularSaving: number): string {
+  if (!pausingWouldClose(shortfall, regularSaving)) return ''
+  return ` It would fit if you paused the ${fmt(regularSaving)}/month you put into other savings.`
+}
+
+/** How comfortably a commitment sits, and the share-of-take-home figure the copy quotes alongside it. */
+interface FitReading {
+  band: FitBand
+  /** The commitment as a fraction of take-home pay. */
+  shareOfTakeHome: number
+}
+
+/**
+ * Places a commitment that already fits spare cash in its band: its share of
+ * take-home pay, tightened by the share-of-spare-cash headroom floor. Shared
+ * so every flow judging a fixed £/month — goal-date saving, finance, the
+ * vehicle flow and the emergency fund's goal date — bands it on the same
+ * terms, whatever sentence each one wraps around the result.
+ */
+function fitReading({ contribution, spareCash, takeHome }: FitReadingInput): FitReading {
+  // Callers reach this only once the commitment fits spare cash, so both
+  // denominators are 0 only when the contribution is 0 too — a 0 share is the
+  // honest answer there rather than a guard against NaN.
+  const shareOfTakeHome = takeHome > 0 ? contribution / takeHome : 0
+  const shareOfSpareCash = spareCash > 0 ? contribution / spareCash : 0
+  return {
+    shareOfTakeHome,
+    band: worseBand(
+      bandFor(shareOfTakeHome, TAKE_HOME_COMFORTABLE_RATIO, TAKE_HOME_TIGHT_RATIO),
+      bandFor(shareOfSpareCash, SPARE_CASH_HEADROOM_COMFORTABLE_RATIO, SPARE_CASH_HEADROOM_TIGHT_RATIO),
+    ),
+  }
+}
+
 /**
  * Sub-copy for any "does this fixed monthly amount fit?" verdict — goal-date
  * saving, generic finance, and the vehicle flow's total monthly cost all
- * judge a committed £/month against spare cash with the same bands.
+ * judge a committed £/month the same way: does it fit inside spare cash, and
+ * how large is it as a share of take-home pay.
  */
-export function spareCashFitSub(contribution: number, spareCash: number): string {
-  const ratio = spareCash > 0 ? contribution / spareCash : Infinity
-  if (contribution > spareCash) return `${fmt(contribution)}/month is ${fmt(contribution - spareCash)} more than your spare cash.`
-  if (ratio <= SPARE_CASH_COMFORTABLE_RATIO) return `${fmt(contribution)}/month fits comfortably within your ${fmt(spareCash)} spare cash.`
-  if (ratio <= SPARE_CASH_TIGHT_RATIO)
-    return `${fmt(contribution)}/month fits, but takes up a good chunk of your ${fmt(spareCash)} spare cash.`
-  return `${fmt(contribution)}/month fits, but it's tight — that's most of your ${fmt(spareCash)} spare cash.`
+export function commitmentFitSub({ contribution, spareCash, takeHome, regularSaving }: FitCopyInput): string {
+  if (contribution > spareCash) {
+    const shortfall = contribution - spareCash
+    return `${fmt(contribution)}/month is ${fmt(shortfall)} more than your spare cash.${pauseSavingHint(shortfall, regularSaving)}`
+  }
+  const { band, shareOfTakeHome } = fitReading({ contribution, spareCash, takeHome })
+  const opening = `${fmt(contribution)}/month is ${Math.round(shareOfTakeHome * 100)}% of your take-home pay`
+  switch (band) {
+    case 'comfortable':
+      return `${opening} — it fits comfortably within your ${fmt(spareCash)} spare cash.`
+    case 'chunk':
+      return `${opening} — a good chunk of your ${fmt(spareCash)} spare cash, but it fits.`
+    case 'tight':
+      return `${opening} — it fits within your ${fmt(spareCash)} spare cash, but it's tight.`
+  }
+}
+
+/** How comfortably a commitment fits, worst last. */
+type FitBand = 'comfortable' | 'chunk' | 'tight'
+
+/** Worst-last, so `worseBand` can compare two readings by position. */
+const FIT_BANDS: readonly FitBand[] = ['comfortable', 'chunk', 'tight']
+
+/** Places a ratio in its band. Both cut-offs are inclusive, so a figure exactly on one takes the friendlier description. */
+function bandFor(ratio: number, comfortable: number, tight: number): FitBand {
+  if (ratio <= comfortable) return 'comfortable'
+  if (ratio <= tight) return 'chunk'
+  return 'tight'
+}
+
+/** The less comfortable of two readings — how the income bands and the headroom floor are combined. */
+function worseBand(a: FitBand, b: FitBand): FitBand {
+  return FIT_BANDS.indexOf(a) >= FIT_BANDS.indexOf(b) ? a : b
 }
 
 /** The CopyContext-shaped adapter the standard result kinds use. */
 function fitsVerdictSub(c: CopyContext): string {
-  return spareCashFitSub(c.contribution, c.spareCash)
+  return commitmentFitSub(c)
 }
 
 function resultCopy(kind: ResultKind, c: CopyContext): ResultCopy {
@@ -289,11 +451,27 @@ function emergencyCopy(c: CopyContext): ResultCopy {
   let verdictSub: string
   if (c.isGoal) {
     // Goal-date path: the date is fixed, so affordability is whether the
-    // required monthly saving fits the user's spare cash.
+    // required monthly saving fits the user's spare cash — exactly the
+    // question `commitmentFitSub` answers for goal-date saving and finance.
+    // So this path reads the band the same way (share of take-home pay,
+    // floored by share of spare cash) and only the sentences differ, keeping
+    // the fund's cushion-and-milestone voice.
     isAffordable = c.fits
-    verdictSub = c.fits
-      ? `${fmt(c.contribution)}/month reaches your cushion by ${addMonths(c.months)}, within your ${fmt(c.spareCash)} spare cash.`
-      : `${fmt(c.contribution)}/month to hit ${addMonths(c.months)} is ${fmt(c.contribution - c.spareCash)} more than your spare cash — a later date needs less each month.`
+    if (c.fits) {
+      verdictSub = cushionFitSub(c)
+    } else {
+      const shortfall = c.contribution - c.spareCash
+      // The pause hint was deliberately kept off this flow when it was
+      // introduced: "pause your saving in order to build a savings cushion"
+      // reads as self-contradictory. It belongs here after all, because on
+      // this goal alone the field cannot mean cushion money — the Budget step
+      // asks for saving "that isn't going into this cushion", i.e. other pots
+      // and investments — so pausing it moves money towards the cushion
+      // rather than away from it. The wording says "other savings" so the
+      // sentence can only be read that way, and the later-date route is
+      // offered first: it keeps the other saving intact.
+      verdictSub = `${fmt(c.contribution)}/month to hit ${addMonths(c.months)} is ${fmt(shortfall)} more than your spare cash — a later date needs less each month.${pauseOtherSavingHint(shortfall, c.regularSaving)}`
+    }
   } else {
     isAffordable = c.isFeasible && c.months <= AFFORDABILITY_MONTHS_CAP
     verdictSub = !c.isFeasible
@@ -310,6 +488,24 @@ function emergencyCopy(c: CopyContext): ResultCopy {
     verdictSub,
     verdictText: isAffordable ? 'Yes — you can build this.' : c.isGoal ? 'Not by that date.' : 'This one will take time.',
     resultEyebrow: c.isGoal ? 'Monthly saving needed' : 'Time to build your fund',
+  }
+}
+
+/**
+ * The emergency fund's wording for a goal-date saving that fits: the cushion
+ * and its date lead, then the same band reading every other flow quotes —
+ * the share of take-home pay, and the spare cash it sits inside.
+ */
+function cushionFitSub(c: CopyContext): string {
+  const { band, shareOfTakeHome } = fitReading(c)
+  const opening = `${fmt(c.contribution)}/month reaches your cushion by ${addMonths(c.months)} — ${Math.round(shareOfTakeHome * 100)}% of your take-home pay`
+  switch (band) {
+    case 'comfortable':
+      return `${opening}, comfortably within your ${fmt(c.spareCash)} spare cash.`
+    case 'chunk':
+      return `${opening}, a good chunk of your ${fmt(c.spareCash)} spare cash, but it fits.`
+    case 'tight':
+      return `${opening}, and it fits within your ${fmt(c.spareCash)} spare cash, but it's tight.`
   }
 }
 

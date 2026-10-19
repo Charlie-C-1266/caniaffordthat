@@ -1,17 +1,34 @@
 import { useState, type KeyboardEvent } from 'react'
+import { isNegativeMoney } from '../lib/fields'
 
 // `min={0}` only affects the browser's validity styling — a typed or pasted
 // negative still lands in the value, and num() would then silently floor it
 // to 0 downstream, leaving the displayed figure disagreeing with the one the
-// calculations use. Clamp to "0" here so the two can never diverge.
-const clampNegative = (raw: string): string => (raw.startsWith('-') || Number(raw) < 0 ? '0' : raw)
+// calculations use. Clamp to "0" here so the two can never diverge. The rule
+// itself lives in lib/fields so a shared link is held to the same standard.
+const clampNegative = (raw: string): string => (isNegativeMoney(raw) ? '0' : raw)
 
 interface MoneyInputProps {
+  /** `id` for the `<input>`, so a `<FieldLabel htmlFor>` can point at it. */
+  id?: string
+  /**
+   * `id` of an element that names this input, for a field whose visible
+   * question is a heading rather than a `<label>` — the Details step's price,
+   * named by the goal's `priceHeadline`. Use instead of `id`, not as well.
+   */
+  ariaLabelledBy?: string
+  /**
+   * `id` of an element describing this input — supporting detail that is read
+   * *after* the name, or on request, rather than as part of it. Used for a
+   * field whose label carries an `InfoHint`, whose text belongs in the
+   * description and not in the name.
+   */
+  ariaDescribedBy?: string
   value: string
   onChange: (value: string) => void
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
   accentColor: string
-  /** Border color while unfocused. Pass the same value as `accentColor` for fields that should always show the accent (the hero price/take-home fields don't change on focus). */
+  /** Border colour while unfocused. Pass the same value as `accentColor` for fields that should always show the accent (the hero price/take-home fields don't change on focus). */
   idleColor?: string
   fontSize: string
   fontWeight?: number
@@ -30,6 +47,9 @@ interface MoneyInputProps {
  * six optional budget fields.
  */
 export function MoneyInput({
+  id,
+  ariaLabelledBy,
+  ariaDescribedBy,
   value,
   onChange,
   onKeyDown,
@@ -61,6 +81,9 @@ export function MoneyInput({
         £
       </span>
       <input
+        id={id}
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
         type="number"
         min={0}
         value={value}

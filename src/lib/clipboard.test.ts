@@ -60,6 +60,21 @@ describe('copyToClipboard', () => {
     expect(result).toBe(false)
   })
 
+  it('resolves to false when execCommand throws (API present but disabled)', async () => {
+    stubClipboard(undefined)
+    const fn = vi.fn().mockImplementation(() => {
+      throw new Error('execCommand disabled')
+    })
+    Object.defineProperty(document, 'execCommand', { value: fn, configurable: true, writable: true })
+
+    const result = await copyToClipboard('hello')
+
+    expect(result).toBe(false)
+    expect(fn).toHaveBeenCalledWith('copy')
+    // The temporary textarea must still be cleaned up on the throwing path.
+    expect(document.querySelectorAll('textarea')).toHaveLength(0)
+  })
+
   it('cleans up the temporary textarea it creates for the fallback', async () => {
     stubClipboard(undefined)
     stubExecCommand(true)

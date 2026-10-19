@@ -1,14 +1,14 @@
 /*
- * Design tokens transcribed from the design handoff
- * (design/design_handoff_scrolly_affordability_calculator/README.md).
- * Values here are the literal spec — do not "round" or reinterpret them.
+ * Design tokens transcribed from the original scrolly-calculator design
+ * handoff. This file is the spec of record for those values: they were taken
+ * from the handoff verbatim, so do not "round" or reinterpret them here.
  */
 :root {
-  /* Colors — backgrounds */
+  /* Colours — backgrounds */
   --bg-dark-1: #14121f;
   --bg-dark-2: #1b1830;
 
-  /* Colors — text */
+  /* Colours — text */
   --text-primary: #f5f3ff;
   --text-secondary: rgba(245, 243, 255, 0.65);
   --text-secondary-mid: rgba(245, 243, 255, 0.55);
@@ -17,7 +17,7 @@
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
   --text-disabled: rgba(245, 243, 255, 0.45);
 
-  /* Colors — accent (v2 goal-based re-theme, see design/adr/0003). Green is
+  /* Colours — accent (v2 goal-based re-theme). Green is
      the primary/brand + "saving up" accent; violet is "paying monthly". The
      result screen now paints its background the active mode's accent, so the
      verdict (affordable/not) is carried by the small pill icon, not the whole
@@ -34,7 +34,7 @@
   /* Green -> cyan gradient used for the emphasised hero word. */
   --brand-text-gradient: linear-gradient(120deg, #2ed573, #5ee0ff);
   /* Standalone versions of the gradient's two stops, for components that need
-     just one of the colors rather than the gradient (the landing pill's dot
+     just one of the colours rather than the gradient (the landing pill's dot
      text, the depreciation chart's third series). */
   --brand-mint: #9defbe;
   --brand-cyan: #5ee0ff;
@@ -54,7 +54,7 @@
   --accent-save-bg-chip: rgba(46, 213, 115, 0.14);
   --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.35);
 
-  /* Colors — verdict (the result banner only) */
+  /* Colours — verdict (the result banner only) */
   --verdict-affordable: #2ed573;
   --verdict-not-affordable: #ff5c5c;
   /* The verdict banner is always a solid bright green/red fill, in *either*
@@ -65,7 +65,7 @@
   --verdict-on-fill-chip: rgba(20, 18, 31, 0.9);
   --verdict-on-fill-dim: rgba(20, 18, 31, 0.8);
 
-  /* Colors — surfaces */
+  /* Colours — surfaces */
   --tile-bg: rgba(255, 255, 255, 0.04);
   --tile-bg-neutral: rgba(255, 255, 255, 0.03);
   --tile-border: rgba(245, 243, 255, 0.14);
@@ -96,22 +96,24 @@
   /* The result chart's plot-area lines and inactive-bar fill. */
   --chart-axis-line: rgba(245, 243, 255, 0.22);
   --chart-bar-track: rgba(245, 243, 255, 0.2);
-  /* Result-screen budget-donut palette. Three hue families — a blue ramp for
-     the essentials, rose for the new cost being weighed up, green for what's
-     left, red for any overspend. Validated for colour-blind separation and
-     ≥3:1 contrast against the dark tile with the dataviz palette validator;
-     the light block below re-steps each hue for the light surface (a
-     near-white surface needs darker hues than a near-black one). */
+  /* Result-screen budget-donut palette. Five hue families — a blue ramp for
+     the essentials, amber for the saving the user already does, rose for the
+     new cost being weighed up, green for what's left, red for any overspend.
+     Validated for colour-blind separation and ≥3:1 contrast against the dark
+     tile with the dataviz palette validator; the light block below re-steps
+     each hue for the light surface (a near-white surface needs darker hues
+     than a near-black one). */
   --chart-essential-1: #86b6ef;
   --chart-essential-2: #5f9aec;
   --chart-essential-3: #4485e2;
   --chart-essential-4: #3570cf;
   --chart-essential-5: #2a5cb2;
+  --chart-saving: #e3a33c;
   --chart-newcost: #d55181;
   --chart-leftover: #008300;
   --chart-over: #ff5c5c;
 
-  /* Colors — misc */
+  /* Colours — misc */
   --badge-alpha-text: #f5a623;
   --badge-alpha-border: rgba(245, 166, 35, 0.5);
 
@@ -165,6 +167,8 @@
   --ease-reveal-transform: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-reveal-opacity: ease;
   --duration-hover: 0.15s;
+  /* How long a goal card takes to slide to its new carousel position. */
+  --duration-carousel: 0.5s;
   --debounce-advance: 1500ms;
   --delay-mode-select: 250ms;
 }
@@ -181,11 +185,11 @@
  * absent here too — see the comment on them above.
  */
 :root[data-theme='light'] {
-  /* Colors — backgrounds */
+  /* Colours — backgrounds */
   --bg-dark-1: #faf9fc;
   --bg-dark-2: #efebf7;
 
-  /* Colors — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
+  /* Colours — text. #1b1633 on #faf9fc is ~16.6:1, comfortably past WCAG AAA. */
   --text-primary: #1b1633;
   --text-secondary: rgba(27, 22, 51, 0.65);
   --text-secondary-mid: rgba(27, 22, 51, 0.55);
@@ -209,8 +213,8 @@
   --accent-save-bg-chip: rgba(46, 213, 115, 0.18);
   --accent-save-shadow-strong: 0 12px 30px rgba(46, 213, 115, 0.28);
 
-  /* Colors — surfaces. The white-overlay "glass" idiom becomes a
-     near-black-overlay one — same felt weight, flipped base color. */
+  /* Colours — surfaces. The white-overlay "glass" idiom becomes a
+     near-black-overlay one — same felt weight, flipped base colour. */
   --tile-bg: rgba(27, 22, 51, 0.035);
   --tile-bg-neutral: rgba(27, 22, 51, 0.025);
   --tile-border: rgba(27, 22, 51, 0.12);
@@ -228,7 +232,7 @@
   --dot-inactive-bg: rgba(27, 22, 51, 0.18);
   --chart-axis-line: rgba(27, 22, 51, 0.18);
   --chart-bar-track: rgba(27, 22, 51, 0.14);
-  /* Budget-donut palette, re-stepped for the light surface — same four hue
+  /* Budget-donut palette, re-stepped for the light surface — same five hue
      families as the dark block, darkened so each clears contrast on the near-
      white tile (validated with the dataviz palette validator). */
   --chart-essential-1: #6f97e0;
@@ -236,19 +240,47 @@
   --chart-essential-3: #3563c2;
   --chart-essential-4: #284fa8;
   --chart-essential-5: #1e3f88;
+  --chart-saving: #a9700a;
   --chart-newcost: #c23b86;
   --chart-leftover: #0f8a45;
   --chart-over: #d8322f;
 
-  /* Colors — misc */
+  /* Colours — misc */
   --badge-alpha-text: #a5670c;
   --badge-alpha-border: rgba(165, 103, 12, 0.45);
 
   /* Shadows. Dark mode's near-black shadow only reads as a shadow against a
      dark surface — on a light one it needs to be much softer and tinted
-     toward the background's own hue, or every tile looks smudged. */
+     towards the background's own hue, or every tile looks smudged. */
   --shadow-tile: 0 24px 60px rgba(27, 22, 51, 0.14);
   --shadow-card: 0 14px 34px rgba(27, 22, 51, 0.12);
   --shadow-card-focused: 0 22px 56px rgba(46, 213, 115, 0.18);
   --shadow-popover: 0 10px 26px rgba(27, 22, 51, 0.16);
+}
+
+/*
+ * Reduced motion (WCAG 2.3.3). The step reveal slides each tile up 56px and
+ * fades it in over --duration-reveal, which is 2s — long enough to cause
+ * discomfort for someone with a vestibular disorder, on every step. Collapsing
+ * the duration leaves the reveal in place: the tile still appears, and still
+ * via RevealTile's `revealed` flag, just without the slide or the fade.
+ *
+ * The goal carousel's cards slide sideways by one or more card widths on
+ * every arrow or dot click; collapsing --duration-carousel makes them jump
+ * straight to their new place. Their short opacity and colour fades are left
+ * alone, as is the 0.15s hover lift — brief feedback, not movement.
+ *
+ * 0.01ms rather than 0s, the usual convention, so a `transitionend` listener
+ * added later would still fire. Nothing listens for one today.
+ *
+ * Last in the file on purpose: `:root` here carries the same specificity as
+ * the `:root` block above, so source order is what makes this win. The
+ * step-to-step scroll is the other half of this and can't be done in CSS —
+ * see lib/motion.ts and useStepObserver.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-reveal: 0.01ms;
+    --duration-carousel: 0.01ms;
+  }
 }

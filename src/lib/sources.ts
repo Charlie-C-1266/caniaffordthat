@@ -24,7 +24,7 @@ export const SOURCES = {
   rentAffordability: {
     label: 'MoneyHelper — Can I afford to rent? (the 30% rule)',
     url: 'https://www.moneyhelper.org.uk/en/homes/renting/how-much-rent-can-you-afford',
-    usedFor: 'The upper "tight" cutoff in every verdict: 30% of income for one major commitment, restated as 60% of spare cash.',
+    usedFor: 'The upper "tight" cutoff in every verdict: 30% of take-home pay for one major commitment.',
   },
   mortgageSpend: {
     label: 'MoneyHelper — How much should I spend on a mortgage?',
@@ -34,7 +34,7 @@ export const SOURCES = {
   fiftyThirtyTwenty: {
     label: 'Halifax — The 50/30/20 rule',
     url: 'https://www.halifax.co.uk/helpcentre/support-and-wellbeing/managing-your-money/50-30-20.html',
-    usedFor: 'The lower "comfortable" cutoff in every verdict: the 20%-of-income savings bucket, restated as 40% of spare cash.',
+    usedFor: 'The lower "comfortable" cutoff in every verdict: the 20%-of-income savings bucket, applied to take-home pay.',
   },
   // Vehicle flow: what the finance shapes, tax figures, fuel default and
   // depreciation curve in lib/vehicle.ts are based on.

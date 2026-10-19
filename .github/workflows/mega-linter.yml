@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The cupcake flavor is a slimmer image that still bundles markdownlint,
+      # The cupcake flavour is a slimmer image that still bundles markdownlint,
       # yamllint, hadolint, actionlint and the secret scanners we use.
       - name: MegaLinter
         uses: oxsecurity/megalinter/flavors/cupcake@v8

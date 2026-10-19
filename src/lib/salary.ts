@@ -7,6 +7,13 @@ import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 // subtly wrong, whereas bisection over the monotonic forward function is
 // impossible to get wrong if the forward function is right. All figures are
 // annual, rest-of-UK, employment income (see taxYears.ts for the assumptions).
+//
+// That "monotonic" is a precondition, not a given. It holds for the deductions
+// modelled here, but a relief-at-source pension above ~28.75% in the £100k
+// allowance-taper band would make take-home *fall* as gross rises, and bisection
+// cannot be trusted on a curve that turns over. Read
+// docs/salary-engine-monotonicity.md before adding student loan or pension
+// deductions — the inversion has to change in the same commit.
 
 /** Sum a progressive charge over its bands (cumulative `upTo` bounds) for a given base amount. */
 function chargeOver(base: number, bands: readonly TaxYear['incomeTaxBands'][number][]): number {

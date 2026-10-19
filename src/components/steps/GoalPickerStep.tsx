@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
-import { Icon, type IconName } from '../Icon'
+import { Icon } from '../Icon'
+import type { IconName } from '../iconRegistry'
+import { prefersReducedMotion } from '../../lib/motion'
+import { usePillHover } from '../../hooks/usePillHover'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -37,11 +40,14 @@ function LandingPill() {
   )
 }
 
-const CARD_WIDTH = 250
-// Horizontal gap between adjacent cards' centers, from the design's cover-flow
-// spec: translateX(offset * 268px).
-const CARD_STEP_X = 268
-// Cards more than this many positions from center are faded out / non-interactive.
+// Card width and the horizontal gap between adjacent cards' centres. The
+// design's cover-flow spec is 250px wide, stepped 268px apart, which needs
+// ~1100px of room for the focused card and one neighbour each side — so both
+// are read from custom properties that index.css steps down on narrow
+// viewports rather than being baked in here (see --goal-card-width).
+const CARD_WIDTH = 'var(--goal-card-width)'
+const CARD_STEP_X = 'var(--goal-card-step-x)'
+// Cards more than this many positions from centre are faded out / non-interactive.
 const MAX_VISIBLE_OFFSET = 2
 // Delay after selecting a goal before scrolling to Details, so the card's
 // selection state is visible for a beat first (design: 260ms).
@@ -54,8 +60,11 @@ const AUTO_ROTATE_MS = 3200
 function cardGeometry(offset: number): CSSProperties {
   const ax = Math.abs(offset)
   const scale = Math.max(0.7, 1 - ax * 0.13)
+  // Written as an explicit +/- term rather than a signed multiplier, so the
+  // generated calc() never reads `+ -3 * ...`.
+  const step = offset === 0 ? '' : ` ${offset < 0 ? '-' : '+'} ${ax} * ${CARD_STEP_X}`
   return {
-    transform: `translateX(calc(-50% + ${offset * CARD_STEP_X}px)) scale(${scale})`,
+    transform: `translateX(calc(-50%${step})) scale(${scale})`,
     opacity: ax > MAX_VISIBLE_OFFSET ? 0 : 1 - ax * 0.32,
     zIndex: 20 - ax,
     pointerEvents: ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto',
@@ -76,18 +85,25 @@ function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCa
   const geo = cardGeometry(offset)
   // The text-safe variant: this accent is used for the card border, icon
   // fill, and tag-label text below, and --accent-save fails contrast as
-  // text/icon color in the light theme (see tokens.css).
+  // text/icon colour in the light theme (see tokens.css).
   const accent = 'var(--accent-save-text)'
   // Opacity still eases (so a wrapped card fades in/out in place) but the
-  // transform jumps instantly across the seam when teleporting.
+  // transform jumps instantly across the seam when teleporting. The slide's
+  // duration is a token so reduced motion can collapse it (see tokens.css).
   const transition = teleport
     ? 'opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-    : 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+    : 'transform var(--duration-carousel) cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
 
   return (
     <button
       type="button"
-      onClick={focused ? onSelect : onFocus}
+      // A "Soon" goal never gets `onSelect` wired up at all, so selecting one
+      // is structurally impossible rather than guarded against at the far end
+      // (#207). `disabled` below already stops the click, so this changes
+      // nothing a user can see — but it is evaluated on every render, which
+      // makes it a rule the tests actually exercise, where the old
+      // `if (goal.soon) return` inside select() was unreachable dead code.
+      onClick={focused && !goal.soon ? onSelect : onFocus}
       disabled={goal.soon && focused}
       aria-label={goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`}
       style={{
@@ -180,17 +196,21 @@ interface RoundButtonProps {
 }
 
 function RoundButton({ icon, label, onClick }: RoundButtonProps) {
-  const [hovered, setHovered] = useState(false)
+  // usePillHover rather than a bare onMouseEnter: a tap fires a synthetic
+  // mouseenter after touchend whose mouseleave may never come, which left the
+  // arrow stuck highlighted (#205, the same defect #158 fixed for the
+  // top-right pills).
+  const { hovered, hoverHandlers } = usePillHover()
   return (
     <button
       type="button"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      {...hoverHandlers}
       aria-label={label}
       style={{
-        width: 48,
-        height: 48,
+        width: 'var(--goal-nav-size)',
+        height: 'var(--goal-nav-size)',
+        flexShrink: 0,
         borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
@@ -217,41 +237,64 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
   // Track the previous focus so we can tell which card crossed the wrap seam
   // this step and let it teleport instead of flying across the stage.
+  // `jump` is how far the focus moved, the short way round — the distance
+  // every card's offset shifts by, unless it wrapped.
   const prevIndexRef = useRef(state.carouselIndex)
   const indexRef = useRef(state.carouselIndex)
   indexRef.current = state.carouselIndex
   const prevIndex = prevIndexRef.current
+  const jump = circularOffset(state.carouselIndex, prevIndex)
   useEffect(() => {
     prevIndexRef.current = state.carouselIndex
   }, [state.carouselIndex])
 
-  const focus = (index: number) => setField('carouselIndex', wrapIndex(index))
+  const focus = (nextIndex: number) => setField('carouselIndex', wrapIndex(nextIndex))
 
   const move = (delta: number) => {
     setEngaged(true)
     focus(state.carouselIndex + delta)
   }
 
-  const goTo = (index: number) => {
+  const goTo = (nextIndex: number) => {
     setEngaged(true)
-    focus(index)
+    focus(nextIndex)
   }
 
+  // The pending post-selection scroll, held so it can be cancelled — see
+  // select() below, and the unmount cleanup under the auto-rotate effect.
+  const selectScrollTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Only ever called for a selectable goal: GoalCard wires `onSelect` only
+  // when the focused card is not "Soon", and StartButton is `disabled` for
+  // one. That is what keeps a "Soon" goal from scheduling a scroll or
+  // cancelling one already pending — it used to be an `if (goal.soon) return`
+  // here, which no test could reach because both controls are disabled, and
+  // so sat as the repo's last uncovered branch (#207).
   const select = (goal: Goal) => {
-    if (goal.soon) return
     setEngaged(true)
     setFields(seedFromGoal(goal))
-    setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
+    // At most one pending scroll. Two selections inside the delay — the
+    // focused card clicked twice, or Enter pressed twice — would otherwise
+    // each schedule one, and the second could land after the user has
+    // already scrolled on or started over, yanking the page to the wrong
+    // step.
+    clearTimeout(selectScrollTimer.current)
+    selectScrollTimer.current = setTimeout(() => scrollToIndex(index + 1), SELECT_SCROLL_DELAY_MS)
   }
 
   useEffect(() => {
     if (engaged || hovered || state.goalId !== null) return
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    if (prefersReducedMotion()) return
     const timer = setInterval(() => {
       setField('carouselIndex', wrapIndex(indexRef.current + 1))
     }, AUTO_ROTATE_MS)
     return () => clearInterval(timer)
   }, [engaged, hovered, state.goalId, setField])
+
+  // Unmounting inside the selection delay would otherwise still run the
+  // scroll against refs the hook has already torn down. Same pattern as
+  // ResultActions' revert timer.
+  useEffect(() => () => clearTimeout(selectScrollTimer.current), [])
 
   return (
     <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-1)' }}>
@@ -260,6 +303,14 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
       >
         <LandingPill />
+        {/*
+         * The calculator is one scrolling page, so this is its *only* h1 —
+         * the landing question that opens every flow. Each later step's
+         * question, and the result headline, is an h2 under it. A new step
+         * adding its own h1 would flatten the heading outline back into a
+         * list of unrelated top-level headings for a screen reader; the e2e
+         * suite counts the h1s in every flow to catch that.
+         */}
         <h1
           style={{
             fontSize: 'var(--fs-h1-md)',
@@ -276,7 +327,22 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         </p>
 
         <div
-          style={{ position: 'relative', width: '100%', maxWidth: 1100, height: 360 }}
+          data-testid="goal-carousel"
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 360,
+            // The cards are absolutely positioned off a centred rail, so at
+            // any viewport narrower than the full cover-flow spread they used
+            // to push `document.documentElement`'s scroll width past the
+            // window and put the *whole page* into horizontal scroll. Clipping
+            // here contains them. `clip` (not `hidden`) so the vertical axis
+            // can stay `visible`: the cards' drop shadows spill well past the
+            // 360px stage, and `hidden` on one axis would force the other to
+            // `auto` and cut them off.
+            overflowX: 'clip',
+            overflowY: 'visible',
+          }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -289,7 +355,13 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
                   key={goal.id}
                   goal={goal}
                   offset={offset}
-                  teleport={Math.abs(offset - prevOffset) > 1}
+                  // A card that didn't wrap shifts by exactly the jump, the
+                  // other way to the focus; a seam-crosser's shift is that
+                  // ± GOALS.length. So anything but `-jump` crossed the seam
+                  // and should re-appear on the other side rather than fly
+                  // across. Comparing against the jump rather than against 1
+                  // keeps multi-position dot clicks sliding (#156).
+                  teleport={offset - prevOffset !== -jump}
                   focused={i === state.carouselIndex}
                   onFocus={() => goTo(i)}
                   onSelect={() => select(goal)}
@@ -299,7 +371,7 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 26 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--goal-controls-gap)', marginTop: 26 }}>
           <RoundButton icon="chevron-left" label="Previous goal" onClick={() => move(-1)} />
           <StartButton goal={focused} onClick={() => select(focused)} />
           <RoundButton icon="chevron-right" label="Next goal" onClick={() => move(1)} />
@@ -335,24 +407,29 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
 
 /** The primary landing CTA. Text stays a static "Get started" so it never overflows or reads awkwardly per goal; the focused goal's name rides along in the aria-label for screen readers (clicking the focused card selects it too). */
 function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false)
+  // See RoundButton: without this the CTA stayed lifted after a tap, and was
+  // still lifted on scrolling back up to it (#205).
+  const { hovered, hoverHandlers } = usePillHover()
   const disabled = Boolean(goal.soon)
 
   return (
     <button
       type="button"
-      onClick={onClick}
+      // Not wired for a "Soon" goal, matching GoalCard: `disabled` already
+      // stops the click, so this is the second, structural layer that keeps
+      // select() unreachable for one (#207).
+      onClick={disabled ? undefined : onClick}
       disabled={disabled}
       aria-label={disabled ? undefined : `Get started with ${goal.name}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      {...hoverHandlers}
       style={{
-        minWidth: 230,
+        minWidth: 'var(--goal-cta-min-width)',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        padding: '16px 30px',
+        padding: '16px var(--goal-cta-padding-x)',
+        whiteSpace: 'nowrap',
         borderRadius: 99,
         border: 'none',
         fontSize: 15.5,

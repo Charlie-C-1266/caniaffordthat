@@ -8,8 +8,14 @@ import { DataTable } from './article/DataTable'
 import { Num } from './article/Num'
 import { PageHeader } from './article/PageHeader'
 import { DepreciationChart } from './DepreciationChart'
+import { CONTACT_EMAIL, contactMailto } from '../lib/contact'
 import { fmt, paymentForFinance } from '../lib/calculations'
-import { SPARE_CASH_COMFORTABLE_RATIO, SPARE_CASH_TIGHT_RATIO } from '../lib/derive'
+import {
+  SPARE_CASH_HEADROOM_COMFORTABLE_RATIO,
+  SPARE_CASH_HEADROOM_TIGHT_RATIO,
+  TAKE_HOME_COMFORTABLE_RATIO,
+  TAKE_HOME_TIGHT_RATIO,
+} from '../lib/derive'
 import {
   DEFAULT_FUEL_PENCE_PER_LITRE,
   EXPENSIVE_CAR_PRICE_THRESHOLD,
@@ -78,30 +84,47 @@ export function VehicleMethodologyPage() {
           <P>
             A car costs you two ways at once: any finance payment, and the running costs that don't stop when the engine does. We add them
             together and compare the total to your <Strong>spare cash</Strong> — take-home pay minus the monthly outgoings you enter on the
-            budget step.
+            budget step, and minus any regular saving you told us you already do.
           </P>
-          <Formula>{`total monthly cost = finance payment + fuel + maintenance + insurance + road tax
+          <Formula>{`spare cash = take-home − essential outgoings − regular saving
+total monthly cost = finance payment + fuel + maintenance + insurance + road tax
 verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
-          <P>How comfortably it fits uses the same bands as the rest of the site:</P>
+          <P>
+            Regular saving is deducted because money with a job already isn't spare — but it is the one line in the budget you could choose
+            to stop, so when a car misses only by what you put away each month, we say so rather than calling it unaffordable.
+          </P>
+          <P>
+            Whether it fits is measured against spare cash; <Strong>how comfortably</Strong> it fits is measured against your take-home pay,
+            using the same bands as the rest of the site:
+          </P>
           <DataTable
-            head={['Share of your spare cash', 'How we describe it']}
+            head={['Share of your take-home pay', 'How we describe it']}
             rows={[
-              [<>Up to {pct(SPARE_CASH_COMFORTABLE_RATIO)}</>, 'Fits comfortably'],
+              [<>Up to {pct(TAKE_HOME_COMFORTABLE_RATIO)}</>, 'Fits comfortably'],
               [
                 <>
-                  {pct(SPARE_CASH_COMFORTABLE_RATIO)}–{pct(SPARE_CASH_TIGHT_RATIO)}
+                  {pct(TAKE_HOME_COMFORTABLE_RATIO)}–{pct(TAKE_HOME_TIGHT_RATIO)}
                 </>,
                 'Fits, but takes a good chunk',
               ],
-              [<>Over {pct(SPARE_CASH_TIGHT_RATIO)}</>, "Fits, but it's tight"],
-              ['Over 100%', "No — that's a stretch"],
+              [<>Over {pct(TAKE_HOME_TIGHT_RATIO)}</>, "Fits, but it's tight"],
+              ['More than your spare cash', "No — that's a stretch"],
             ]}
           />
           <P>
-            The {pct(SPARE_CASH_COMFORTABLE_RATIO)} and {pct(SPARE_CASH_TIGHT_RATIO)} cutoffs are converted from two UK rules of thumb — the
+            The {pct(TAKE_HOME_COMFORTABLE_RATIO)} and {pct(TAKE_HOME_TIGHT_RATIO)} cutoffs are the two UK rules of thumb as published — the
             savings bucket of <ExternalLink href={SOURCES.fiftyThirtyTwenty.url}>Halifax's 50/30/20 split</ExternalLink> and{' '}
             <ExternalLink href={SOURCES.rentAffordability.url}>MoneyHelper's 30%-of-income ceiling</ExternalLink> for a single major
-            commitment — restated as shares of spare cash rather than shares of income.
+            commitment. Both are written as shares of income, so we apply them to income rather than converting them to shares of spare
+            cash: the conversion we used previously assumed spare cash was about half of take-home pay, which stopped being true once
+            regular saving came out of it too.
+          </P>
+          <P>
+            A share of income can still flatter a stretched budget — {pct(0.18)} of a £2,000 take-home is comfortable on paper, but not if
+            £1,500 of that pay is already spoken for. So we also check the cost against what's actually left, and take whichever reading is
+            worse: more than {pct(SPARE_CASH_HEADROOM_COMFORTABLE_RATIO)} of your spare cash is never described as comfortable, and more
+            than {pct(SPARE_CASH_HEADROOM_TIGHT_RATIO)} of it is always described as tight. Unlike the two cut-offs above, that second check
+            isn't a published rule of thumb — it's our own floor, and it can only ever make a verdict stricter.
           </P>
           <P>
             These bands aren't car-specific — they're the same ones every other purchase on the site is judged against. We went looking for
@@ -354,8 +377,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
           </P>
           <P>
             Spotted something wrong, or a rate that's moved? Email{' '}
-            <ExternalLink href="mailto:hello@caniaffordthat.co.uk?subject=Vehicle%20methodology">hello@caniaffordthat.co.uk</ExternalLink> —
-            corrections are very welcome.
+            <ExternalLink href={contactMailto('Vehicle methodology')}>{CONTACT_EMAIL}</ExternalLink> — corrections are very welcome.
           </P>
         </Section>
       </main>

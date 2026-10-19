@@ -1,14 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
 /**
- * The input under a FieldLabel, found by its label text — the vehicle tiles
- * are label-heavy, and this beats brittle nth() indexing across six steps.
- */
-function labelledInput(page: Page, label: string) {
-  return page.getByText(label).locator('xpath=following-sibling::div//input')
-}
-
-/**
  * Lands on the vehicle Details step with the car named and priced. Uses the
  * carousel dot first so the auto-rotate can't move focus mid-test.
  */
@@ -19,12 +11,21 @@ async function startVehicle(page: Page, { price = '22000', deposit = '' }: { pri
 
   await page.getByPlaceholder('e.g. Volkswagen Golf').fill('VW Golf')
   await page.locator('input[type="number"]').nth(0).fill(price)
-  if (deposit) await labelledInput(page, 'Deposit / part-exchange').fill(deposit)
+  if (deposit) await page.getByLabel('Deposit / part-exchange').fill(deposit)
 }
+
+/**
+ * The Road tax (VED) field. It carries a "?" hint, so #201 moved its label
+ * text into a `<span>` inside the `<label>` to keep the hint out of the
+ * input's accessible name — which is why this one is worth naming: it is the
+ * field most likely to break a label-based query, and `getByLabel` resolves
+ * it through the `htmlFor`/`id` link rather than the markup shape.
+ */
+const vedInput = (page: Page) => page.getByLabel('Road tax (VED) / year', { exact: true })
 
 /** Fills the Budget step's take-home field and jumps to the result via the rail. */
 async function budgetAndResult(page: Page, takeHome = '2000') {
-  await labelledInput(page, 'Take-home pay / month').fill(takeHome)
+  await page.getByLabel('Take-home pay / month').fill(takeHome)
   await page.getByRole('button', { name: 'Result', exact: true }).click()
   await page.getByText('Copy result link').waitFor()
 }
@@ -32,9 +33,14 @@ async function budgetAndResult(page: Page, takeHome = '2000') {
 test.describe('vehicle flow', () => {
   test('the car gets its own six-step flow on the progress rail', async ({ page }) => {
     await startVehicle(page)
-    for (const label of ['Goal', 'Details', 'Paying for it', 'Running costs', 'Budget', 'Result']) {
-      await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible()
-    }
+    // Awaited together rather than in sequence: these are read-only
+    // assertions against an already-settled page, so nothing here depends on
+    // the previous one having finished.
+    await Promise.all(
+      ['Goal', 'Details', 'Paying for it', 'Running costs', 'Budget', 'Result'].map((label) =>
+        expect(page.getByRole('button', { name: label, exact: true })).toBeVisible(),
+      ),
+    )
     // The generic Plan step is replaced by the two vehicle steps.
     await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveCount(0)
   })
@@ -46,11 +52,11 @@ test.describe('vehicle flow', () => {
     await expect(page.getByRole('button', { name: /^PCP/ })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('slider', { name: 'Interest rate (APR)' }).press('Home') // 0% for round numbers
     await page.getByRole('button', { name: 'I have a quote' }).click()
-    await labelledInput(page, 'Final payment from your quote').fill('8000')
+    await page.getByLabel('Final payment from your quote').fill('8000')
 
     // Running costs: leave only the £60/month maintenance default standing.
-    await labelledInput(page, 'Miles you drive / year').fill('0')
-    await labelledInput(page, 'Road tax (VED) / year').fill('0')
+    await page.getByLabel('Miles you drive / year').fill('0')
+    await vedInput(page).fill('0')
 
     await budgetAndResult(page)
 
@@ -65,7 +71,7 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText('TOTAL IF YOU KEEP IT').locator('xpath=following-sibling::span')).toHaveText('£22,000')
 
     // The car's deposit was captured in Details, so Budget never asks twice.
-    await expect(page.getByText('Already saved toward this')).toHaveCount(0)
+    await expect(page.getByText('Already saved towards this')).toHaveCount(0)
   })
 
   test('PCP with an estimated balloon: the preview, deal box and caveat all carry the depreciation estimate', async ({ page }) => {
@@ -98,8 +104,8 @@ test.describe('vehicle flow', () => {
     await expect(page.getByText(/£8,000.*on the day/)).toBeVisible()
 
     // Running costs: zero everything but the £60/month maintenance default.
-    await labelledInput(page, 'Miles you drive / year').fill('0')
-    await labelledInput(page, 'Road tax (VED) / year').fill('0')
+    await page.getByLabel('Miles you drive / year').fill('0')
+    await vedInput(page).fill('0')
 
     await budgetAndResult(page)
 
@@ -131,7 +137,12 @@ test.describe('vehicle flow', () => {
 
     await budgetAndResult(page, '4000')
 
-    await expect(page.getByText(/£440\/year supplement/)).toBeVisible()
+    // Matched on the caption's own opening words, not the bare "£440/year
+    // supplement" fragment: since #201 that fragment also appears in the VED
+    // field's screen-reader-only description, and a clipped 1px element still
+    // counts as visible to Playwright, so the loose match resolved to two
+    // elements. This names the result caption and nothing else.
+    await expect(page.getByText(/Road tax includes the £440\/year supplement/)).toBeVisible()
     // £200 VED + £440 supplement = £640/year ≈ £53/month on the tax row.
     await expect(page.getByText('£53', { exact: true })).toBeVisible()
   })

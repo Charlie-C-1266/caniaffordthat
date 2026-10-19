@@ -10,7 +10,7 @@ const NOT_AFFORDABLE_RED = 'rgb(255, 92, 92)'
 
 test.describe('affordability verdict tiers', () => {
   test('comfortable case: green banner, "comfortably" copy', async ({ page }) => {
-    // £100/mo against £2,000 spare cash = 5% -> comfortable
+    // £100/mo against a £2,000 take-home (no outgoings) = 5% -> comfortable
     await goToPlan(page, { mode: 'monthly', itemPrice: '1200', takeHome: '2000' })
     await goToResult(page)
 
@@ -20,7 +20,7 @@ test.describe('affordability verdict tiers', () => {
   })
 
   test('tight case: still green/affordable, but "tight" copy', async ({ page }) => {
-    // £900/mo against £1,000 spare cash = 90% -> tight, but still fits
+    // £900/mo against a £1,000 take-home = 90% -> tight, but still fits
     await goToPlan(page, { mode: 'monthly', itemPrice: '10800', takeHome: '1000' })
     await goToResult(page)
 

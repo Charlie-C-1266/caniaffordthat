@@ -2,9 +2,11 @@ import { INITIAL_CAROUSEL_INDEX } from '../lib/goals'
 import type { CalculatorState } from './types'
 
 // Matches the prototype's initial state (class Component's `state` block),
-// except the six monthly-outgoing fields default to '0' rather than '' —
-// visibly present and editable rather than blank, so a quick user can accept
-// the defaults and move on while a thorough one can see and adjust each one.
+// except the budget step's money fields — the five essentials, the regular
+// saving the user already does, and the lump sum already put by — default to
+// '0' rather than '' — visibly present and editable rather than blank, so a
+// quick user can accept the defaults and move on while a thorough one can see
+// and adjust each one.
 export const DEFAULT_STATE: CalculatorState = {
   // No goal chosen yet; the carousel focuses the first selectable goal, and
   // `mode` holds a harmless default (never surfaced before a goal is picked).
@@ -23,8 +25,9 @@ export const DEFAULT_STATE: CalculatorState = {
   transport: '0',
   debts: '0',
   savings: '0',
+  savingsMonthly: '0',
   // MoneyHelper's "aim for at least 3 months" of essential outgoings — the
-  // recommended starting target for an emergency fund (see design/adr/0010).
+  // recommended starting target for an emergency fund (SOURCES.emergencySavings).
   coverMonths: 3,
   rate: 25,
   rateMode: 'percent',

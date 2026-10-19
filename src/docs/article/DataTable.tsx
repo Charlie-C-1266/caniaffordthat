@@ -35,9 +35,24 @@ export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] 
           </tr>
         </thead>
         <tbody>
+          {/*
+           * Rows and cells are keyed by position, deliberately. Every table
+           * here is a static literal in a docs page: nothing is inserted,
+           * removed or reordered at runtime, so position really is a cell's
+           * identity. There is also no data-dependent key available —
+           *   - a row's first cell is not always a string (VehicleMethodologyPage
+           *     passes `<>Up to {pct(...)}</>`), so stringifying it would risk
+           *     several rows keying as "[object Object]" — a silent collision,
+           *     worse than the index;
+           *   - `head[j]` can't key the cells, because a row may be longer than
+           *     `head` (article.test.tsx covers that shape) and every extra
+           *     cell would key as `undefined`.
+           */}
           {rows.map((row, i) => (
+            // oxlint-disable-next-line react/no-array-index-key -- static rows; see the note above
             <tr key={i}>
               {row.map((cell, j) => (
+                // oxlint-disable-next-line react/no-array-index-key -- static cells; see the note above
                 <td key={j} style={{ ...cellStyle, ...(j === 0 ? { color: 'var(--text-primary)', fontWeight: 700 } : {}) }}>
                   {cell}
                 </td>

@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -53,11 +54,15 @@ function ToggleButton({ label, active, accentColor, onClick }: ToggleButtonProps
 
 function GoalDateInput({ accentColor }: { accentColor: string }) {
   const { state, setField } = useCalculator()
+  // Pairs the standalone FieldLabel with the masked date input, which the
+  // Labeled* wrappers do for themselves.
+  const inputId = useId()
 
   return (
     <div>
-      <FieldLabel>Goal date (MM-YYYY)</FieldLabel>
+      <FieldLabel htmlFor={inputId}>Goal date (MM-YYYY)</FieldLabel>
       <MonthYearInput
+        id={inputId}
         months={state.goalMonths}
         minMonths={1}
         accentColor={accentColor}
@@ -97,7 +102,7 @@ function DurationInput({ accentColor }: { accentColor: string }) {
     }
   }
 
-  // The save accent is the active color for both segments — unlike the pay-mode
+  // The save accent is the active colour for both segments — unlike the pay-mode
   // toggle, this choice doesn't change the app's accent.
   const rateModeOptions: readonly SegmentedOption<RateMode>[] = [
     { value: 'percent', label: '% of spare cash', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },
@@ -156,7 +161,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
           {isSave ? (
             <>
               <Eyebrow color={accent}>Step {index} — Timeframe</Eyebrow>
-              <h1
+              <h2
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
                   lineHeight: 1.15,
@@ -168,7 +173,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                 How do you want
                 <br />
                 to plan it?
-              </h1>
+              </h2>
               <div style={{ display: 'flex', gap: 10, marginBottom: 26 }}>
                 <ToggleButton
                   label="How long will it take?"
@@ -198,7 +203,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
           ) : (
             <>
               <Eyebrow color={accent}>Step {index} — Finance details</Eyebrow>
-              <h1
+              <h2
                 style={{
                   fontSize: 'var(--fs-h1-sm)',
                   lineHeight: 1.15,
@@ -208,7 +213,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
                 }}
               >
                 Term and rate?
-              </h1>
+              </h2>
               <div style={{ marginBottom: 22 }}>
                 <SliderField
                   label="Term length"

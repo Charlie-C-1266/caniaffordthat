@@ -4,27 +4,6 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!--
-      Resolves and applies the light/dark theme before first paint, so the
-      page never flashes the wrong theme. Kept in sync by hand with
-      THEME_STORAGE_KEY and resolveInitialTheme in src/lib/theme.ts — this
-      runs before any bundled JS exists, so it can't import that module.
-      Duplicated identically in index.html and sources/index.html.
-    -->
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('theme')
-          var theme =
-            stored === 'light' || stored === 'dark'
-              ? stored
-              : window.matchMedia('(prefers-color-scheme: light)').matches
-                ? 'light'
-                : 'dark'
-          if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
-        } catch (e) {}
-      })()
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -36,6 +15,8 @@
       name="description"
       content="The maths behind the reverse 'what salary would I need?' mode: how a plan becomes a take-home target, and how UK income tax and National Insurance are inverted to turn take-home back into a gross salary."
     />
+
+    <link rel="canonical" href="https://caniaffordthat.co.uk/methodology/salary/" />
 
     <meta property="og:type" content="article" />
     <meta property="og:url" content="https://caniaffordthat.co.uk/methodology/salary/" />

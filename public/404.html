@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Page not found · Can I Afford That?</title>
+    <!--
+      Not a page of the site, so it must never enter a search index: nginx
+      serves it only as an error body (`internal`, so a direct request to
+      /404.html is itself a 404), but Vercel serves static files by path, and
+      this tag is what keeps it out of the index there too. It is also absent
+      from public/sitemap.xml — src/lib/seo.test.ts fails if it is added.
+    -->
+    <meta name="robots" content="noindex" />
+    <!--
+      Deliberately self-contained: no bundle, no JavaScript, and no webfont
+      request. The colours are transcribed from src/styles/tokens.css rather
+      than read from it, because that stylesheet arrives with the bundle,
+      which this page does not load — the same reason the no-JS fallback
+      hard-codes its own (see src/lib/noscriptFallback.ts). The light/dark
+      split is plain `prefers-color-scheme`, since the app's theme bootstrap
+      is itself JavaScript. src/lib/notFoundPage.test.ts parses tokens.css and
+      fails if any of these copies drift.
+    -->
+    <style>
+      :root {
+        --bg: #14121f;
+        --text: #f5f3ff;
+        --text-dim: rgba(245, 243, 255, 0.65);
+        --accent: #2ed573;
+        --on-accent: #07230f;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #faf9fc;
+          --text: #1b1633;
+          --text-dim: rgba(27, 22, 51, 0.65);
+          --accent: #0f7a3f;
+          --on-accent: #faf9fc;
+        }
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        /* 16px side gutter, so the copy never touches the edge at 320px. */
+        padding: 48px 16px;
+        text-align: center;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          Manrope,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        font-weight: 500;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .code {
+        margin: 0;
+        font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0;
+        /* Scales with the viewport rather than stepping at a breakpoint, so
+           there is one rule to keep in step instead of two. */
+        font-size: clamp(1.6rem, 7vw, 2.5rem);
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      p {
+        margin: 0;
+        max-width: 30rem;
+        font-size: 1rem;
+        line-height: 1.55;
+        color: var(--text-dim);
+        /* A long unbroken token (a pasted URL) would otherwise widen the page
+           and put the whole document into horizontal scroll. */
+        overflow-wrap: break-word;
+      }
+
+      a {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 6px;
+        padding: 14px 26px;
+        border-radius: 99px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 0.96875rem;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      a:hover {
+        /* No transform or transition: an error page is not the place to
+           animate, and this keeps the page honest under reduce-motion
+           without needing a media query. */
+        opacity: 0.9;
+      }
+
+      a:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="code">ERROR 404</p>
+    <h1>This page doesn't exist</h1>
+    <p>The link may be out of date, or the address mistyped.</p>
+    <a href="/">Back to the calculator</a>
+  </body>
+</html>

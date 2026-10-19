@@ -1,5 +1,5 @@
 import { fmt, num, paymentForFinance } from './calculations'
-import { monthlyOutgoingsOf, spareCashOf, spareCashFitSub, withinReachVerdict } from './derive'
+import { committedOutgoingsOf, regularSavingOf, spareCashOf, commitmentFitSub, withinReachVerdict } from './derive'
 import { financeProjection, type Projection } from './projection'
 import { budgetBreakdown, type BudgetBreakdown } from './budgetSplit'
 import type { CalculatorState, VehicleFinanceMethod } from '../state/types'
@@ -29,7 +29,7 @@ export const EXPENSIVE_CAR_SUPPLEMENT_ANNUAL = 440
 export const EXPENSIVE_CAR_PRICE_THRESHOLD = 40000
 
 /** A suggested monthly maintenance budget the costs step offers as a one-tap preset. */
-export interface MaintenancePreset {
+interface MaintenancePreset {
   id: 'budget' | 'average' | 'premium'
   label: string
   /** Suggested £/month for servicing, MOT, tyres and repairs. */
@@ -100,7 +100,7 @@ export function mileageFactor(excessMiles: number): number {
   return Math.min(MILEAGE_FACTOR_MAX, Math.max(MILEAGE_FACTOR_MIN, factor))
 }
 
-export interface BalloonEstimateInput {
+interface BalloonEstimateInput {
   /** What the car costs today — the anchor the future value is projected from. */
   price: number
   /** The car's age today, in years (0 = brand new). */
@@ -137,7 +137,7 @@ export function estimateBalloon({ price, ageYears, currentMileage, termMonths, a
 }
 
 /**
- * Monthly PCP payment: amortizes `principal` down to the `balloon` (rather
+ * Monthly PCP payment: amortises `principal` down to the `balloon` (rather
  * than to zero) over `n` months at `annualRatePct` APR — interest accrues on
  * the full outstanding balance including the balloon, which is why PCP
  * payments are lower than HP but the interest cost isn't. With a zero
@@ -216,6 +216,8 @@ export interface VehicleResult {
   /** financeMonthly + running costs — the figure judged against spare cash. */
   totalMonthly: number
   spareCash: number
+  /** What the user already saves each month — shown beside spare cash so the deduction is visible. */
+  regularSaving: number
   /** Due on day one: the full price less part-exchange for cash, the deposit for finance. */
   upfront: number
   /** Deposit + all payments (+ balloon, for PCP — i.e. the keep-the-car figure). Cash: the price. */
@@ -268,6 +270,7 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   const deposit = Math.min(num(state.savings), price)
   const principal = price - deposit
   const spareCash = spareCashOf(state)
+  const regularSaving = regularSavingOf(state)
   const termMonths = Math.max(1, state.term)
   const aprPct = state.growth
   const running = vehicleRunningCosts(state)
@@ -306,7 +309,7 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
   const isAffordable = totalMonthly <= spareCash
 
   // --- The projection: balance repaid over the term ---
-  // A PCP payment amortizes only down to its balloon, so the repaid series
+  // A PCP payment amortises only down to its balloon, so the repaid series
   // honestly tops out below 100% — the final payment is still owed. Cash has
   // no finance balance to project.
   const projection = method !== 'cash' && principal > 0 ? financeProjection(principal, financeMonthly, aprPct, termMonths) : null
@@ -364,21 +367,22 @@ export function deriveVehicleResult(state: CalculatorState): VehicleResult | nul
     running,
     totalMonthly,
     spareCash,
+    regularSaving,
     upfront,
     totalPayable,
     interestPaid,
     supplementApplies,
     isAffordable,
     verdictText: withinReachVerdict(isAffordable),
-    verdictSub: spareCashFitSub(totalMonthly, spareCash),
+    verdictSub: commitmentFitSub({ contribution: totalMonthly, spareCash, takeHome, regularSaving }),
     resultEyebrow: 'Total monthly cost',
     headline: `${fmt(totalMonthly)}/mo`,
     subheadline,
     projection,
     budget: budgetBreakdown(state, totalMonthly),
     // Affordable when the car's total monthly cost fits spare cash, so the
-    // take-home it needs is essentials plus that cost.
-    requiredTakeHomeMonthly: monthlyOutgoingsOf(state) + totalMonthly,
+    // take-home it needs is everything already committed plus that cost.
+    requiredTakeHomeMonthly: committedOutgoingsOf(state) + totalMonthly,
     notes,
   }
 }

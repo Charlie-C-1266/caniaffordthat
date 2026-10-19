@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import { useId, type KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -15,6 +15,7 @@ import { SummaryBox } from '../SummaryBox'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
+import { ITEM_NAME_MAX_LENGTH } from '../../lib/fields'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
@@ -59,6 +60,14 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
+  // The price input is named by its own headline rather than a <label>: the
+  // visible question *is* the heading, and it changes per goal (each goal's
+  // `priceHeadline`), so pointing at it keeps the accessible name in step with
+  // the copy instead of duplicating it.
+  const priceHeadingId = useId()
+  // The "Goal title" label is a real <label>, so this is a plain htmlFor/id
+  // pair, as LabeledMoneyField already does for the small fields.
+  const nameInputId = useId()
 
   const handlePriceChange = (value: string) => {
     setField('itemPrice', value)
@@ -80,7 +89,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
   const emergencyTarget = state.coverMonths * essentials
 
   // MoneyHelper recommends 3-6 months of essential outgoings, aiming for at
-  // least 3 (see design/adr/0010). Tell the user where their choice sits.
+  // least 3 (SOURCES.emergencySavings). Tell the user where their choice sits.
   const withinRecommendedBand = state.coverMonths >= 3 && state.coverMonths <= 6
   const coverBandText =
     state.coverMonths < 3
@@ -191,22 +200,28 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                 <>
                   {goal.showName && (
                     <div style={{ marginBottom: 30 }}>
-                      <FieldLabel>
+                      <FieldLabel htmlFor={nameInputId}>
                         Goal title <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>· optional</span>
                       </FieldLabel>
                       <UnderlineInput
+                        id={nameInputId}
                         value={state.itemName}
                         onChange={handleNameChange}
                         placeholder={goal.namePlaceholder}
                         fontSize="var(--fs-input-sm)"
                         accentColor={accent}
+                        maxLength={ITEM_NAME_MAX_LENGTH}
                       />
                     </div>
                   )}
-                  <h1 style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 20px' }}>
+                  <h2
+                    id={priceHeadingId}
+                    style={{ fontSize: 'var(--fs-input-md)', fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 20px' }}
+                  >
                     {goal.priceHeadline}
-                  </h1>
+                  </h2>
                   <MoneyInput
+                    ariaLabelledBy={priceHeadingId}
                     value={state.itemPrice}
                     onChange={handlePriceChange}
                     onKeyDown={handlePriceKeyDown}
