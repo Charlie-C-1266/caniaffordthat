@@ -1,21 +1,16 @@
-import { usePillHover } from '../hooks/usePillHover'
-
 /**
  * Small persistent top-right button that clears the flow and scrolls back to
- * the first step. Shares the "ghost pill" chrome — and its touch-safe hover
- * handling — with SourcesLink.
+ * the first step. Shares the "ghost pill" chrome, and its touch-safe hover
+ * (`.pill-control` in index.css), with SourcesLink.
  */
 export function StartOverButton({ onClick }: { onClick: () => void }) {
-  const { hovered, hoverHandlers } = usePillHover()
-
   return (
     <button
       type="button"
       data-testid="start-over"
       onClick={onClick}
-      {...hoverHandlers}
+      className="pill-control"
       style={{
-        background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
         border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
         fontSize: 'var(--pill-font-size)',
