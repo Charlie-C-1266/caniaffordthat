@@ -1,4 +1,4 @@
-import { num, monthsToSave, contributionForGoal, paymentForFinance } from './calculations'
+import { num, fmt, monthsToSave, contributionForGoal, paymentForFinance } from './calculations'
 import { goalById } from './goals'
 import { committedOutgoingsOf, monthlyOutgoingsOf, regularSavingOf, spareCashOf } from './budget'
 import { AFFORDABILITY_MONTHS_CAP } from './affordability'
@@ -32,6 +32,10 @@ export interface DerivedResult {
   subheadline: string
   contributionRowLabel: string
   targetRowLabel: string
+  /** The breakdown's GOAL row: what the plan is for, and its full amount. The emergency fund has no item name, so it names the fund and its months of cover. */
+  goalRowValue: string
+  /** Label for the breakdown row of money already put towards the goal. */
+  savedRowLabel: string
   /** Month-by-month series behind the balance chart and projection table; `null` when there's nothing to project (not feasible, or the target's already met). */
   projection: Projection | null
   /** How the monthly commitment sits within the budget — the data behind the budget donut. */
@@ -52,7 +56,8 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   // The emergency fund has no price: its target is derived from essential
   // monthly spending x coverMonths, and it is always a saving goal — you
   // cannot finance a cash buffer, so the mode toggle never applies to it.
-  const isEmergency = goalById(state.goalId)?.emergency === true
+  const goal = goalById(state.goalId)
+  const isEmergency = goal?.kind === 'emergency'
   const isFinance = !isEmergency && state.mode === 'monthly'
   // The emergency fund is save-only but honours the same duration/goal-date
   // toggle as other saving goals, so its plan flavour follows saveFlavor too.
@@ -173,6 +178,10 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     subheadline,
     contributionRowLabel: isFinance ? 'MONTHLY PAYMENT' : 'MONTHLY SAVING',
     targetRowLabel: isFinance ? 'AMOUNT TO FINANCE' : 'AMOUNT LEFT TO SAVE',
+    goalRowValue: isEmergency
+      ? `${goal.name} — ${fmt(grossTarget)} (${state.coverMonths} mo)`
+      : `${state.itemName || goal?.name || 'Your goal'} — ${fmt(grossTarget)}`,
+    savedRowLabel: isEmergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED',
     projection,
     budget: budgetBreakdown(state, contribution),
     requiredTakeHomeMonthly,

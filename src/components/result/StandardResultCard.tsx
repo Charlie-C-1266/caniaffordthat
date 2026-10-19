@@ -7,7 +7,6 @@ import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
-import { goalById } from '../../lib/goals'
 import { accentColorFor, resultAccents } from '../../lib/mode'
 import type { DerivedResult } from '../../lib/derive'
 
@@ -19,7 +18,6 @@ interface StandardResultCardProps {
 /** The verdict, headline result, chart, breakdown, and share/edit actions for every non-vehicle goal. */
 export function StandardResultCard({ result, scrollToIndex }: StandardResultCardProps) {
   const { state } = useCalculator()
-  const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
   const { eyebrow: eyebrowColor, chart: currentBarColor } = resultAccents(result.isAffordable, accent)
 
@@ -37,14 +35,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
       )}
 
       <BreakdownBox>
-        <BreakdownRow
-          label="GOAL"
-          value={
-            goal?.emergency
-              ? `${goal.name} — ${fmt(result.grossTarget)} (${state.coverMonths} mo)`
-              : `${state.itemName || goal?.name || 'Your goal'} — ${fmt(result.grossTarget)}`
-          }
-        />
+        <BreakdownRow label="GOAL" value={result.goalRowValue} />
         {/* Only shown when there is some, so a reader who saves nothing isn't
               asked to parse a £0 row before the figure that matters. */}
         {result.regularSaving > 0 && <BreakdownRow label="REGULAR SAVING" value={fmt(result.regularSaving)} />}
@@ -52,7 +43,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
         <BreakdownRow label={result.contributionRowLabel} value={fmt(result.contribution)} />
         {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}
         {result.totalCost !== undefined && <BreakdownRow label="TOTAL COST" value={fmt(result.totalCost)} />}
-        <BreakdownRow label={goal?.emergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED'} value={fmt(num(state.savings))} />
+        <BreakdownRow label={result.savedRowLabel} value={fmt(num(state.savings))} />
         <TotalRow label={result.targetRowLabel} value={fmt(result.target)} />
       </BreakdownBox>
 

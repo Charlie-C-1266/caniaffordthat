@@ -17,7 +17,7 @@ import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
 import { ITEM_NAME_MAX_LENGTH } from '../../lib/fields'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, monthlyOutgoingsOf } from '../../lib/budget'
-import { goalById } from '../../lib/goals'
+import { goalById, presentationFor } from '../../lib/goals'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
 import type { DivRefCallback } from '../../lib/refs'
 import { COVER_MONTHS_RANGE } from '../../lib/sliderRanges'
@@ -35,6 +35,8 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
   const { state, setField } = useCalculator()
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const goal = goalById(state.goalId)
+  // What differs by kind of goal: see KIND_PRESENTATION in lib/goals.ts.
+  const presentation = presentationFor(goal).details
   const accent = accentColorFor(state.mode)
   // The price input is named by its own headline rather than a <label>: the
   // visible question *is* the heading, and it changes per goal (each goal's
@@ -79,11 +81,11 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
       index={index}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
-      wrapperHeightVh={goal?.emergency ? 150 : 160}
+      wrapperHeightVh={presentation.wrapperHeightVh}
       panelStyle={{ background: 'var(--bg-dark-2)' }}
     >
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={640} padding={goal?.emergency ? '34px 44px' : '46px 44px'}>
+        <Tile maxWidth={640} padding={presentation.tilePadding}>
           {!goal ? (
             <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>Scroll back up and pick a goal to get started.</p>
           ) : (
@@ -109,15 +111,15 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     Step {index} — {goal.tag}
                   </Eyebrow>
                   <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {goal.emergency ? 'How big a cushion?' : goal.name}
-                    {goal.emergency && <InfoHint text="A common rule of thumb is 3–6 months of essential spending set aside." />}
+                    {presentation.heading ?? goal.name}
+                    {presentation.hint !== null && <InfoHint text={presentation.hint} />}
                   </div>
                 </div>
               </div>
 
               {goal.allowModeToggle && <ModeToggle mode={state.mode} onChange={(mode) => setField('mode', mode)} />}
 
-              {goal.emergency ? (
+              {goal.kind === 'emergency' ? (
                 <>
                   <div style={{ marginBottom: 24 }}>
                     <SliderField
@@ -206,7 +208,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     paddingBottom={14}
                     paddingLeft={38}
                   />
-                  {goal.deposit && (
+                  {goal.kind === 'vehicle' && (
                     <div style={{ marginTop: 30 }}>
                       <LabeledMoneyField
                         variant="single"

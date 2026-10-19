@@ -187,7 +187,7 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // The 84-month ceiling above exists only for the vehicle bank loan; every
   // other flow's term slider stops at FINANCE_TERM_RANGE's max, so a crafted
   // non-vehicle link can't smuggle in a term the UI couldn't have produced.
-  if (!goal?.vehicle) state.term = clampTo(state.term, FINANCE_TERM_RANGE)
+  if (goal?.kind !== 'vehicle') state.term = clampTo(state.term, FINANCE_TERM_RANGE)
   // The same reasoning, one level finer, inside the vehicle flow: the term
   // slider only ever offers the active method's own `TERM_RANGES`, so a link
   // must not be able to load a deal the UI could never have produced (an
@@ -202,7 +202,7 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // always is, whatever `mode` a link carries. When saving it's the savings
   // interest, whose slider stops lower, so a crafted saving link is held to
   // that.
-  if (!goal?.vehicle && state.mode === 'save') state.growth = clampTo(state.growth, SAVINGS_INTEREST_RANGE)
+  if (goal?.kind !== 'vehicle' && state.mode === 'save') state.growth = clampTo(state.growth, SAVINGS_INTEREST_RANGE)
 
   return state
 }
