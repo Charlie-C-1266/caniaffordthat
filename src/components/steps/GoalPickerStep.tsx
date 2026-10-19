@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
-import { Icon } from '../Icon'
-import type { IconName } from '../iconRegistry'
+import { GoalCard } from './goalPicker/GoalCard'
+import { LandingPill } from './goalPicker/LandingPill'
+import { RoundButton } from './goalPicker/RoundButton'
+import { StartButton } from './goalPicker/StartButton'
 import { prefersReducedMotion } from '../../lib/motion'
-import { usePillHover } from '../../hooks/usePillHover'
 import { useCalculator } from '../../state/calculatorContext'
 import { GOALS, circularOffset, seedFromGoal, wrapIndex, type Goal } from '../../lib/goals'
 import type { DivRefCallback } from '../../lib/refs'
@@ -17,214 +18,12 @@ interface GoalPickerStepProps {
   scrollToIndex: (index: number) => void
 }
 
-/** The landing pill: a reassurance line that this is quick and free, carrying the old title card's value prop onto the carousel. */
-function LandingPill() {
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '7px 15px',
-        borderRadius: 99,
-        border: '1px solid var(--accent-save-border-soft)',
-        background: 'var(--accent-save-bg-pill)',
-        marginBottom: 20,
-      }}
-    >
-      <span
-        style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-save)', boxShadow: '0 0 10px var(--accent-save)' }}
-      />
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--brand-mint)' }}>Free · no sign-up · takes 2 minutes</span>
-    </div>
-  )
-}
-
-// Card width and the horizontal gap between adjacent cards' centres. The
-// design's cover-flow spec is 250px wide, stepped 268px apart, which needs
-// ~1100px of room for the focused card and one neighbour each side — so both
-// are read from custom properties that index.css steps down on narrow
-// viewports rather than being baked in here (see --goal-card-width).
-const CARD_WIDTH = 'var(--goal-card-width)'
-const CARD_STEP_X = 'var(--goal-card-step-x)'
-// Cards more than this many positions from centre are faded out / non-interactive.
-const MAX_VISIBLE_OFFSET = 2
 // Delay after selecting a goal before scrolling to Details, so the card's
 // selection state is visible for a beat first (design: 260ms).
 const SELECT_SCROLL_DELAY_MS = 260
 // How long each goal holds focus while the carousel auto-rotates on the landing
 // screen (before the user has touched it).
 const AUTO_ROTATE_MS = 3200
-
-/** Per-card cover-flow transform, opacity, and stacking from its distance to the focused card. */
-function cardGeometry(offset: number): CSSProperties {
-  const ax = Math.abs(offset)
-  const scale = Math.max(0.7, 1 - ax * 0.13)
-  // Written as an explicit +/- term rather than a signed multiplier, so the
-  // generated calc() never reads `+ -3 * ...`.
-  const step = offset === 0 ? '' : ` ${offset < 0 ? '-' : '+'} ${ax} * ${CARD_STEP_X}`
-  return {
-    transform: `translateX(calc(-50%${step})) scale(${scale})`,
-    opacity: ax > MAX_VISIBLE_OFFSET ? 0 : 1 - ax * 0.32,
-    zIndex: 20 - ax,
-    pointerEvents: ax > MAX_VISIBLE_OFFSET ? 'none' : 'auto',
-  }
-}
-
-interface GoalCardProps {
-  goal: Goal
-  offset: number
-  focused: boolean
-  /** When true, don't animate the horizontal move — the card is jumping across the wrap seam and should re-appear on the other side rather than fly across. */
-  teleport: boolean
-  onFocus: () => void
-  onSelect: () => void
-}
-
-function GoalCard({ goal, offset, focused, teleport, onFocus, onSelect }: GoalCardProps) {
-  const geo = cardGeometry(offset)
-  // The text-safe variant: this accent is used for the card border, icon
-  // fill, and tag-label text below, and --accent-save fails contrast as
-  // text/icon colour in the light theme (see tokens.css).
-  const accent = 'var(--accent-save-text)'
-  // Opacity still eases (so a wrapped card fades in/out in place) but the
-  // transform jumps instantly across the seam when teleporting. The slide's
-  // duration is a token so reduced motion can collapse it (see tokens.css).
-  const transition = teleport
-    ? 'opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-    : 'transform var(--duration-carousel) cubic-bezier(0.16,1,0.3,1), opacity 0.5s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-
-  return (
-    <button
-      type="button"
-      // A "Soon" goal never gets `onSelect` wired up at all, so selecting one
-      // is structurally impossible rather than guarded against at the far end
-      // (#207). `disabled` below already stops the click, so this changes
-      // nothing a user can see — but it is evaluated on every render, which
-      // makes it a rule the tests actually exercise, where the old
-      // `if (goal.soon) return` inside select() was unreachable dead code.
-      onClick={focused && !goal.soon ? onSelect : onFocus}
-      disabled={goal.soon && focused}
-      aria-label={goal.soon ? `${goal.name} (coming soon)` : focused ? `Continue with ${goal.name}` : `Focus ${goal.name}`}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: '50%',
-        width: CARD_WIDTH,
-        boxSizing: 'border-box',
-        textAlign: 'left',
-        borderRadius: 22,
-        padding: '30px 26px 26px',
-        backdropFilter: 'blur(12px)',
-        cursor: goal.soon ? 'not-allowed' : 'pointer',
-        fontFamily: 'inherit',
-        color: 'var(--text-primary)',
-        background: focused ? 'var(--accent-save-bg-card)' : 'var(--tile-bg-neutral)',
-        border: `1.5px solid ${focused ? accent : 'var(--divider)'}`,
-        boxShadow: focused ? 'var(--shadow-card-focused)' : 'var(--shadow-card)',
-        transition,
-        ...geo,
-      }}
-    >
-      {goal.soon && (
-        <span
-          style={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            fontSize: 10.5,
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            padding: '4px 9px',
-            borderRadius: 99,
-            background: 'var(--surface-selected)',
-            border: '1px solid var(--tile-border-neutral)',
-            color: 'var(--text-secondary-mid)',
-          }}
-        >
-          Soon
-        </span>
-      )}
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 18,
-          background: focused ? 'var(--accent-save-bg-chip)' : 'var(--surface-faint)',
-          color: focused ? accent : 'var(--icon-chip-fg)',
-        }}
-      >
-        <Icon name={goal.icon} size={26} />
-      </div>
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: focused ? accent : 'var(--text-tertiary)',
-          marginBottom: 8,
-        }}
-      >
-        {goal.tag}
-      </div>
-      <div style={{ fontSize: 23, fontWeight: 800, marginBottom: 8 }}>{goal.name}</div>
-      <div
-        style={{
-          fontSize: 13.5,
-          fontWeight: 500,
-          lineHeight: 1.5,
-          color: 'var(--text-secondary-mid)',
-          minHeight: 40,
-        }}
-      >
-        {goal.blurb}
-      </div>
-    </button>
-  )
-}
-
-interface RoundButtonProps {
-  icon: IconName
-  label: string
-  onClick: () => void
-}
-
-function RoundButton({ icon, label, onClick }: RoundButtonProps) {
-  // usePillHover rather than a bare onMouseEnter: a tap fires a synthetic
-  // mouseenter after touchend whose mouseleave may never come, which left the
-  // arrow stuck highlighted (#205, the same defect #158 fixed for the
-  // top-right pills).
-  const { hovered, hoverHandlers } = usePillHover()
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      {...hoverHandlers}
-      aria-label={label}
-      style={{
-        width: 'var(--goal-nav-size)',
-        height: 'var(--goal-nav-size)',
-        flexShrink: 0,
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        border: '1px solid var(--icon-button-border)',
-        background: hovered ? 'var(--surface-selected)' : 'var(--tile-bg)',
-        color: 'var(--text-primary)',
-        cursor: 'pointer',
-      }}
-    >
-      <Icon name={icon} size={22} />
-    </button>
-  )
-}
 
 /** The landing screen: the cover-flow goal picker. Choosing a goal seeds its tailored config and scrolls on to Details. */
 export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: GoalPickerStepProps) {
@@ -402,49 +201,5 @@ export function GoalPickerStep({ index, panelRef, wrapperRef, scrollToIndex }: G
         </div>
       </RevealTile>
     </StepPanel>
-  )
-}
-
-/** The primary landing CTA. Text stays a static "Get started" so it never overflows or reads awkwardly per goal; the focused goal's name rides along in the aria-label for screen readers (clicking the focused card selects it too). */
-function StartButton({ goal, onClick }: { goal: Goal; onClick: () => void }) {
-  // See RoundButton: without this the CTA stayed lifted after a tap, and was
-  // still lifted on scrolling back up to it (#205).
-  const { hovered, hoverHandlers } = usePillHover()
-  const disabled = Boolean(goal.soon)
-
-  return (
-    <button
-      type="button"
-      // Not wired for a "Soon" goal, matching GoalCard: `disabled` already
-      // stops the click, so this is the second, structural layer that keeps
-      // select() unreachable for one (#207).
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      aria-label={disabled ? undefined : `Get started with ${goal.name}`}
-      {...hoverHandlers}
-      style={{
-        minWidth: 'var(--goal-cta-min-width)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: '16px var(--goal-cta-padding-x)',
-        whiteSpace: 'nowrap',
-        borderRadius: 99,
-        border: 'none',
-        fontSize: 15.5,
-        fontWeight: 800,
-        fontFamily: 'inherit',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transform: hovered && !disabled ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'transform var(--duration-hover) ease',
-        background: disabled ? 'var(--pill-bg)' : 'var(--accent-save-gradient)',
-        color: disabled ? 'var(--text-disabled)' : 'var(--on-accent-save)',
-        boxShadow: disabled ? 'none' : 'var(--accent-save-shadow-strong)',
-      }}
-    >
-      {disabled ? 'Coming soon' : 'Get started'}
-      {!disabled && <Icon name="arrow-right" size={18} />}
-    </button>
   )
 }

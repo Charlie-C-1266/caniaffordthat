@@ -7,11 +7,11 @@ import { FieldLabel } from '../FieldLabel'
 import { Icon } from '../Icon'
 import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
-import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
+import { ModeToggle } from './details/ModeToggle'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
@@ -20,7 +20,6 @@ import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
 import { monthlyOutgoingsOf } from '../../lib/derive'
 import { goalById } from '../../lib/goals'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
-import type { Mode } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
 interface DetailsStepProps {
@@ -29,29 +28,6 @@ interface DetailsStepProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
-}
-
-/** Each pay mode's segment carries its own accent so the pill lights up green for saving and violet for finance. */
-const MODE_OPTIONS: readonly SegmentedOption<Mode>[] = [
-  { value: 'save', label: 'Save up for it', activeBackground: accentColorFor('save'), activeColor: 'var(--on-accent-save)' },
-  { value: 'monthly', label: 'Pay monthly', activeBackground: accentColorFor('monthly'), activeColor: 'var(--on-accent-finance)' },
-]
-
-interface ModeToggleProps {
-  mode: Mode
-  onChange: (mode: Mode) => void
-}
-
-/** The "How do you plan to pay?" segmented control shown for every goal except the emergency fund. */
-function ModeToggle({ mode, onChange }: ModeToggleProps) {
-  return (
-    <div style={{ marginBottom: 30 }}>
-      <div style={{ fontSize: 'var(--fs-helper)', fontWeight: 600, color: 'var(--text-secondary-dim)', marginBottom: 10 }}>
-        How do you plan to pay?
-      </div>
-      <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={onChange} />
-    </div>
-  )
 }
 
 /** The Details step — the per-goal tailored inputs. Standard goals capture a price (and, for cars, a deposit); the emergency fund sizes a cushion instead. */

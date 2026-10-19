@@ -57,7 +57,7 @@
  * 268px from its neighbours, which needs roughly 1100px to show the focused
  * card plus one card each side. Below that the cards have to shrink and close
  * up, or the carousel simply doesn't fit — so the two figures live here,
- * rather than as constants in GoalPickerStep.tsx.
+ * rather than as constants in goalPicker/GoalCard.tsx.
  */
 :root {
   --goal-card-width: 250px;

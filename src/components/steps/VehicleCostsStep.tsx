@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -7,6 +7,8 @@ import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
+import { PresetChip } from './vehicleCosts/PresetChip'
+import { SectionLabel } from './vehicleCosts/SectionLabel'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import {
@@ -26,57 +28,6 @@ interface VehicleCostsStepProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
-}
-
-interface PresetChipProps {
-  label: string
-  active: boolean
-  accentColor: string
-  title: string
-  onClick: () => void
-}
-
-/** A one-tap suggested-amount pill for people with no idea what a car costs to maintain. */
-function PresetChip({ label, active, accentColor, title, onClick }: PresetChipProps) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-pressed={active}
-      onClick={onClick}
-      style={{
-        padding: '7px 13px',
-        borderRadius: 99,
-        border: `1px solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'var(--surface-selected)' : 'transparent',
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-        fontSize: 12.5,
-        fontWeight: 700,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-/** Uppercase section label within the costs tile, matching the budget grid's heading style. */
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 'var(--fs-label)',
-        fontWeight: 700,
-        color: 'var(--text-tertiary)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-        marginBottom: 12,
-      }}
-    >
-      {children}
-    </div>
-  )
 }
 
 /**

@@ -1,18 +1,14 @@
-import { useId } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
-import { FieldLabel } from '../FieldLabel'
-import { LabeledMoneyField } from '../LabeledMoneyField'
-import { MonthYearInput } from '../MonthYearInput'
-import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { SliderField } from '../SliderField'
+import { DurationInput } from './plan/DurationInput'
+import { GoalDateInput } from './plan/GoalDateInput'
+import { ToggleButton } from './plan/ToggleButton'
 import { useCalculator } from '../../state/calculatorContext'
 import { accentColorFor } from '../../lib/mode'
-import { spareCashOf } from '../../lib/derive'
-import { fmt, num } from '../../lib/calculations'
-import type { RateMode, SaveFlavor } from '../../state/types'
+import type { SaveFlavor } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
 
 interface PlanStepProps {
@@ -20,128 +16,6 @@ interface PlanStepProps {
   index: number
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
-}
-
-interface ToggleButtonProps {
-  label: string
-  active: boolean
-  accentColor: string
-  onClick: () => void
-}
-
-function ToggleButton({ label, active, accentColor, onClick }: ToggleButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: 14,
-        borderRadius: 'var(--radius-button)',
-        border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'var(--surface-selected)' : 'transparent',
-        color: 'var(--text-primary)',
-        fontSize: 14,
-        fontWeight: 700,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-function GoalDateInput({ accentColor }: { accentColor: string }) {
-  const { state, setField } = useCalculator()
-  // Pairs the standalone FieldLabel with the masked date input, which the
-  // Labeled* wrappers do for themselves.
-  const inputId = useId()
-
-  return (
-    <div>
-      <FieldLabel htmlFor={inputId}>Goal date (MM-YYYY)</FieldLabel>
-      <MonthYearInput
-        id={inputId}
-        months={state.goalMonths}
-        minMonths={1}
-        accentColor={accentColor}
-        onChange={(months) => setField('goalMonths', months)}
-      />
-    </div>
-  )
-}
-
-/**
- * The "how long will it take?" input: the user sets their monthly saving either
- * as a share of spare cash (a slider) or as a fixed £ amount they type. Both
- * resolve to the same monthly contribution in `deriveResult`.
- */
-function DurationInput({ accentColor }: { accentColor: string }) {
-  const { state, setField, setFields } = useCalculator()
-
-  const spareCash = spareCashOf(state)
-  const rateAmount = Math.round((spareCash * state.rate) / 100)
-  const rateValueLabel = spareCash > 0 ? `${state.rate}% · ${fmt(rateAmount)}/mo` : `${state.rate}%`
-
-  const amount = num(state.monthlyAmount)
-  const amountCaption =
-    spareCash > 0 && amount > 0
-      ? amount > spareCash
-        ? `That's more than your ${fmt(spareCash)} spare cash a month.`
-        : `${Math.round((amount / spareCash) * 100)}% of your ${fmt(spareCash)} spare cash.`
-      : ''
-
-  // Switching to "fixed amount" seeds the field with the current % equivalent
-  // (once), so the handoff between the two inputs feels continuous.
-  const chooseMode = (mode: RateMode) => {
-    if (mode === 'amount' && num(state.monthlyAmount) === 0 && rateAmount > 0) {
-      setFields({ rateMode: mode, monthlyAmount: String(rateAmount) })
-    } else {
-      setField('rateMode', mode)
-    }
-  }
-
-  // The save accent is the active colour for both segments — unlike the pay-mode
-  // toggle, this choice doesn't change the app's accent.
-  const rateModeOptions: readonly SegmentedOption<RateMode>[] = [
-    { value: 'percent', label: '% of spare cash', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },
-    { value: 'amount', label: 'Fixed amount', activeBackground: accentColor, activeColor: 'var(--on-accent-save)' },
-  ]
-
-  return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ marginBottom: 18 }}>
-        <SegmentedControl size="sm" options={rateModeOptions} value={state.rateMode} onChange={chooseMode} />
-      </div>
-
-      {state.rateMode === 'amount' ? (
-        <div>
-          <LabeledMoneyField
-            variant="single"
-            label="Monthly saving"
-            accentColor={accentColor}
-            value={state.monthlyAmount}
-            onChange={(value) => setField('monthlyAmount', value)}
-          />
-          {amountCaption && (
-            <div style={{ marginTop: 8, fontSize: 'var(--fs-label)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{amountCaption}</div>
-          )}
-        </div>
-      ) : (
-        <SliderField
-          label="Share of spare cash you'll save"
-          valueLabel={rateValueLabel}
-          min={1}
-          max={100}
-          step={1}
-          value={state.rate}
-          accentColor={accentColor}
-          onChange={(value) => setField('rate', value)}
-        />
-      )}
-    </div>
-  )
 }
 
 /** The Plan step — mode-dependent: saving-up timeframe (duration or goal date + interest), or finance term + APR. */
