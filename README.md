@@ -27,9 +27,11 @@ docker compose up -d --build
 ```
 
 This serves on <http://localhost:4321>. Change the left half of the port mapping
-in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken.
+in `docker-compose.yml` (e.g. `9000:80`) if that port is already taken. The
+`Dockerfile` and its build-context ignore file live in `docker/`, which needs
+BuildKit, Docker's default builder since Engine 23.
 
-The container's nginx config (`nginx.conf`) gzips text responses, caches
+The container's nginx config (`docker/nginx.conf`) gzips text responses, caches
 Vite's hashed `/assets/` for a year while holding HTML at `no-cache`, sends
 `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and a
 `frame-ancestors` CSP, and returns a real 404 for unknown paths rather than
@@ -40,7 +42,7 @@ npm run build
 scripts/verify-nginx.sh      # needs nginx on PATH; CI runs this too
 ```
 
-`verify-nginx.sh` is mostly a harness: it boots `nginx.conf` against `./dist`
+`verify-nginx.sh` is mostly a harness: it boots `docker/nginx.conf` against `./dist`
 and hands the URL to `scripts/verify-headers.sh`, which holds the assertions
 and takes a base URL of its own. (It adds one nginx-only check, that a direct
 request for `/404.html` is a 404.) So the same expectations can be checked
@@ -158,7 +160,7 @@ To force a build anyway, open the deployment in the Vercel dashboard, choose
 `vercel.json` also defines the production response headers: the four security
 headers on every route, a year of `immutable` caching for the hashed
 `/assets/`, an hour for the unhashed public files, and `no-cache` for each HTML
-page. These mirror `nginx.conf`, which only reaches self-hosters, so the two
+page. These mirror `docker/nginx.conf`, which only reaches self-hosters, so the two
 files must stay in step — `src/lib/vercelHeaders.test.ts` fails if a header is
 added, dropped or changed on one side only, or if the `/assets/` cache value
 drifts. Adding a header is therefore a two-file change.
@@ -168,7 +170,26 @@ drifts. Adding a header is therefore a two-file change.
 
 After a deploy, `scripts/verify-headers.sh <url>` checks the served headers
 against the same expectations, on Vercel or on a self-hosted container alike.
-Two of its assertions are nginx-only: it expects no `Cache-Control` on a 404,
-which nginx achieves with an `always`-less `add_header`. Vercel matches headers
-by path with no condition on status, so a 404 under `/assets/` or a directory
-without an index carries the rule for its path.
+It recognises Vercel by the `x-vercel-id` header on every response and holds
+any other host to the full nginx list, so a host that drops that header fails
+safe. On Vercel it allows for two differences:
+
+- **The trailing-slash redirect.** Because of `trailingSlash: true`, an
+  extensionless unknown path such as `/does-not-exist` first 308-redirects to
+  `/does-not-exist/`, and only that URL is the 404. The script checks that
+  one redirect, then runs the 404 checks (status, branded body, security
+  headers) on the URL it leads to. A redirect anywhere else, a temporary
+  redirect or a second hop still fails. Vercel's redirect itself carries none
+  of the security headers, which costs nothing because a redirect has no body
+  to frame or sniff.
+- **Four nginx-only checks**, reported as skipped with the reason rather than
+  failed:
+  - three expect no `Cache-Control` on a 404, which nginx achieves with an
+    `always`-less `add_header`. Vercel matches headers by path with no
+    condition on status, so a 404 under `/assets/` or a directory without an
+    index carries the rule for its path;
+  - one expects `Vary: Accept-Encoding` on compressed responses. Vercel's CDN
+    negotiates the encoding itself and sends none.
+
+A clean run against production ends with "All header checks passed …, with 4
+nginx-only checks skipped."

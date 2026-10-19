@@ -18,7 +18,7 @@ export const E2E_BASE_URL_ENV = 'E2E_BASE_URL'
 export const DEFAULT_E2E_PORT = 4322
 
 /** What playwright.config.ts needs to know: the URL to resolve `page.goto('/')` against, and whether to spawn a web server first. */
-export interface E2ETarget {
+interface E2ETarget {
   baseURL: string
   /** True when nothing external was named, so Playwright must start the dev server itself. */
   startDevServer: boolean

@@ -4,13 +4,16 @@ import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { InfoHint } from '../InfoHint'
-import { Icon } from '../Icon'
-import type { IconName } from '../iconRegistry'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
+import { MethodChip } from './vehiclePurchase/MethodChip'
+import { METHOD_OPTIONS } from './vehiclePurchase/methodOptions'
+import { TextLink } from '../TextLink'
+import { AprSlider } from '../AprSlider'
+import { VehicleAgeSlider } from '../VehicleAgeSlider'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { TERM_RANGES, UK_AVERAGE_ANNUAL_MILES, estimateBalloon, vehicleAgeAskedOnPurchase } from '../../lib/vehicle'
@@ -24,62 +27,6 @@ interface VehiclePurchaseStepProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
-}
-
-/** The four ways people actually buy cars in the UK, each with a one-line honest description of the trade. */
-const METHOD_OPTIONS: readonly { value: VehicleFinanceMethod; label: string; icon: IconName; blurb: string }[] = [
-  { value: 'cash', label: 'Cash', icon: 'banknote', blurb: 'Pay the full price upfront — no borrowing, no interest.' },
-  { value: 'pcp', label: 'PCP', icon: 'key-round', blurb: 'Lower monthly payments, then a big optional final payment to keep the car.' },
-  {
-    value: 'hp',
-    label: 'Hire purchase',
-    icon: 'calendar-clock',
-    blurb: 'Equal instalments against the car — it becomes yours after the last one.',
-  },
-  { value: 'loan', label: 'Bank loan', icon: 'landmark', blurb: 'Borrow the money separately and own the car from day one.' },
-]
-
-interface MethodChipProps {
-  option: (typeof METHOD_OPTIONS)[number]
-  active: boolean
-  accentColor: string
-  onSelect: () => void
-}
-
-/**
- * One selectable purchase-method chip: icon + name only, in a single row of
- * four. Each option's full blurb sits in its `title` (a hover tooltip, same
- * pattern as VehicleCostsStep's maintenance presets) and is shown as body
- * text once, for whichever method is active — four full two-line
- * descriptions stacked in a 2x2 grid was the single biggest contributor to
- * this tile outgrowing the viewport.
- */
-function MethodChip({ option, active, accentColor, onSelect }: MethodChipProps) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      title={option.blurb}
-      onClick={onSelect}
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 6,
-        padding: '12px 8px',
-        borderRadius: 12,
-        border: `var(--border-width-card) solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'var(--surface-selected)' : 'transparent',
-        color: 'var(--text-primary)',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      <Icon name={option.icon} size={18} color={active ? accentColor : 'var(--text-tertiary)'} />
-      <span style={{ fontSize: 12.5, fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{option.label}</span>
-    </button>
-  )
 }
 
 /**
@@ -191,16 +138,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                 />
               </div>
               <div style={{ marginBottom: method === 'pcp' ? 26 : 0 }}>
-                <SliderField
-                  label="Interest rate (APR)"
-                  valueLabel={`${state.growth}%`}
-                  min={0}
-                  max={30}
-                  step={0.5}
-                  value={state.growth}
-                  accentColor={accent}
-                  onChange={(value) => setField('growth', value)}
-                />
+                <AprSlider accentColor={accent} />
               </div>
 
               {method === 'pcp' && (
@@ -241,16 +179,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                   ) : (
                     <>
                       <div style={{ marginBottom: 18 }}>
-                        <SliderField
-                          label="How old is the car now?"
-                          valueLabel={state.vehicleAge === 0 ? 'Brand new' : `${state.vehicleAge} year${state.vehicleAge === 1 ? '' : 's'}`}
-                          min={0}
-                          max={20}
-                          step={1}
-                          value={state.vehicleAge}
-                          accentColor={accent}
-                          onChange={(value) => setField('vehicleAge', value)}
-                        />
+                        <VehicleAgeSlider label="How old is the car now?" accentColor={accent} />
                       </div>
                       <div style={{ maxWidth: 320, marginBottom: 18 }}>
                         <LabeledUnitField
@@ -268,14 +197,9 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                             payment — estimated from a generic depreciation curve, assuming{' '}
                             {(num(state.annualMiles) > 0 ? num(state.annualMiles) : UK_AVERAGE_ANNUAL_MILES).toLocaleString('en-GB')} miles
                             a year (you can adjust that on the next step).{' '}
-                            <a
-                              href="/methodology/vehicle/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
-                            >
+                            <TextLink href="/methodology/vehicle/" newTab>
                               How we estimate this
-                            </a>
+                            </TextLink>
                           </>
                         ) : (
                           <>Add the car's price in the previous step and we'll estimate the final payment for you.</>

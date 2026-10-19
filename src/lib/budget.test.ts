@@ -1,16 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, type OutgoingFieldKey } from './budget'
+import {
+  OUTGOING_FIELD_KEYS,
+  OUTGOING_FIELD_LABELS,
+  committedOutgoingsOf,
+  monthlyOutgoingsOf,
+  regularSavingOf,
+  spareCashOf,
+  type OutgoingFieldKey,
+} from './budget'
 import { DEFAULT_STATE } from '../state/defaults'
-import { monthlyOutgoingsOf, spareCashOf, deriveResult } from './derive'
+import { deriveResult } from './derive'
 import { num } from './calculations'
 import type { CalculatorState } from '../state/types'
 
-// budget.ts is pure data — the keys and labels three separate call sites
-// (BudgetStep's grid, DetailsStep's essentials grid, derive.ts's spare-cash
-// maths) all read from. Nothing here exercises behaviour, so these tests pin
-// the *contract*: which keys exist, in what order, that every key has a label
-// and every label a key, that the default state actually carries them, and
-// that derive.ts really sums exactly this list and no other field.
+// budget.ts holds the keys and labels three separate call sites read from
+// (BudgetStep's grid, DetailsStep's essentials grid, and the spare-cash sums
+// at the end of budget.ts), and those sums themselves. The first half of these
+// tests pins the *contract*: which keys exist, in what order, that every key
+// has a label and every label a key, that the default state actually carries
+// them, and that the sums really add up exactly this list and no other field.
+// The last two blocks test the sums' behaviour directly.
 
 /** DEFAULT_STATE with the five outgoing fields set to the given amounts. */
 const withOutgoings = (values: Record<OutgoingFieldKey, string>): CalculatorState => ({
@@ -67,7 +76,7 @@ describe('default state coverage', () => {
   })
 })
 
-describe('derive.ts reads exactly these keys', () => {
+describe('the spare-cash sums read exactly these keys', () => {
   it('sums every outgoing key into monthlyOutgoingsOf', () => {
     const state = withOutgoings({ housing: '900', utilities: '150', groceries: '300', transport: '120', debts: '80' })
     expect(monthlyOutgoingsOf(state)).toBe(900 + 150 + 300 + 120 + 80)
@@ -122,5 +131,35 @@ describe('derive.ts reads exactly these keys', () => {
 
     const emergency: CalculatorState = { ...state, goalId: 'emergency', takeHome: '2500', coverMonths: 3 }
     expect(deriveResult({ ...emergency, savingsMonthly: '400' })?.grossTarget).toBe(deriveResult(emergency)?.grossTarget)
+  })
+})
+
+function makeState(overrides: Partial<CalculatorState>): CalculatorState {
+  return { ...DEFAULT_STATE, ...overrides }
+}
+
+describe('spareCashOf', () => {
+  it('is take-home minus the five outgoings, floored at 0', () => {
+    expect(spareCashOf(makeState({ takeHome: '2000' }))).toBe(2000) // outgoings default to '0'
+    expect(spareCashOf(makeState({ takeHome: '2000', housing: '500', groceries: '300' }))).toBe(1200)
+    expect(spareCashOf(makeState({ takeHome: '500', housing: '900' }))).toBe(0) // never negative
+  })
+
+  it('also deducts the regular saving the user already does', () => {
+    expect(spareCashOf(makeState({ takeHome: '2000', housing: '500', savingsMonthly: '300' }))).toBe(1200)
+    expect(spareCashOf(makeState({ takeHome: '500', savingsMonthly: '900' }))).toBe(0) // never negative
+  })
+})
+
+describe('regularSavingOf and committedOutgoingsOf', () => {
+  it('reads the regular-saving field', () => {
+    expect(regularSavingOf(makeState({ savingsMonthly: '250' }))).toBe(250)
+    expect(regularSavingOf(makeState({}))).toBe(0) // defaults to '0'
+  })
+
+  it('adds regular saving to the essentials without changing the essentials themselves', () => {
+    const state = makeState({ housing: '800', utilities: '200', savingsMonthly: '300' })
+    expect(monthlyOutgoingsOf(state)).toBe(1000)
+    expect(committedOutgoingsOf(state)).toBe(1300)
   })
 })

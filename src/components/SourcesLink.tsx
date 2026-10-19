@@ -1,5 +1,3 @@
-import { usePillHover } from '../hooks/usePillHover'
-
 /**
  * Small persistent top-right link (styled to match "Start over") straight to
  * the sources & ethos page, which carries the full annotated source list.
@@ -8,18 +6,16 @@ import { usePillHover } from '../hooks/usePillHover'
  * lost to the navigation.
  */
 export function SourcesLink() {
-  const { hovered, hoverHandlers } = usePillHover()
-
   return (
     <a
       href="/sources/"
       target="_blank"
       rel="noopener noreferrer"
       data-testid="sources-link"
-      {...hoverHandlers}
+      // The background, resting and hovered, is in index.css (`.pill-control`).
+      className="pill-control"
       style={{
         display: 'inline-block',
-        background: hovered ? 'var(--pill-bg-hover)' : 'var(--pill-bg)',
         border: '1px solid var(--pill-border)',
         color: 'var(--text-primary)',
         fontSize: 'var(--pill-font-size)',

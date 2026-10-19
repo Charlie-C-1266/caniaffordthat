@@ -58,14 +58,7 @@ const arrow = (label: 'Previous goal' | 'Next goal') => screen.getByRole('button
 const ctaFor = (goal: Goal) => screen.getByRole('button', { name: goal.soon ? 'Coming soon' : `Get started with ${goal.name}` })
 
 /** The inline `background` an arrow drives off its own hover state. */
-const arrowBackground = (label: 'Previous goal' | 'Next goal') => arrow(label).style.background
 /** The inline `transform` the CTA drives off its own hover state. */
-const ctaTransform = (goal: Goal) => ctaFor(goal).style.transform
-
-const ARROW_RESTING = 'var(--tile-bg)'
-const ARROW_HOVERED = 'var(--surface-selected)'
-const CTA_RESTING = 'translateY(0)'
-const CTA_LIFTED = 'translateY(-2px)'
 
 /** The stage div carrying the hover handlers — two levels up from any card. */
 function carouselStage(): HTMLElement {
@@ -501,49 +494,22 @@ describe('GoalPickerStep', () => {
       expect(teleportingGoals()).toEqual(crossing)
     })
   })
-  // The two sets of hover handlers in this file (#179). Each one's state only
-  // shows up as an inline style, so these assert the style the user would see
-  // rather than the component's internal flag — and that hovering never
-  // interferes with the click the control exists for.
   describe('the carousel arrows', () => {
-    it('lights up while hovered and goes back to its resting background on leave', () => {
+    it('moves the carousel when clicked', () => {
       renderPicker()
-      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
-
-      fireEvent.mouseOver(arrow('Next goal'))
-      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
-
-      fireEvent.mouseOut(arrow('Next goal'))
-      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
-    })
-
-    it('lights up again on a second hover, rather than latching after the first', () => {
-      renderPicker()
-      fireEvent.mouseOver(arrow('Previous goal'))
-      fireEvent.mouseOut(arrow('Previous goal'))
-      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
-
-      fireEvent.mouseOver(arrow('Previous goal'))
-      expect(arrowBackground('Previous goal')).toBe(ARROW_HOVERED)
-
-      fireEvent.mouseOut(arrow('Previous goal'))
-      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
-    })
-
-    it('hovering one arrow leaves the other alone', () => {
-      renderPicker()
-      fireEvent.mouseOver(arrow('Next goal'))
-      expect(arrowBackground('Previous goal')).toBe(ARROW_RESTING)
-    })
-
-    it('still moves the carousel when clicked mid-hover — the hover must not swallow the click', () => {
-      renderPicker()
-      fireEvent.mouseOver(arrow('Next goal'))
       fireEvent.click(arrow('Next goal'))
-
       expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
-      // And it stays lit, since the pointer hasn't left.
-      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
+    })
+
+    it('take their hover background from the `.carousel-arrow` class, not an inline style', () => {
+      // See SourcesLink.test.tsx: the hover is CSS, proven in a real browser
+      // by e2e/goal-picker-hover-touch.spec.ts, and an inline background
+      // would override it.
+      renderPicker()
+      for (const label of ['Previous goal', 'Next goal'] as const) {
+        expect(arrow(label).classList.contains('carousel-arrow')).toBe(true)
+        expect(arrow(label).style.background).toBe('')
+      }
     })
 
     it('wraps rather than clamping: previous from the first goal lands on the last', () => {
@@ -574,29 +540,21 @@ describe('GoalPickerStep', () => {
       expect(cta.hasAttribute('disabled')).toBe(false)
     })
 
-    it('lifts while hovered and settles back on leave', () => {
+    it('takes its hover lift from the `.goal-cta` class, not an inline style', () => {
+      // The CSS lifts only an enabled CTA (`:not(:disabled)`), so the disabled
+      // "Soon" one keeps the class and relies on its `disabled` attribute.
       renderPicker()
-      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
-
-      fireEvent.mouseOver(ctaFor(CAR))
-      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
-
-      fireEvent.mouseOut(ctaFor(CAR))
-      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
+      expect(ctaFor(CAR).classList.contains('goal-cta')).toBe(true)
+      expect(ctaFor(CAR).style.transform).toBe('')
+      fireEvent.click(dotFor(MORTGAGE))
+      expect(ctaFor(MORTGAGE).classList.contains('goal-cta')).toBe(true)
+      expect((ctaFor(MORTGAGE) as HTMLButtonElement).disabled).toBe(true)
+      expect(ctaFor(MORTGAGE).style.cursor).toBe('not-allowed')
     })
 
-    it('lifts again on a second hover', () => {
-      renderPicker()
-      fireEvent.mouseOver(ctaFor(CAR))
-      fireEvent.mouseOut(ctaFor(CAR))
-      fireEvent.mouseOver(ctaFor(CAR))
-      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
-    })
-
-    it('still selects the goal when clicked mid-hover', () => {
+    it('selects the goal when clicked', () => {
       const scrollToIndex = vi.fn()
       renderPicker({}, scrollToIndex)
-      fireEvent.mouseOver(ctaFor(CAR))
       fireEvent.click(ctaFor(CAR))
 
       expect(calculator().state.goalId).toBe(CAR.id)
@@ -612,19 +570,6 @@ describe('GoalPickerStep', () => {
       expect(cta.hasAttribute('aria-label')).toBe(false)
       expect(cta.textContent).toBe('Coming soon')
       expect(cta.hasAttribute('disabled')).toBe(true)
-    })
-
-    it('does not lift when hovered while disabled — nothing suggests it can be pressed', () => {
-      renderPicker()
-      fireEvent.click(dotFor(MORTGAGE))
-      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
-
-      fireEvent.mouseOver(ctaFor(MORTGAGE))
-      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
-      expect(ctaFor(MORTGAGE).style.cursor).toBe('not-allowed')
-
-      fireEvent.mouseOut(ctaFor(MORTGAGE))
-      expect(ctaTransform(MORTGAGE)).toBe(CTA_RESTING)
     })
 
     it('is a focusable native button, so Enter and Space activate it', () => {
@@ -646,88 +591,6 @@ describe('GoalPickerStep', () => {
       const cta = ctaFor(MORTGAGE)
       cta.focus()
       expect(document.activeElement).not.toBe(cta)
-    })
-  })
-  // A tap fires a synthetic mouseenter *after* touchend, and the matching
-  // mouseleave may never arrive — so before #205 both controls stayed in
-  // their hover style after a tap, reading as a stuck button. Both now use
-  // usePillHover; these mirror StartOverButton.test.tsx's touch-order tests,
-  // which pin the same contract for the top-right pills.
-  describe('hover state after a touch tap', () => {
-    it('leaves the arrow on its resting background after a tap', () => {
-      renderPicker()
-      const next = arrow('Next goal')
-      // The event order a real tap produces: touchstart/touchend, then a
-      // synthetic mouseenter, and no mouseleave.
-      fireEvent.touchStart(next)
-      fireEvent.touchEnd(next)
-      fireEvent.mouseEnter(next)
-      fireEvent.click(next)
-
-      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
-      // The tap still did its job — the hover guard must not swallow the move.
-      expect(carouselIndex()).toBe(INITIAL_CAROUSEL_INDEX + 1)
-    })
-
-    it('leaves the CTA unlifted after a tap', () => {
-      const scrollToIndex = vi.fn()
-      renderPicker({}, scrollToIndex)
-      const cta = ctaFor(CAR)
-      fireEvent.touchStart(cta)
-      fireEvent.touchEnd(cta)
-      fireEvent.mouseEnter(cta)
-      fireEvent.click(cta)
-
-      expect(ctaTransform(CAR)).toBe(CTA_RESTING)
-      expect(calculator().state.goalId).toBe(CAR.id)
-    })
-
-    it('still hovers the arrow normally with a mouse after an earlier tap', () => {
-      renderPicker()
-      const next = arrow('Next goal')
-      fireEvent.touchStart(next)
-      fireEvent.touchEnd(next)
-      fireEvent.mouseEnter(next)
-      fireEvent.mouseLeave(next)
-
-      fireEvent.mouseEnter(arrow('Next goal'))
-      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
-    })
-
-    it('still lifts the CTA with a mouse after an earlier tap', () => {
-      renderPicker()
-      const cta = ctaFor(CAR)
-      fireEvent.touchStart(cta)
-      fireEvent.touchEnd(cta)
-      fireEvent.mouseEnter(cta)
-      fireEvent.mouseLeave(cta)
-
-      fireEvent.mouseEnter(ctaFor(CAR))
-      expect(ctaTransform(CAR)).toBe(CTA_LIFTED)
-    })
-
-    it('still hovers after a tap whose synthetic mouseenter never arrived', () => {
-      // The touch mark must not outlive the next mouseleave, or it would
-      // swallow the following real hover and a hybrid touch-and-mouse device
-      // would get a control that never lights up.
-      renderPicker()
-      const next = arrow('Next goal')
-      fireEvent.touchStart(next)
-      fireEvent.touchEnd(next)
-      fireEvent.mouseLeave(next)
-
-      fireEvent.mouseEnter(arrow('Next goal'))
-      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
-    })
-
-    it('drops the arrow hover when focus leaves', () => {
-      renderPicker()
-      const next = arrow('Next goal')
-      fireEvent.mouseEnter(next)
-      expect(arrowBackground('Next goal')).toBe(ARROW_HOVERED)
-
-      fireEvent.blur(next)
-      expect(arrowBackground('Next goal')).toBe(ARROW_RESTING)
     })
   })
 })

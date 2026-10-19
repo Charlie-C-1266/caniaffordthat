@@ -4,7 +4,8 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 // race the other specs. This file is the one place that needs the real
 // transition, since the bug in #156 was precisely that a move finished
 // instantly: under `reduce` a snap and a slide are indistinguishable.
-test.use({ reducedMotion: 'no-preference' })
+// Overridden through `contextOptions`, where the project sets it (#228).
+test.use({ contextOptions: { reducedMotion: 'no-preference' } })
 
 // The card transition in GoalPickerStep.
 const SLIDE_MS = 500

@@ -5,7 +5,6 @@ node_modules
 
 # Machine-managed / generated
 package-lock.json
-skills-lock.json
 
 # Hand-crafted HTML entry shells (bespoke theme-bootstrap script + meta tags)
 index.html

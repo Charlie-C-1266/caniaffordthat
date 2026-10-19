@@ -1,8 +1,10 @@
 /**
- * The small uppercase heading above a group of money fields on the Budget
- * step — "Monthly outgoings", "Money you're already putting away". Pulled out
- * rather than written inline so the two groups can't drift apart in weight,
- * colour or spacing (and so the step file keeps to one component).
+ * The small uppercase heading above a group of fields: the Budget step's
+ * "Monthly outgoings" and "Money you're already putting away", and the vehicle
+ * running-costs groups ("Fuel", "Maintenance", "Insurance & tax"). One
+ * component so the groups can't drift apart in weight, colour or spacing. The
+ * running-costs step once kept its own copy, which had drifted to 2px less
+ * space below.
  */
 export function FieldGroupHeading({ children }: { children: string }) {
   return (

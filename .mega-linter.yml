@@ -2,6 +2,10 @@
 # oxlint + typescript-eslint and formatted by Prettier (see the CI job and the
 # npm scripts); MegaLinter covers what those don't: Markdown, YAML, the
 # Dockerfile, GitHub Actions workflows, and secret scanning.
+#
+# The per-linter configs (.markdownlint.json, .yamllint.yml, .hadolint.yaml)
+# live in .github/linters/, MegaLinter's default LINTER_RULES_PATH, rather than
+# at the repository root. Only MegaLinter reads them.
 APPLY_FIXES: none
 SHOW_ELAPSED_TIME: true
 FLAVOR_SUGGESTIONS: false
@@ -47,4 +51,4 @@ DISABLE_LINTERS:
   - REPOSITORY_CHECKMAKE
 
 # Vendored, generated, and sub-project paths that aren't ours to lint.
-FILTER_REGEX_EXCLUDE: (node_modules/|dist/|coverage/|package-lock\.json|\.agents/|scripts/og-image/)
+FILTER_REGEX_EXCLUDE: (node_modules/|dist/|coverage/|package-lock\.json|scripts/og-image/)

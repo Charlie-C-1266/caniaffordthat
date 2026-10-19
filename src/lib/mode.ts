@@ -15,3 +15,12 @@ export function accentColorFor(mode: Mode): string {
 export function accentBgFor(mode: Mode): string {
   return mode === 'save' ? 'var(--accent-save-bg)' : 'var(--accent-finance-bg)'
 }
+
+/**
+ * A result's eyebrow and chart colours. On a "Yes" both take the mode accent;
+ * on a "No" both drop it, so no positive-reading colour sits beside the red
+ * banner and only the banner carries the verdict.
+ */
+export function resultAccents(affordable: boolean, accent: string): { eyebrow: string; chart: string } {
+  return affordable ? { eyebrow: accent, chart: accent } : { eyebrow: 'var(--text-tertiary)', chart: 'var(--text-secondary-mid)' }
+}

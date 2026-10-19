@@ -7,21 +7,20 @@ import { FieldLabel } from '../FieldLabel'
 import { Icon } from '../Icon'
 import { InfoHint } from '../InfoHint'
 import { LabeledMoneyField } from '../LabeledMoneyField'
-import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
 import { UnderlineInput } from '../UnderlineInput'
 import { MoneyInput } from '../MoneyInput'
 import { SliderField } from '../SliderField'
 import { SummaryBox } from '../SummaryBox'
+import { ModeToggle } from './details/ModeToggle'
 import { useCalculator } from '../../state/calculatorContext'
 import { useDebouncedAdvance } from '../../hooks/useDebouncedAdvance'
 import { num, fmt } from '../../lib/calculations'
 import { ITEM_NAME_MAX_LENGTH } from '../../lib/fields'
-import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
-import { monthlyOutgoingsOf } from '../../lib/derive'
-import { goalById } from '../../lib/goals'
+import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, monthlyOutgoingsOf } from '../../lib/budget'
+import { goalById, presentationFor } from '../../lib/goals'
 import { accentColorFor, accentBgFor } from '../../lib/mode'
-import type { Mode } from '../../state/types'
 import type { DivRefCallback } from '../../lib/refs'
+import { COVER_MONTHS_RANGE } from '../../lib/sliderRanges'
 
 interface DetailsStepProps {
   /** Position in the active flow — drives the eyebrow number and where auto-advance lands. */
@@ -31,34 +30,13 @@ interface DetailsStepProps {
   scrollToIndex: (index: number) => void
 }
 
-/** Each pay mode's segment carries its own accent so the pill lights up green for saving and violet for finance. */
-const MODE_OPTIONS: readonly SegmentedOption<Mode>[] = [
-  { value: 'save', label: 'Save up for it', activeBackground: accentColorFor('save'), activeColor: 'var(--on-accent-save)' },
-  { value: 'monthly', label: 'Pay monthly', activeBackground: accentColorFor('monthly'), activeColor: 'var(--on-accent-finance)' },
-]
-
-interface ModeToggleProps {
-  mode: Mode
-  onChange: (mode: Mode) => void
-}
-
-/** The "How do you plan to pay?" segmented control shown for every goal except the emergency fund. */
-function ModeToggle({ mode, onChange }: ModeToggleProps) {
-  return (
-    <div style={{ marginBottom: 30 }}>
-      <div style={{ fontSize: 'var(--fs-helper)', fontWeight: 600, color: 'var(--text-secondary-dim)', marginBottom: 10 }}>
-        How do you plan to pay?
-      </div>
-      <SegmentedControl options={MODE_OPTIONS} value={mode} onChange={onChange} />
-    </div>
-  )
-}
-
 /** The Details step — the per-goal tailored inputs. Standard goals capture a price (and, for cars, a deposit); the emergency fund sizes a cushion instead. */
 export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: DetailsStepProps) {
   const { state, setField } = useCalculator()
   const scheduleAdvance = useDebouncedAdvance(scrollToIndex)
   const goal = goalById(state.goalId)
+  // What differs by kind of goal: see KIND_PRESENTATION in lib/goals.ts.
+  const presentation = presentationFor(goal).details
   const accent = accentColorFor(state.mode)
   // The price input is named by its own headline rather than a <label>: the
   // visible question *is* the heading, and it changes per goal (each goal's
@@ -103,11 +81,11 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
       index={index}
       panelRef={panelRef}
       wrapperRef={wrapperRef}
-      wrapperHeightVh={goal?.emergency ? 150 : 160}
+      wrapperHeightVh={presentation.wrapperHeightVh}
       panelStyle={{ background: 'var(--bg-dark-2)' }}
     >
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={640} padding={goal?.emergency ? '34px 44px' : '46px 44px'}>
+        <Tile maxWidth={640} padding={presentation.tilePadding}>
           {!goal ? (
             <p style={{ fontSize: 'var(--fs-body-lg)', color: 'var(--text-secondary)' }}>Scroll back up and pick a goal to get started.</p>
           ) : (
@@ -133,23 +111,21 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     Step {index} — {goal.tag}
                   </Eyebrow>
                   <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {goal.emergency ? 'How big a cushion?' : goal.name}
-                    {goal.emergency && <InfoHint text="A common rule of thumb is 3–6 months of essential spending set aside." />}
+                    {presentation.heading ?? goal.name}
+                    {presentation.hint !== null && <InfoHint text={presentation.hint} />}
                   </div>
                 </div>
               </div>
 
               {goal.allowModeToggle && <ModeToggle mode={state.mode} onChange={(mode) => setField('mode', mode)} />}
 
-              {goal.emergency ? (
+              {goal.kind === 'emergency' ? (
                 <>
                   <div style={{ marginBottom: 24 }}>
                     <SliderField
                       label="Months of cover"
                       valueLabel={`${state.coverMonths} month${state.coverMonths === 1 ? '' : 's'}`}
-                      min={1}
-                      max={12}
-                      step={1}
+                      {...COVER_MONTHS_RANGE}
                       value={state.coverMonths}
                       accentColor={accent}
                       onChange={(value) => setField('coverMonths', value)}
@@ -232,7 +208,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     paddingBottom={14}
                     paddingLeft={38}
                   />
-                  {goal.deposit && (
+                  {goal.kind === 'vehicle' && (
                     <div style={{ marginTop: 30 }}>
                       <LabeledMoneyField
                         variant="single"

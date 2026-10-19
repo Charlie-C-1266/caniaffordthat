@@ -1,6 +1,4 @@
-import { Tile } from '../Tile'
-import { VerdictBanner } from './VerdictBanner'
-import { ResultHeadline } from './ResultHeadline'
+import { ResultCard } from './ResultCard'
 import { ResultChart } from './ResultChart'
 import { SalaryFlip } from './SalaryFlip'
 import { BreakdownBox } from './BreakdownBox'
@@ -9,8 +7,7 @@ import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
-import { goalById } from '../../lib/goals'
-import { accentColorFor } from '../../lib/mode'
+import { accentColorFor, resultAccents } from '../../lib/mode'
 import type { DerivedResult } from '../../lib/derive'
 
 interface StandardResultCardProps {
@@ -21,68 +18,44 @@ interface StandardResultCardProps {
 /** The verdict, headline result, chart, breakdown, and share/edit actions for every non-vehicle goal. */
 export function StandardResultCard({ result, scrollToIndex }: StandardResultCardProps) {
   const { state } = useCalculator()
-  const goal = goalById(state.goalId)
   const accent = accentColorFor(state.mode)
-  // On a "No", drop the green/violet mode accent from the eyebrow and chart so
-  // no positive-reading colour sits next to the red banner — only the banner
-  // carries the verdict.
-  const affordable = result.isAffordable
-  const eyebrowColor = affordable ? accent : 'var(--text-tertiary)'
-  const currentBarColor = affordable ? accent : 'var(--text-secondary-mid)'
+  const { eyebrow: eyebrowColor, chart: currentBarColor } = resultAccents(result.isAffordable, accent)
 
   return (
-    <Tile maxWidth={640} padding="0" style={{ overflow: 'hidden' }}>
-      <VerdictBanner affordable={affordable} verdictText={result.verdictText} verdictSub={result.verdictSub} />
-
-      <div style={{ padding: '26px 30px 30px' }}>
-        <ResultHeadline
-          eyebrow={result.resultEyebrow}
-          eyebrowColor={eyebrowColor}
-          headline={result.headline}
-          subheadline={result.subheadline}
+    <ResultCard result={result} eyebrowColor={eyebrowColor}>
+      {result.target > 0 && (
+        <ResultChart
+          projection={result.projection}
+          budget={result.budget}
+          chartTitle={state.mode === 'monthly' ? 'Balance repaid over time' : 'Savings balance over time'}
+          accentColor={currentBarColor}
+          newCostLabel={state.mode === 'monthly' ? 'Monthly payment' : 'Monthly saving'}
+          months={result.months}
         />
+      )}
 
-        {result.target > 0 && (
-          <ResultChart
-            projection={result.projection}
-            budget={result.budget}
-            chartTitle={state.mode === 'monthly' ? 'Balance repaid over time' : 'Savings balance over time'}
-            accentColor={currentBarColor}
-            newCostLabel={state.mode === 'monthly' ? 'Monthly payment' : 'Monthly saving'}
-            months={result.months}
-          />
-        )}
-
-        <BreakdownBox>
-          <BreakdownRow
-            label="GOAL"
-            value={
-              goal?.emergency
-                ? `${goal.name} — ${fmt(result.grossTarget)} (${state.coverMonths} mo)`
-                : `${state.itemName || goal?.name || 'Your goal'} — ${fmt(result.grossTarget)}`
-            }
-          />
-          {/* Only shown when there is some, so a reader who saves nothing isn't
+      <BreakdownBox>
+        <BreakdownRow label="GOAL" value={result.goalRowValue} />
+        {/* Only shown when there is some, so a reader who saves nothing isn't
               asked to parse a £0 row before the figure that matters. */}
-          {result.regularSaving > 0 && <BreakdownRow label="REGULAR SAVING" value={fmt(result.regularSaving)} />}
-          <BreakdownRow label="SPARE CASH" value={fmt(result.spareCash)} />
-          <BreakdownRow label={result.contributionRowLabel} value={fmt(result.contribution)} />
-          {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}
-          {result.totalCost !== undefined && <BreakdownRow label="TOTAL COST" value={fmt(result.totalCost)} />}
-          <BreakdownRow label={goal?.emergency ? 'ALREADY SET ASIDE' : 'ALREADY SAVED'} value={fmt(num(state.savings))} />
-          <TotalRow label={result.targetRowLabel} value={fmt(result.target)} />
-        </BreakdownBox>
+        {result.regularSaving > 0 && <BreakdownRow label="REGULAR SAVING" value={fmt(result.regularSaving)} />}
+        <BreakdownRow label="SPARE CASH" value={fmt(result.spareCash)} />
+        <BreakdownRow label={result.contributionRowLabel} value={fmt(result.contribution)} />
+        {result.totalCost !== undefined && <BreakdownRow label="TOTAL INTEREST" value={fmt(result.interestPaid ?? 0)} />}
+        {result.totalCost !== undefined && <BreakdownRow label="TOTAL COST" value={fmt(result.totalCost)} />}
+        <BreakdownRow label={result.savedRowLabel} value={fmt(num(state.savings))} />
+        <TotalRow label={result.targetRowLabel} value={fmt(result.target)} />
+      </BreakdownBox>
 
-        {result.requiredTakeHomeMonthly !== null && (
-          <SalaryFlip
-            requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
-            currentTakeHomeMonthly={num(state.takeHome)}
-            accentColor={eyebrowColor}
-          />
-        )}
+      {result.requiredTakeHomeMonthly !== null && (
+        <SalaryFlip
+          requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
+          currentTakeHomeMonthly={num(state.takeHome)}
+          accentColor={eyebrowColor}
+        />
+      )}
 
-        <ResultActions scrollToIndex={scrollToIndex} />
-      </div>
-    </Tile>
+      <ResultActions scrollToIndex={scrollToIndex} />
+    </ResultCard>
   )
 }

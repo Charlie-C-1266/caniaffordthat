@@ -1,12 +1,14 @@
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
 import { Eyebrow } from '../Eyebrow'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { LabeledUnitField } from '../LabeledUnitField'
-import { SliderField } from '../SliderField'
+import { VehicleAgeSlider } from '../VehicleAgeSlider'
 import { SummaryBox } from '../SummaryBox'
+import { PresetChip } from './vehicleCosts/PresetChip'
+import { FieldGroupHeading } from '../FieldGroupHeading'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import {
@@ -26,57 +28,6 @@ interface VehicleCostsStepProps {
   panelRef: DivRefCallback
   wrapperRef: DivRefCallback
   scrollToIndex: (index: number) => void
-}
-
-interface PresetChipProps {
-  label: string
-  active: boolean
-  accentColor: string
-  title: string
-  onClick: () => void
-}
-
-/** A one-tap suggested-amount pill for people with no idea what a car costs to maintain. */
-function PresetChip({ label, active, accentColor, title, onClick }: PresetChipProps) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-pressed={active}
-      onClick={onClick}
-      style={{
-        padding: '7px 13px',
-        borderRadius: 99,
-        border: `1px solid ${active ? accentColor : 'var(--input-underline)'}`,
-        background: active ? 'var(--surface-selected)' : 'transparent',
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-        fontSize: 12.5,
-        fontWeight: 700,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-/** Uppercase section label within the costs tile, matching the budget grid's heading style. */
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 'var(--fs-label)',
-        fontWeight: 700,
-        color: 'var(--text-tertiary)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-        marginBottom: 12,
-      }}
-    >
-      {children}
-    </div>
-  )
 }
 
 /**
@@ -126,7 +77,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             What will it cost to keep on the road?
           </h2>
 
-          <SectionLabel>Fuel</SectionLabel>
+          <FieldGroupHeading>Fuel</FieldGroupHeading>
           {/*
             Three equal tracks fit comfortably at the tile's full width, but
             on a phone they'd each be ~56px — too narrow for a value plus its
@@ -162,7 +113,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             default — check today's on RAC Fuel Watch (see "Our sources").
           </div>
 
-          <SectionLabel>Maintenance</SectionLabel>
+          <FieldGroupHeading>Maintenance</FieldGroupHeading>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
             <div style={{ width: 200 }}>
               <LabeledMoneyField
@@ -194,7 +145,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
             Servicing, MOT, tyres and repairs. No idea? Pick the preset that sounds most like the car.
           </div>
 
-          <SectionLabel>Insurance &amp; tax</SectionLabel>
+          <FieldGroupHeading>Insurance &amp; tax</FieldGroupHeading>
           {/* alignItems:'end' bottom-aligns the pair. "Road tax (VED) / year" plus
               its "?" hint wraps onto one more line than "Insurance / year", and
               top-aligned grid items left the two £ amounts 17px out of line with
@@ -218,16 +169,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
 
           {!ageAlreadyAsked && (
             <div style={{ maxWidth: 340, marginBottom: 12 }}>
-              <SliderField
-                label="How old is the car?"
-                valueLabel={state.vehicleAge === 0 ? 'Brand new' : `${state.vehicleAge} year${state.vehicleAge === 1 ? '' : 's'}`}
-                min={0}
-                max={20}
-                step={1}
-                value={state.vehicleAge}
-                accentColor={accent}
-                onChange={(value) => setField('vehicleAge', value)}
-              />
+              <VehicleAgeSlider label="How old is the car?" accentColor={accent} />
             </div>
           )}
 

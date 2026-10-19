@@ -1,0 +1,16 @@
+// The Playwright specs. They run in Node, but the callbacks they hand to
+// `page.evaluate` run in the browser, so they need the DOM types as well as
+// Node's. Everything else — strictness and the linting flags — comes from the
+// Node project, so the two can't drift apart. Module resolution is `bundler`
+// because the specs import `./helpers` without an extension, as Playwright's
+// loader allows.
+{
+  "extends": "../tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["**/*.ts"]
+}

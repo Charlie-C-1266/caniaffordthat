@@ -1,11 +1,11 @@
-import type { Goal } from './goals'
+import type { Goal, GoalKind } from './goals'
 
 // The per-goal step sequence. Steps used to be a fixed five-strong list
 // (Goal -> Details -> Budget -> Plan -> Result) with indices hard-coded into
 // each component; the vehicle flow broke that assumption (it swaps Plan for
 // two bespoke steps), so the sequence is now data: components take their
 // index from their position here, and adding another bespoke flow means
-// adding a branch below — not re-threading indices through the app.
+// adding it to FLOWS below — not re-threading indices through the app.
 
 /** Identifies which step component renders at a position in the flow. */
 export type StepId = 'goal' | 'details' | 'vehiclePurchase' | 'vehicleCosts' | 'budget' | 'plan' | 'result'
@@ -28,7 +28,7 @@ const RESULT_STEP: FlowStep = { id: 'result', label: 'Result' }
  */
 const PRE_GOAL_FLOW: readonly FlowStep[] = [GOAL_STEP, DETAILS_STEP]
 
-/** The standard five-step flow every non-vehicle goal uses. */
+/** The standard five-step flow, shared by the standard goals and the emergency fund. */
 const STANDARD_FLOW: readonly FlowStep[] = [GOAL_STEP, DETAILS_STEP, BUDGET_STEP, { id: 'plan', label: 'Plan' }, RESULT_STEP]
 
 // The vehicle flow replaces the generic Plan step with two car-specific ones:
@@ -45,8 +45,15 @@ const VEHICLE_FLOW: readonly FlowStep[] = [
   RESULT_STEP,
 ]
 
+/** Each kind of goal's flow. A Record, so a new kind can't compile until it has one. */
+const FLOWS: Record<GoalKind, readonly FlowStep[]> = {
+  standard: STANDARD_FLOW,
+  emergency: STANDARD_FLOW,
+  vehicle: VEHICLE_FLOW,
+}
+
 /** The ordered steps for the chosen goal (or the two-step pre-goal flow). */
 export function flowForGoal(goal: Goal | null): readonly FlowStep[] {
   if (goal === null) return PRE_GOAL_FLOW
-  return goal.vehicle ? VEHICLE_FLOW : STANDARD_FLOW
+  return FLOWS[goal.kind]
 }

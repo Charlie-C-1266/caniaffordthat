@@ -1,10 +1,11 @@
+import { num } from './calculations'
 import type { CalculatorState } from '../state/types'
 
 // The five monthly-outgoing fields are read in three places — the Budget
 // step's input grid, the emergency fund's "essentials" grid in Details, and
-// the spare-cash maths in derive.ts. This module is the single source of
-// truth for the keys and their labels, so the three can't drift apart (the
-// labels had already diverged once before this was extracted).
+// the spare-cash sums at the end of this file. This module is the single
+// source of truth for the keys and their labels, so the three can't drift
+// apart (the labels had already diverged once before this was extracted).
 
 /** State keys of the five monthly-outgoing fields, in display order. */
 export const OUTGOING_FIELD_KEYS = [
@@ -38,3 +39,35 @@ export const REGULAR_SAVING_LABEL = 'Regular saving & investing'
 
 /** Short donut/legend label for regular saving — the input label is too long for a legend row. */
 export const REGULAR_SAVING_SHORT_LABEL = 'Saving'
+
+/**
+ * Sum of the five essential monthly outgoing fields (housing…debts), and the
+ * emergency fund's "essential spend". Regular saving is deliberately not part
+ * of this — see `committedOutgoingsOf`.
+ */
+export function monthlyOutgoingsOf(state: CalculatorState): number {
+  return OUTGOING_FIELD_KEYS.reduce((sum, key) => sum + num(state[key]), 0)
+}
+
+/** What the user already puts into savings, investments or a pension each month. */
+export function regularSavingOf(state: CalculatorState): number {
+  return num(state.savingsMonthly)
+}
+
+/**
+ * Everything already spoken for each month: the five essentials plus any
+ * regular saving. This is what spare cash is measured against, and it is
+ * deliberately a different figure from `monthlyOutgoingsOf`. A cushion has to
+ * replace the spending you could not stop, and saving is the first thing
+ * anyone pauses when their income goes away — folding it into the essentials
+ * sum would inflate the emergency fund's target by `coverMonths` times the
+ * amount saved, for money the user would not actually need to replace.
+ */
+export function committedOutgoingsOf(state: CalculatorState): number {
+  return monthlyOutgoingsOf(state) + regularSavingOf(state)
+}
+
+/** Monthly spare cash: take-home minus everything already committed, floored at 0. */
+export function spareCashOf(state: CalculatorState): number {
+  return Math.max(0, num(state.takeHome) - committedOutgoingsOf(state))
+}

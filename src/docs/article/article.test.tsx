@@ -9,6 +9,12 @@ import { Paragraph } from './Paragraph'
 import { Formula } from './Formula'
 import { Num } from './Num'
 import { Strong } from './Strong'
+import { BulletList } from './BulletList'
+import { BulletItem } from './BulletItem'
+import { DocPage } from './DocPage'
+import { MethodologySources } from './MethodologySources'
+import { ModelLimitations } from './ModelLimitations'
+import { CONTACT_EMAIL } from '../../lib/contact'
 
 afterEach(cleanup)
 
@@ -176,5 +182,92 @@ describe('inline helpers', () => {
   it('Strong renders a strong element', () => {
     const { container } = render(<Strong>60 months</Strong>)
     expect(container.querySelector('strong')?.textContent).toBe('60 months')
+  })
+})
+
+describe('BulletList and BulletItem', () => {
+  it('render a list with one item per entry, in order', () => {
+    render(
+      <BulletList>
+        <BulletItem>GOV.UK</BulletItem>
+        <BulletItem>MoneyHelper</BulletItem>
+      </BulletList>,
+    )
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['GOV.UK', 'MoneyHelper'])
+  })
+})
+
+describe('DocPage', () => {
+  it('gives the page one h1, between the header and the article, with the footer after', () => {
+    render(
+      <DocPage title="How the vehicle calculator works">
+        <p>The article body</p>
+      </DocPage>,
+    )
+    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['How the vehicle calculator works'])
+    // The header's way back, then the title, then the body, then the footer.
+    const back = screen.getByRole('link', { name: '← Back to the calculator' })
+    const title = screen.getByRole('heading', { level: 1 })
+    const body = screen.getByText('The article body')
+    const footer = screen.getByRole('contentinfo')
+    const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(back, title) && follows(title, body) && follows(body, footer)).toBe(true)
+  })
+
+  it("passes its accent to the header's brand swatch, and leaves the header's default otherwise", () => {
+    const swatch = () => screen.getByText('Can I Afford That?').previousElementSibling as HTMLElement
+    render(<DocPage title="Finance">{null}</DocPage>)
+    expect(swatch().style.background).toBe('var(--accent-save)')
+    cleanup()
+    render(
+      <DocPage title="Finance" accentColor="var(--accent-finance)">
+        {null}
+      </DocPage>,
+    )
+    expect(swatch().style.background).toBe('var(--accent-finance)')
+  })
+})
+
+describe('MethodologySources', () => {
+  const SOURCES = [
+    { label: 'Income Tax rates', url: 'https://www.gov.uk/income-tax-rates', usedFor: 'The bands' },
+    { label: 'National Insurance rates', url: 'https://www.gov.uk/national-insurance-rates-letters', usedFor: 'NI' },
+  ]
+
+  it('lists every source as a new-tab link, after its own intro line', () => {
+    render(
+      <MethodologySources intro="The official rates everything above is built on:" sources={SOURCES} emailSubject="Salary methodology" />,
+    )
+    expect(screen.getByRole('heading', { name: 'Sources' })).toBeTruthy()
+    expect(screen.getByText('The official rates everything above is built on:')).toBeTruthy()
+    for (const { label, url } of SOURCES) {
+      const link = screen.getByRole('link', { name: label })
+      expect(link.getAttribute('href')).toBe(url)
+      expect(link.getAttribute('target')).toBe('_blank')
+    }
+  })
+
+  it('points to the sources & ethos page in the same tab', () => {
+    render(<MethodologySources intro="Sources:" sources={SOURCES} emailSubject="Salary methodology" />)
+    const link = screen.getByRole('link', { name: 'see our sources & ethos page' })
+    expect(link.getAttribute('href')).toBe('/sources/')
+    expect(link.hasAttribute('target')).toBe(false)
+  })
+
+  it('addresses the corrections email with the subject it was given', () => {
+    render(<MethodologySources intro="Sources:" sources={SOURCES} emailSubject="Vehicle methodology" />)
+    const href = screen.getByRole('link', { name: CONTACT_EMAIL }).getAttribute('href') ?? ''
+    expect(href.startsWith(`mailto:${CONTACT_EMAIL}`)).toBe(true)
+    expect(decodeURIComponent(href)).toContain('Vehicle methodology')
+  })
+})
+
+describe('ModelLimitations', () => {
+  it("frames the page's own rows in the shared heading, intro and table head", () => {
+    render(<ModelLimitations rows={[['Scottish tax', 'Scotland has its own bands.']]} />)
+    expect(screen.getByRole('heading', { name: "What we deliberately don't model (yet)" })).toBeTruthy()
+    expect(screen.getByText('Being upfront about the edges of the model matters as much as the model:')).toBeTruthy()
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Simplification', 'What it means for you'])
+    expect(screen.getAllByRole('cell').map((td) => td.textContent)).toEqual(['Scottish tax', 'Scotland has its own bands.'])
   })
 })
