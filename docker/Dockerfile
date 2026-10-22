@@ -7,7 +7,9 @@
 # builder since Engine 23) reads in place of a root .dockerignore.
 
 # ── Stage 1: Build the static site ───────────────────────────────────────────
-FROM node:22-slim AS build
+# Node 24 LTS, the same major as CI and Vercel's build (see the setup-node step
+# in .github/workflows/ci.yml).
+FROM node:24-slim AS build
 
 WORKDIR /build
 COPY package.json package-lock.json ./

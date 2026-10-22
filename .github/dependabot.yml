@@ -67,6 +67,17 @@ updates:
         update-types:
           - minor
           - patch
+    # Node is held at 24 LTS, the newest major Vercel builds the live site
+    # with (the setup-node step in .github/workflows/ci.yml says more).
+    # @types/node follows the runtime: newer types would let the type check
+    # accept APIs Node 24 doesn't have. Minor and patch updates within 24 still
+    # come through dev-deps. When the project moves major, lift this and the
+    # docker entry's cap together. Dependabot also keeps its own ignore of 26,
+    # set by comment on #242 and #247; reopening those PRs clears it.
+    ignore:
+      - dependency-name: '@types/node'
+        versions:
+          - '>=25'
     commit-message:
       prefix: chore(deps)
       prefix-development: chore(dev-deps)
@@ -95,5 +106,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # The build stage stays on the same Node major as CI and Vercel; see the
+    # cap on @types/node in the npm entry.
+    ignore:
+      - dependency-name: node
+        versions:
+          - '>=25'
     commit-message:
       prefix: chore(docker)
