@@ -243,9 +243,11 @@ describe('.github/dependabot.yml', () => {
   })
 
   it('gives every family group at least two installed packages, so none is left matching a typo or a removed package', () => {
-    const membersOf = (name: string) =>
-      Object.keys(installed).filter((pkg) => patternsOf(asRecord(npmGroups[name])).some((pattern) => matchesPattern(pattern, pkg)))
-    expect(familyGroups.filter((name) => membersOf(name).length < 2)).toEqual([])
+    const undersized = familyGroups.filter((name) => {
+      const patterns = patternsOf(asRecord(npmGroups[name]))
+      return Object.keys(installed).filter((pkg) => patterns.some((pattern) => matchesPattern(pattern, pkg))).length < 2
+    })
+    expect(undersized).toEqual([])
   })
 
   it('is mentioned in the README, so the weekly PRs are not a surprise', () => {
