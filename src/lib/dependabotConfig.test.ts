@@ -4,9 +4,10 @@
 // malformed YAML in CI; what it can't see is whether an entry points at a
 // directory that actually holds that ecosystem's manifest, whether an
 // ecosystem is listed twice, whether an entry has quietly drifted off the
-// dev branch, or whether two installed packages that have to change major
-// together would arrive as two PRs that each fail — which is what this file
-// checks.
+// dev branch, whether two installed packages that have to change major
+// together would arrive as two PRs that each fail, or whether CI, the Docker
+// build and @types/node have drifted onto different Node majors — which is
+// what this file checks.
 import { existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -188,6 +189,73 @@ function lockstepProblems(groups: Record<string, unknown>, pairs: readonly Locks
 /** The two groups that batch minor and patch bumps. Every other npm group exists for a family that has to change major together. */
 const MINOR_PATCH_GROUPS = ['prod-deps', 'dev-deps']
 
+/**
+ * The files that name the project's Node major. The site is built on Vercel,
+ * which offers only some majors, so CI, the Docker build stage and the
+ * @types/node range are held to one major by hand, and Dependabot is capped
+ * just above it so it doesn't propose the next one.
+ */
+interface NodeMajorSources {
+  workflow: string
+  dockerfile: string
+  packageJson: string
+  dependabot: string
+}
+
+/** The first whole number in a version or range: 24 from `24`, `'^24.13.2'` or `'24-slim'`. */
+function leadingMajor(value: unknown): number | undefined {
+  const match = /^\D*(\d+)/.exec(String(value))
+  return match ? Number(match[1]) : undefined
+}
+
+/** The `versions` Dependabot ignores for one dependency in one ecosystem's entry. */
+function ignoredVersions(dependabot: Record<string, unknown>, ecosystem: string, dependency: string): unknown {
+  const updates = Array.isArray(dependabot.updates) ? dependabot.updates.map(asRecord) : []
+  const ignore = asRecord(updates.find((update) => update['package-ecosystem'] === ecosystem)).ignore
+  return (Array.isArray(ignore) ? ignore.map(asRecord) : []).find((rule) => rule['dependency-name'] === dependency)?.versions
+}
+
+/**
+ * Everything out of step about the Node major; empty means they agree. The
+ * first setup-node step in the workflow sets the major the rest are held to.
+ */
+function nodeMajorProblems(sources: NodeMajorSources): string[] {
+  const named: [label: string, major: number | undefined][] = []
+  for (const [jobName, job] of Object.entries(asRecord(asRecord(parse(sources.workflow)).jobs))) {
+    const steps = asRecord(job).steps
+    for (const step of Array.isArray(steps) ? steps.map(asRecord) : []) {
+      if (typeof step.uses === 'string' && step.uses.startsWith('actions/setup-node@')) {
+        named.push([`ci.yml ${jobName} job`, leadingMajor(asRecord(step.with)['node-version'])])
+      }
+    }
+  }
+  if (named.length === 0) return ['ci.yml: no setup-node step, so there is no Node major to hold the rest to']
+
+  named.push(['Dockerfile build stage', leadingMajor(/^FROM\s+node:(\S+)/im.exec(sources.dockerfile)?.[1])])
+  named.push(['@types/node', leadingMajor(asRecord(asRecord(JSON.parse(sources.packageJson)).devDependencies)['@types/node'])])
+
+  const [reference, major] = named[0]
+  const problems: string[] = []
+  if (major === undefined) return [`${reference}: no Node major found`]
+  for (const [label, found] of named.slice(1)) {
+    if (found === undefined) problems.push(`${label}: no Node major found`)
+    else if (found !== major) problems.push(`${label} is on Node ${found}, but ${reference} is on ${major}`)
+  }
+
+  const dependabot = asRecord(parse(sources.dependabot))
+  const cap = [`>=${major + 1}`]
+  for (const [ecosystem, dependency] of [
+    ['npm', '@types/node'],
+    ['docker', 'node'],
+  ] as const) {
+    const versions = ignoredVersions(dependabot, ecosystem, dependency)
+    if (JSON.stringify(versions) !== JSON.stringify(cap)) {
+      problems.push(`dependabot ${ecosystem}: ${dependency} ignores ${JSON.stringify(versions)}, expected ${JSON.stringify(cap)}`)
+    }
+  }
+  return problems
+}
+
 describe('.github/dependabot.yml', () => {
   const source = readRepoFile('.github/dependabot.yml')
   const config = asRecord(parse(source))
@@ -252,6 +320,17 @@ describe('.github/dependabot.yml', () => {
 
   it('is mentioned in the README, so the weekly PRs are not a surprise', () => {
     expect(readRepoFile('README.md')).toContain('.github/dependabot.yml')
+  })
+
+  it('holds CI, the Docker build and @types/node to one Node major, and stops Dependabot proposing the next', () => {
+    expect(
+      nodeMajorProblems({
+        workflow: readRepoFile('.github/workflows/ci.yml'),
+        dockerfile: readRepoFile('docker/Dockerfile'),
+        packageJson: readRepoFile('package.json'),
+        dependabot: source,
+      }),
+    ).toEqual([])
   })
 })
 
@@ -439,5 +518,78 @@ describe('the family check rejects a family whose majors would still arrive apar
 
   it('rejects a family split across two groups, one each', () => {
     expect(lockstepProblems({ a: majorsGroup(['vitest']), b: majorsGroup(['@vitest/*']) }, [VITEST_FAMILY])).toHaveLength(1)
+  })
+})
+
+/** A fixture workflow with one job per Node version given, each running setup-node with it. */
+const workflowOn = (...versions: unknown[]) =>
+  JSON.stringify({
+    jobs: Object.fromEntries(
+      versions.map((version, index) => [
+        `job${index + 1}`,
+        { steps: [{ uses: 'actions/checkout@abc' }, { uses: 'actions/setup-node@abc', with: { 'node-version': version } }] },
+      ]),
+    ),
+  })
+
+/** A fixture Dependabot config capping @types/node and the node image at the given ranges. */
+const dependabotCapping = (types: unknown, image: unknown) =>
+  JSON.stringify({
+    version: 2,
+    updates: [
+      { 'package-ecosystem': 'npm', ignore: [{ 'dependency-name': '@types/node', versions: types }] },
+      { 'package-ecosystem': 'docker', ignore: [{ 'dependency-name': 'node', versions: image }] },
+    ],
+  })
+
+const nodeSources = (overrides: Partial<NodeMajorSources> = {}): NodeMajorSources => ({
+  workflow: workflowOn(24, 24),
+  dockerfile: '# syntax=docker/dockerfile:1.6\nFROM node:24-slim AS build\nFROM nginx:1.31-alpine AS runtime\n',
+  packageJson: JSON.stringify({ devDependencies: { '@types/node': '^24.13.2' } }),
+  dependabot: dependabotCapping(['>=25'], ['>=25']),
+  ...overrides,
+})
+
+describe('the Node major check rejects a major out of step', () => {
+  it('accepts sources that agree on one major, however each spells it', () => {
+    expect(nodeMajorProblems(nodeSources())).toEqual([])
+    expect(nodeMajorProblems(nodeSources({ workflow: workflowOn('24.x', '24') }))).toEqual([])
+  })
+
+  it('rejects a second CI job left on another major', () => {
+    expect(nodeMajorProblems(nodeSources({ workflow: workflowOn(24, 22) }))).toEqual([
+      'ci.yml job2 job is on Node 22, but ci.yml job1 job is on 24',
+    ])
+  })
+
+  it('rejects a Docker build stage on another major, or with no node stage at all', () => {
+    expect(nodeMajorProblems(nodeSources({ dockerfile: 'FROM node:22-slim AS build\n' }))).toEqual([
+      'Dockerfile build stage is on Node 22, but ci.yml job1 job is on 24',
+    ])
+    expect(nodeMajorProblems(nodeSources({ dockerfile: 'FROM nginx:1.31-alpine\n' }))).toEqual([
+      'Dockerfile build stage: no Node major found',
+    ])
+  })
+
+  it('rejects @types/node on another major', () => {
+    expect(nodeMajorProblems(nodeSources({ packageJson: JSON.stringify({ devDependencies: { '@types/node': '^26.6.5' } }) }))).toEqual([
+      '@types/node is on Node 26, but ci.yml job1 job is on 24',
+    ])
+  })
+
+  it('rejects a Dependabot cap that is missing, or set at the wrong major', () => {
+    expect(nodeMajorProblems(nodeSources({ dependabot: dependabotCapping(undefined, ['>=25']) }))).toEqual([
+      'dependabot npm: @types/node ignores undefined, expected [">=25"]',
+    ])
+    expect(nodeMajorProblems(nodeSources({ dependabot: dependabotCapping(['>=25'], ['>=26']) }))).toEqual([
+      'dependabot docker: node ignores [">=26"], expected [">=25"]',
+    ])
+  })
+
+  it('rejects a workflow with no setup-node step, or one with no usable version', () => {
+    expect(nodeMajorProblems(nodeSources({ workflow: JSON.stringify({ jobs: { check: { steps: [{ run: 'npm test' }] } } }) }))).toEqual([
+      'ci.yml: no setup-node step, so there is no Node major to hold the rest to',
+    ])
+    expect(nodeMajorProblems(nodeSources({ workflow: workflowOn('lts/*') }))).toEqual(['ci.yml job1 job: no Node major found'])
   })
 })
