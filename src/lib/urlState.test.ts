@@ -3,7 +3,16 @@ import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } fr
 import { DEFAULT_STATE } from '../state/defaults'
 import { ITEM_NAME_MAX_LENGTH } from './fields'
 import { TERM_RANGES } from './vehicle'
-import { APR_RANGE, COVER_MONTHS_RANGE, SAVE_RATE_RANGE, SAVINGS_INTEREST_RANGE, VEHICLE_AGE_RANGE } from './sliderRanges'
+import * as sliderRanges from './sliderRanges'
+import {
+  APR_RANGE,
+  COVER_MONTHS_RANGE,
+  FINANCE_TERM_RANGE,
+  SAVE_RATE_RANGE,
+  SAVINGS_INTEREST_RANGE,
+  VEHICLE_AGE_RANGE,
+  type SliderRange,
+} from './sliderRanges'
 
 describe('hydrateStateFromUrl', () => {
   it('returns the defaults untouched when neither goalId nor itemPrice is present', () => {
@@ -80,22 +89,6 @@ describe('hydrateStateFromUrl', () => {
     expect(state.vehicleAge).toBe(VEHICLE_AGE_RANGE.max) // the car-age slider's own max, with no headroom past it
   })
 
-  it('clamps every slider-driven field to the range its slider uses', () => {
-    // The clamps and the sliders read the same ranges (sliderRanges.ts), so a
-    // link can never load a value its slider couldn't show. Over the top of
-    // each range by a clear margin, and under the bottom:
-    const over = hydrateStateFromUrl(
-      `?goalId=emergency&mode=save&rate=${SAVE_RATE_RANGE.max + 50}&coverMonths=${COVER_MONTHS_RANGE.max + 50}&vehicleAge=${VEHICLE_AGE_RANGE.max + 5}`,
-    )
-    expect(over.rate).toBe(SAVE_RATE_RANGE.max)
-    expect(over.coverMonths).toBe(COVER_MONTHS_RANGE.max)
-    expect(over.vehicleAge).toBe(VEHICLE_AGE_RANGE.max)
-    const under = hydrateStateFromUrl('?goalId=emergency&mode=save&rate=-1&coverMonths=-1&vehicleAge=-1')
-    expect(under.rate).toBe(SAVE_RATE_RANGE.min)
-    expect(under.coverMonths).toBe(COVER_MONTHS_RANGE.min)
-    expect(under.vehicleAge).toBe(VEHICLE_AGE_RANGE.min)
-  })
-
   it("holds growth to the slider the link's flow shows: savings interest when saving, APR when financing", () => {
     // Savings interest stops lower than the APR slider, and before the ranges
     // were shared a saving link could carry 25%, which its slider can't show.
@@ -125,6 +118,60 @@ describe('hydrateStateFromUrl', () => {
     expect(state.itemPrice).toBe('500')
     expect(state.takeHome).toBe(DEFAULT_STATE.takeHome)
     expect(state.rate).toBe(DEFAULT_STATE.rate)
+  })
+})
+
+/**
+ * One row per slider a shared link can set: the query parameter, a link that
+ * shows that slider, and the range in sliderRanges.ts it's held to. `growth`
+ * appears twice because it drives two sliders, picked by the link's mode. The
+ * vehicle flow's per-method terms have their own block further down.
+ */
+const SLIDER_LINKS = [
+  { param: 'rate', range: SAVE_RATE_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+  { param: 'growth', range: SAVINGS_INTEREST_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+  { param: 'growth', range: APR_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'term', range: FINANCE_TERM_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'coverMonths', range: COVER_MONTHS_RANGE, link: '?goalId=emergency&mode=save' },
+  { param: 'vehicleAge', range: VEHICLE_AGE_RANGE, link: '?goalId=car&itemPrice=9000' },
+] as const satisfies readonly { param: keyof typeof DEFAULT_STATE; range: SliderRange; link: string }[]
+
+/** Each row with the name its range is exported under, for the test titles. */
+const SLIDER_ROWS = SLIDER_LINKS.map((row) => ({
+  ...row,
+  name: Object.entries(sliderRanges).find(([, range]) => range === row.range)?.[0] ?? 'an unexported range',
+}))
+
+describe("hydrateStateFromUrl — each slider's bounds", () => {
+  // The clamps and the sliders read the same ranges, so a link can never load
+  // a value its slider couldn't show. One step past an end is the closest a
+  // hand-edited link can get to slipping through. For `growth` when saving and
+  // for `term`, it lands inside the wider first clamp and is only caught by
+  // the narrowing to the link's own slider.
+
+  it('has a row for every range sliderRanges.ts exports, so a new slider is not left unchecked', () => {
+    const unchecked = Object.entries(sliderRanges).filter(([, range]) => !SLIDER_LINKS.some((row) => row.range === range))
+    expect(unchecked.map(([name]) => name)).toEqual([])
+  })
+
+  it.each(SLIDER_ROWS)('keeps $param at both ends of $name', ({ param, range, link }) => {
+    const { min, max } = range
+    expect(hydrateStateFromUrl(`${link}&${param}=${min}`)[param]).toBe(min)
+    expect(hydrateStateFromUrl(`${link}&${param}=${max}`)[param]).toBe(max)
+  })
+
+  it.each(SLIDER_ROWS)('pulls $param one step past either end of $name back to that end', ({ param, range, link }) => {
+    const { min, max, step } = range
+    expect(hydrateStateFromUrl(`${link}&${param}=${min - step}`)[param]).toBe(min)
+    expect(hydrateStateFromUrl(`${link}&${param}=${max + step}`)[param]).toBe(max)
+  })
+
+  it.each(SLIDER_ROWS)('falls back to the default $param, inside $name, for a value that is not a number', ({ param, range, link }) => {
+    const { min, max } = range
+    const fallback = DEFAULT_STATE[param]
+    expect(fallback).toBeGreaterThanOrEqual(min)
+    expect(fallback).toBeLessThanOrEqual(max)
+    expect(hydrateStateFromUrl(`${link}&${param}=lots`)[param]).toBe(fallback)
   })
 })
 
