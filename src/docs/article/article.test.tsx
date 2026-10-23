@@ -197,6 +197,10 @@ describe('BulletList and BulletItem', () => {
   })
 })
 
+const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+const swatch = () => screen.getByText('Can I Afford That?').previousElementSibling as HTMLElement
+
 describe('DocPage', () => {
   it('gives the page one h1, between the header and the article, with the footer after', () => {
     render(
@@ -210,12 +214,10 @@ describe('DocPage', () => {
     const title = screen.getByRole('heading', { level: 1 })
     const body = screen.getByText('The article body')
     const footer = screen.getByRole('contentinfo')
-    const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
     expect(follows(back, title) && follows(title, body) && follows(body, footer)).toBe(true)
   })
 
   it("passes its accent to the header's brand swatch, and leaves the header's default otherwise", () => {
-    const swatch = () => screen.getByText('Can I Afford That?').previousElementSibling as HTMLElement
     render(<DocPage title="Finance">{null}</DocPage>)
     expect(swatch().style.background).toBe('var(--accent-save)')
     cleanup()

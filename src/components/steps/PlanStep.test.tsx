@@ -257,13 +257,13 @@ describe('PlanStep savings interest', () => {
   })
 })
 
+/** Paying monthly rather than saving up — the step's other half entirely. */
+const renderFinancePlan = (state: Partial<CalculatorState> = {}) => renderPlanStep({ mode: 'monthly', ...state })
+
 describe('PlanStep finance mode', () => {
   afterEach(() => {
     cleanup()
   })
-
-  /** Paying monthly rather than saving up — the step's other half entirely. */
-  const renderFinancePlan = (state: Partial<CalculatorState> = {}) => renderPlanStep({ mode: 'monthly', ...state })
 
   it('asks about the term and the rate, not the timeframe', () => {
     renderFinancePlan()

@@ -5,13 +5,12 @@ import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
 import { TotalRow } from './TotalRow'
 
-// The three primitives every result breakdown is built from. The only branch
-// among them is the box's optional heading — the vehicle card runs two headed
-// boxes ("Monthly costs", "The deal") while the standard card's single box goes
-// without — and nothing pinned it, so a refactor could drop the heading, or
-// leave an empty element in its place, and still pass today's suite. The rows
-// carry no branches but do carry the label/value order the figures are read in,
-// which a swap would invert silently.
+// The box every result breakdown sits in. Its only branch is the optional
+// heading — the vehicle card runs two headed boxes ("Monthly costs", "The
+// deal") while the standard card's single box goes without — and nothing
+// pinned it, so a refactor could drop the heading, or leave an empty element
+// in its place, and still pass today's suite. The rows inside it have their
+// own tests, in BreakdownRow.test.tsx and TotalRow.test.tsx.
 
 /** The box itself — the single element `BreakdownBox` renders. */
 function box(container: HTMLElement): HTMLElement {
@@ -74,58 +73,8 @@ describe('BreakdownBox', () => {
     expect(children).toHaveLength(1)
     expect(children[0].textContent).toBe('FUEL£90')
   })
-})
 
-describe('BreakdownRow and TotalRow', () => {
-  afterEach(cleanup)
-
-  it('set only the total row off with a rule above it', () => {
-    // TotalRow is a BreakdownRow with `total` set, so the rule is the one
-    // thing that tells the bottom line apart from the rows above it.
-    const { container } = render(
-      <>
-        <BreakdownRow label="FUEL" value="£90" />
-        <TotalRow label="TOTAL / MONTH" value="£389" />
-      </>,
-    )
-    const [row, total] = Array.from(container.children).map((el) => (el as HTMLElement).style)
-    expect(row.borderTop).toBe('')
-    expect(row.paddingTop).toBe('')
-    expect(total.borderTop).toBe('1px solid var(--tile-border-neutral)')
-    expect(total.paddingTop).toBe('9px')
-  })
-
-  it('render the label before the value', () => {
-    const { container } = render(
-      <>
-        <BreakdownRow label="DEPOSIT / PART-EX" value="£2,500" />
-        <TotalRow label="TOTAL / MONTH" value="£389" />
-      </>,
-    )
-
-    const [row, total] = Array.from(container.children)
-    // Label first, then value — the order the figures are read in.
-    expect(Array.from(row.children).map((c) => c.textContent)).toEqual(['DEPOSIT / PART-EX', '£2,500'])
-    expect(Array.from(total.children).map((c) => c.textContent)).toEqual(['TOTAL / MONTH', '£389'])
-  })
-
-  it('render long, zero and negative-formatted values verbatim', () => {
-    render(
-      <>
-        <BreakdownRow label="CAR" value="2019 Volkswagen Golf 1.5 TSI Life — £14,750" />
-        <BreakdownRow label="SPARE CASH" value="£0" />
-        <TotalRow label="SHORTFALL" value="-£1,240" />
-      </>,
-    )
-
-    // No truncation, no re-formatting: the cards pass pre-formatted strings
-    // and these primitives must not touch them.
-    expect(screen.getByText('2019 Volkswagen Golf 1.5 TSI Life — £14,750')).toBeTruthy()
-    expect(screen.getByText('£0')).toBeTruthy()
-    expect(screen.getByText('-£1,240')).toBeTruthy()
-  })
-
-  it('render in document order inside a composed box', () => {
+  it('lays out a heading, rows and a bottom line in the order they are written', () => {
     const { container } = render(
       <BreakdownBox heading="The deal">
         <BreakdownRow label="CAR" value="£14,750" />

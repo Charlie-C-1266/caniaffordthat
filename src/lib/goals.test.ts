@@ -61,9 +61,10 @@ describe('GOALS config', () => {
   })
 })
 
+const ofKind = (kind: string) => GOALS.filter((goal) => goal.kind === kind).map((goal) => goal.id)
+
 describe('goal kinds', () => {
   it('makes the car the only vehicle and the fund the only emergency goal; every other goal is standard', () => {
-    const ofKind = (kind: string) => GOALS.filter((goal) => goal.kind === kind).map((goal) => goal.id)
     expect(ofKind('vehicle')).toEqual(['car'])
     expect(ofKind('emergency')).toEqual(['emergency'])
     expect(ofKind('standard')).toEqual(['holiday', 'luxury', 'big', 'mortgage'])

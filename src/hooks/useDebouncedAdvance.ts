@@ -14,8 +14,13 @@ const DEFAULT_DEBOUNCE_MS = 1500
  */
 export function useDebouncedAdvance(scrollToIndex: (index: number) => void) {
   const { state } = useCalculator()
+  // Kept current from an effect rather than assigned during render, which
+  // isn't safe once a render can be thrown away and retried. The timer reads
+  // it when it fires, long after the effect has run.
   const activeIndexRef = useRef(state.activeIndex)
-  activeIndexRef.current = state.activeIndex
+  useEffect(() => {
+    activeIndexRef.current = state.activeIndex
+  }, [state.activeIndex])
 
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 

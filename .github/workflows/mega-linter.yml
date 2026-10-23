@@ -1,5 +1,11 @@
 name: MegaLinter
 
+# Every action is pinned to a full commit SHA, with its release as a trailing
+# comment. A tag like `@v7` can be moved to point at different code (the 2025
+# tj-actions/changed-files compromise worked that way); a SHA can't. Dependabot
+# reads the comment and keeps both up to date. zizmor (run by MegaLinter, below) checks
+# this, and the rest of this file's hardening.
+
 on:
   pull_request:
     branches: [main, dev]
@@ -18,22 +24,25 @@ jobs:
     name: MegaLinter (non-code files)
     runs-on: ubuntu-latest
     steps:
+      # `persist-credentials: false`: see ci.yml. MegaLinter reads the history
+      # this fetches but never pushes.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # The cupcake flavour is a slimmer image that still bundles markdownlint,
       # yamllint, hadolint, actionlint and the secret scanners we use.
       - name: MegaLinter
-        uses: oxsecurity/megalinter/flavors/cupcake@v8
+        uses: oxsecurity/megalinter/flavors/cupcake@9949bad031045f366be2467e00e8371a7328a2e2 # v10.1.0
         env:
           VALIDATE_ALL_CODEBASE: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload MegaLinter reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: megalinter-reports
           path: |

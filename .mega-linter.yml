@@ -19,6 +19,14 @@ PRINT_APPLY_FIXES_TIPS: false
 # 403 failed the whole job even with every linter passing.
 GITHUB_COMMENT_REPORTER: false
 
+# zizmor audits the workflows for GitHub Actions security issues. Some of its
+# audits ask GitHub's API about the actions we use (vulnerable versions, a tag
+# that also names a branch), so it needs the job's token, which MegaLinter
+# withholds from linters unless it's listed here. The workflow grants that
+# token `contents: read` only.
+ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES:
+  - GITHUB_TOKEN
+
 # Whitelist: only these descriptors run. Everything owned by the native
 # toolchain (TypeScript, JavaScript, JSX, CSS, JSON, HTML) stays off, as do
 # spell-check and copy-paste detection. Shell scripts are left to the plain

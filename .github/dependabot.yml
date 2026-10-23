@@ -7,8 +7,9 @@
 # ship to main as one release PR (see the README's "Branching and releases").
 #
 # src/lib/dependabotConfig.test.ts checks this file parses, that each entry
-# points at a directory that really holds that ecosystem's manifest, and that
-# nothing drifts off dev.
+# points at a directory that really holds that ecosystem's manifest, that
+# nothing drifts off dev, and that npm packages which have to change major
+# together share a group.
 version: 2
 
 updates:
@@ -22,9 +23,40 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     groups:
-      # Minor and patch bumps arrive as two PRs a week instead of twenty.
       # Majors are deliberately left ungrouped: each one gets its own PR,
       # where the breaking changes can be read properly.
+      #
+      # The exception is packages released together from one repository, where
+      # one pins the other's version through its peerDependencies. Neither can
+      # take a major without the other, so as two PRs each fails npm ci with
+      # ERESOLVE (vitest 5 and @vitest/coverage-v8 5 did, as #252 and #251).
+      # These groups bring each family's majors as one PR. They take majors
+      # only: Dependabot files a package under every group it matches and lets
+      # each group's update-types decide which one raises a bump, so a family's
+      # minor and patch bumps still go in prod-deps and dev-deps below. They sit
+      # first anyway, because GitHub's docs describe the first matching group
+      # winning, and under that reading too a family's majors stay together.
+      #
+      # The test checks the installed packages for any new family without one.
+      vitest:
+        patterns:
+          - vitest
+          - '@vitest/*'
+        update-types:
+          - major
+      react:
+        patterns:
+          - react
+          - react-dom
+        update-types:
+          - major
+      react-types:
+        patterns:
+          - '@types/react'
+          - '@types/react-dom'
+        update-types:
+          - major
+      # Minor and patch bumps arrive as two PRs a week instead of twenty.
       prod-deps:
         dependency-type: production
         update-types:
@@ -35,6 +67,17 @@ updates:
         update-types:
           - minor
           - patch
+    # Node is held at 24 LTS, the newest major Vercel builds the live site
+    # with (the setup-node step in .github/workflows/ci.yml says more).
+    # @types/node follows the runtime: newer types would let the type check
+    # accept APIs Node 24 doesn't have. Minor and patch updates within 24 still
+    # come through dev-deps. When the project moves major, lift this and the
+    # docker entry's cap together. Dependabot also keeps its own ignore of 26,
+    # set by comment on #242 and #247; reopening those PRs clears it.
+    ignore:
+      - dependency-name: '@types/node'
+        versions:
+          - '>=25'
     commit-message:
       prefix: chore(deps)
       prefix-development: chore(dev-deps)
@@ -63,5 +106,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # The build stage stays on the same Node major as CI and Vercel; see the
+    # cap on @types/node in the npm entry.
+    ignore:
+      - dependency-name: node
+        versions:
+          - '>=25'
     commit-message:
       prefix: chore(docker)
