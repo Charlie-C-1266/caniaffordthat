@@ -125,8 +125,10 @@ header_of() {
 }
 
 # Asserts a response header is absent.
-# Only ever called through nginx_only, which shellcheck can't see through.
-# shellcheck disable=SC2317
+# Only ever called through nginx_only, which shellcheck can't see through:
+# SC2317 for the body reading as unreachable, SC2329 for the function reading
+# as never invoked.
+# shellcheck disable=SC2317,SC2329
 expect_no_header() {
   local label=$1 path=$2 header=$3
   local got
