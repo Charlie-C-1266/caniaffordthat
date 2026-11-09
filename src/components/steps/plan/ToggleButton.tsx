@@ -10,6 +10,7 @@ export function ToggleButton({ label, active, accentColor, onClick }: ToggleButt
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       style={{
         flex: 1,
