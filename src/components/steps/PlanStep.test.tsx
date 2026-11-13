@@ -64,6 +64,13 @@ const percentButton = () => screen.getByRole('button', { name: '% of spare cash'
 const amountInput = () => screen.getByLabelText<HTMLInputElement>('Monthly saving')
 const durationButton = () => screen.getByRole('button', { name: 'How long will it take?' })
 const goalDateButton = () => screen.getByRole('button', { name: 'I have a goal date' })
+/**
+ * The timeframe pair's selection as assistive technology hears it (#272).
+ * Read from `aria-pressed` rather than the border colour: the border is
+ * checked in ToggleButton's own tests, and a sighted-only cue is exactly
+ * what #272 was about.
+ */
+const timeframePressed = () => [durationButton().getAttribute('aria-pressed'), goalDateButton().getAttribute('aria-pressed')]
 /** The masked MM-YYYY field — only rendered on the goal-date flavour. */
 const goalDateInput = () => screen.getByPlaceholderText<HTMLInputElement>('MM-YYYY')
 const slider = (name: string) => screen.getByRole<HTMLInputElement>('slider', { name })
@@ -74,6 +81,12 @@ const heading = () => screen.getByRole('heading', { level: 2 })
 describe('PlanStep fixed-amount seeding', () => {
   afterEach(() => {
     cleanup()
+  })
+
+  it('announces the duration flavour as the chosen timeframe', () => {
+    renderDurationPlan()
+
+    expect(timeframePressed()).toEqual(['true', 'false'])
   })
 
   it('starts on the % slider, with the %-equivalent shown in its read-out', () => {
@@ -202,6 +215,7 @@ describe('PlanStep goal-date flavour', () => {
     fireEvent.click(goalDateButton())
 
     expect(calculator().state.saveFlavor).toBe('goal')
+    expect(timeframePressed()).toEqual(['false', 'true'])
     expect(goalDateInput()).toBeTruthy()
     // The % / fixed-amount choice belongs to the duration flavour only.
     expect(screen.queryByRole('button', { name: 'Fixed amount' })).toBeNull()
@@ -230,8 +244,22 @@ describe('PlanStep goal-date flavour', () => {
     fireEvent.click(durationButton())
 
     expect(calculator().state.saveFlavor).toBe('duration')
+    expect(timeframePressed()).toEqual(['true', 'false'])
     expect(screen.queryByPlaceholderText('MM-YYYY')).toBeNull()
     expect(percentButton()).toBeTruthy()
+  })
+
+  it('leaves the chosen timeframe announced unchanged when it is picked again', () => {
+    // Clicking the already-active choice writes the same flavour back, so
+    // the pair must settle exactly where it was rather than clearing or
+    // swapping the announced selection.
+    renderPlanStep({ mode: 'save', saveFlavor: 'goal' })
+
+    fireEvent.click(goalDateButton())
+
+    expect(calculator().state.saveFlavor).toBe('goal')
+    expect(timeframePressed()).toEqual(['false', 'true'])
+    expect(goalDateInput()).toBeTruthy()
   })
 })
 
