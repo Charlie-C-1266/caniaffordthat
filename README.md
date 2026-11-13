@@ -122,6 +122,18 @@ what CI runs; Dependabot updates the SHA and the comment together. The
 workflows also grant their token only `contents: read`, and don't leave it in
 the checkout. MegaLinter's zizmor audit holds them to all three.
 
+### Dependency overrides
+
+`overrides` in `package.json` pins a transitive dependency that the packages
+above it haven't caught up with yet. Each one is temporary: it exists only
+until the direct dependencies ask for a safe version themselves, and should be
+removed then. `src/lib/packageOverrides.test.ts` checks every entry is a valid
+semver range, is documented here, and is the single version actually installed.
+
+| Override              | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Remove when                                                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimatch` `^11.0.3` | `minimatch <11.0.1` is [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), a denial of service through glob amplification. It reached the tree at `10.x` through `eslint`, `@eslint/config-array` and `@typescript-eslint/typescript-estree`, as 11 moderate `npm audit` findings. Lint tooling only — nothing ships to users — but a red audit hides a genuine new advisory, and `npm audit fix --force` would downgrade ESLint instead. | `eslint` and `typescript-eslint` depend on `minimatch` >= 11.0.1 themselves. Drop the override, run `npm install`, and check `npm audit` is still clean. |
+
 ## Branching and releases
 
 Two long-lived branches:

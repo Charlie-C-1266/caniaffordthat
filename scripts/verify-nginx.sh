@@ -30,8 +30,10 @@ command -v nginx >/dev/null || {
 }
 
 WORK="$(mktemp -d)"
-# Only ever called by the EXIT trap below, which shellcheck can't see through.
-# shellcheck disable=SC2317
+# Only ever called by the EXIT trap below, which shellcheck can't see through:
+# SC2317 for the body reading as unreachable, SC2329 for the function reading
+# as never invoked.
+# shellcheck disable=SC2317,SC2329
 cleanup() {
   if [[ -f $WORK/nginx.pid ]]; then
     nginx -c "$WORK/nginx.conf" -e "$WORK/error.log" -s quit 2>/dev/null || kill "$(cat "$WORK/nginx.pid")" 2>/dev/null || true
