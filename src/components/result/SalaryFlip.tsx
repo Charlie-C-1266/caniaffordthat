@@ -1,5 +1,6 @@
 import { fmt } from '../../lib/calculations'
-import { salaryFlip, type CurrentPay } from '../../lib/reverse'
+import { MIN_KEPT_TO_QUOTE, salaryFlip, type CurrentPay } from '../../lib/reverse'
+import type { TakeHomePlateau } from '../../lib/salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from '../../lib/taxYears'
 import { BreakdownBox } from './BreakdownBox'
 import { BreakdownRow } from './BreakdownRow'
@@ -16,6 +17,12 @@ import { TotalRow } from './TotalRow'
 // the estimate is left out rather than guessed: the panel still says whether
 // the plan fits, because that compares take-home, but not what they earn or
 // the pay rise in between.
+//
+// Where take-home stops rising with pay, which today's tables never do but a
+// large relief-at-source pension in the taper band would, the panel explains
+// what that does to the figures. Every such note says "on your payslip": the
+// figures are right for this month's budget, and nothing here may suggest
+// anyone ends the year worse off for earning more.
 
 interface SalaryFlipProps {
   /** Monthly take-home the plan needs to be affordable. */
@@ -40,6 +47,8 @@ interface FlipWording {
   currentRow: { label: string; value: string } | null
   totalLabel: string
   totalValue: string
+  /** Set when a salary below the user's own takes home enough on the payslip while theirs doesn't. */
+  lowerSalaryNote: string | null
 }
 
 /**
@@ -60,27 +69,43 @@ function wordingFor(flip: ReturnType<typeof salaryFlip>, current: CurrentPay): F
       currentRow: null,
       totalLabel: flip.alreadyEnough ? 'YOU CAN COVER IT' : 'MORE TAKE-HOME NEEDED',
       totalValue: flip.alreadyEnough ? `${takeHomeGap}/mo to spare` : `${takeHomeGap}/mo`,
+      lowerSalaryNote: null,
     }
   }
 
   const typed = current.kind === 'salary'
   const currentGross = fmt(typed ? Math.round(flip.currentGross) : roundSalary(flip.currentGross))
   const gap = fmt(roundSalary(Math.abs(flip.grossGap)))
+  const yourSalary = typed ? `your ${currentGross} salary` : `your estimated ${currentGross}`
+  // Only possible where take-home dips: the lowest salary that takes home
+  // enough sits below the user's, yet their own take-home falls short.
+  const reachedBelow = !flip.alreadyEnough && flip.requiredGross < flip.currentGross
   return {
     subheadline: flip.alreadyEnough
       ? `You already earn enough — this needs about ${requiredGross} a year, and you're on ${typed ? '' : 'roughly '}${currentGross}.`
-      : `That's roughly a ${gap} pay rise on your ${typed ? `${currentGross} salary` : `estimated ${currentGross}`} — about ${takeHomeGap}/month more take-home.`,
+      : `That's roughly a ${gap} pay rise on ${yourSalary} — about ${takeHomeGap}/month more take-home.`,
     currentRow: { label: typed ? 'YOUR SALARY' : 'YOUR SALARY (EST.)', value: `${currentGross}/yr` },
     totalLabel: flip.alreadyEnough ? 'YOU CAN COVER IT' : 'PAY RISE NEEDED',
     totalValue: flip.alreadyEnough ? `${gap} to spare` : `${gap}/yr`,
+    lowerSalaryNote: reachedBelow
+      ? `On your payslip, a salary of about ${requiredGross} also takes home enough, but from ${yourSalary} the next salary that does is about ${fmt(
+          roundSalary(flip.currentGross + flip.grossGap),
+        )}.`
+      : null,
   }
+}
+
+/** The note for a stretch of pay below the salary needed that takes home no more than its start does. */
+function plateauNote(plateau: TakeHomePlateau, requiredGross: number): string {
+  const peak = fmt(roundSalary(plateau.from))
+  return `On your payslip, pay between about ${peak} and ${fmt(roundSalary(plateau.to))} takes home no more than ${peak} does, so the first salary past that stretch to take home enough is about ${fmt(roundSalary(requiredGross))}.`
 }
 
 /** The "flip it" salary panel shown under the result breakdown. */
 export function SalaryFlip({ requiredTakeHomeMonthly, current, accentColor, year = CURRENT_TAX_YEAR }: SalaryFlipProps) {
   const flip = salaryFlip(requiredTakeHomeMonthly, current, year)
   const requiredGross = roundSalary(flip.requiredGross)
-  const { subheadline, currentRow, totalLabel, totalValue } = wordingFor(flip, current)
+  const { subheadline, currentRow, totalLabel, totalValue, lowerSalaryNote } = wordingFor(flip, current)
 
   const medianLine =
     flip.vsMedian === 'about'
@@ -142,10 +167,14 @@ export function SalaryFlip({ requiredTakeHomeMonthly, current, accentColor, year
             the Budget step to compare.
           </span>
         )}
+        {lowerSalaryNote && <span>{lowerSalaryNote}</span>}
+        {flip.payslipPlateau && <span>{plateauNote(flip.payslipPlateau, flip.requiredGross)}</span>}
         {flip.inTaperBand && (
           <span>
-            This lands in the £100k “tax trap”, where the personal allowance tapers away — every extra £1 of take-home here needs about £
-            {flip.salaryPerTakeHome.toFixed(2)} of salary.
+            This lands in the £100k “tax trap”, where the personal allowance tapers away —{' '}
+            {flip.salaryPerTakeHome === null
+              ? `on your payslip you keep less than ${Math.round(MIN_KEPT_TO_QUOTE * 100)}p of each extra £1 of salary here.`
+              : `every extra £1 of take-home here needs about £${flip.salaryPerTakeHome.toFixed(2)} of salary.`}
           </span>
         )}
         <span style={{ color: 'var(--text-tertiary-dim)' }}>

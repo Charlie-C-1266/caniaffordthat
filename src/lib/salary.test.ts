@@ -3,6 +3,7 @@ import {
   netFromGross,
   grossFromNet,
   salariesForTakeHome,
+  takeHomePlateauBelow,
   incomeTaxOn,
   nationalInsuranceOn,
   marginalNetRate,
@@ -188,6 +189,32 @@ describe('salariesForTakeHome', () => {
   })
 })
 
+describe('takeHomePlateauBelow', () => {
+  it('finds no plateau anywhere under the current table, where take-home always rises', () => {
+    for (const gross of [0, 12570, 50270, 100000, 110000, 125140, 200000]) {
+      expect(takeHomePlateauBelow(gross), `below £${gross}`).toBeNull()
+    }
+  })
+
+  it('runs from the peak to where take-home climbs back to it', () => {
+    // Take-home peaks at £100,000, falls until £106,285, and is back to the
+    // £58,656.50 it had at £100,000 by about £110,673.
+    const plateau = takeHomePlateauBelow(120000, STEEP_TAPER_TAX_YEAR)
+    expect(plateau?.from).toBe(100000)
+    expect(plateau?.to).toBeCloseTo(110672.64, 0)
+    expect(netFromGross(plateau?.to ?? 0, STEEP_TAPER_TAX_YEAR)).toBeCloseTo(netFromGross(100000, STEEP_TAPER_TAX_YEAR), 2)
+  })
+
+  it('stops at the salary asked about when take-home has not climbed back by then', () => {
+    expect(takeHomePlateauBelow(110000, STEEP_TAPER_TAX_YEAR)).toEqual({ from: 100000, to: 110000 })
+  })
+
+  it('finds nothing at or below the peak itself', () => {
+    expect(takeHomePlateauBelow(100000, STEEP_TAPER_TAX_YEAR)).toBeNull()
+    expect(takeHomePlateauBelow(0, STEEP_TAPER_TAX_YEAR)).toBeNull()
+  })
+})
+
 describe('monthlyTakeHomeFromGross', () => {
   it('converts an annual gross salary to monthly take-home', () => {
     // £40k: tax £5,486 + NI £2,194.40 -> £32,319.60/yr -> £2,693.30/month.
@@ -318,13 +345,13 @@ function roundTripViolations(year: TaxYear): string[] {
 
 describe('netFromGross is monotonically non-decreasing', () => {
   it.each(allTaxYears().map((year) => [year.label, year] as const))('never lets take-home fall as gross rises, %s', (_label, year) => {
-    // The message, not just the failure, is the point. grossFromNet copes
-    // with a curve that turns over, but the flip panel has no payslip wording
-    // yet for a "salary needed" that jumps, so a shipped table must not
-    // produce one until that wording exists.
+    // The message, not just the failure, is the point. The inversion and the
+    // flip panel both cope with a curve that turns over, but the methodology
+    // page doesn't yet explain it, and the site publishes its working before
+    // its figures — so a shipped table must not produce one until it does.
     expect(
       monotonicityViolations(year),
-      `netFromGross fell as gross rose under a shipped table. The inversion copes, but the flip panel's copy does not yet. Read ${MONOTONICITY_DOC} before shipping a deduction that does this.`,
+      `netFromGross fell as gross rose under a shipped table. The engine and the flip panel cope, but /methodology/salary/ doesn't explain it yet. Read ${MONOTONICITY_DOC} before shipping a deduction that does this.`,
     ).toEqual([])
   })
 

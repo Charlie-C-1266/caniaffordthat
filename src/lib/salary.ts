@@ -186,6 +186,38 @@ export function grossFromNet(net: number, year: TaxYear = CURRENT_TAX_YEAR): num
   return salaries[0] ?? searchedTo
 }
 
+/** A stretch of pay that takes home no more than its own start does. */
+export interface TakeHomePlateau {
+  /** Where take-home peaks before falling away. */
+  from: number
+  /** Where take-home has climbed back to that peak, or the salary asked about if that comes first. */
+  to: number
+}
+
+/**
+ * The last stretch of pay below `gross` that takes home no more than its own
+ * start does: from a salary where take-home peaks and then falls, to where it
+ * has climbed back to that peak. `null` while take-home rises all the way up
+ * to `gross`, as it always does under today's tables.
+ *
+ * Take-home is a straight line between slope changes, so a peak is always at
+ * one of them, and the highest one below `gross` is the peak that matters.
+ */
+export function takeHomePlateauBelow(gross: number, year: TaxYear = CURRENT_TAX_YEAR): TakeHomePlateau | null {
+  const kinks = slopeChangesOf(year)
+  let peak = 0
+  for (const kink of kinks) if (kink < gross && netFromGross(kink, year) > netFromGross(peak, year)) peak = kink
+  const atPeak = netFromGross(peak, year)
+
+  // Only a peak if take-home falls straight after it. Probe halfway along the
+  // stretch that follows, or halfway to `gross` if that comes first.
+  const probe = (peak + Math.min(kinks.find((kink) => kink > peak) ?? Infinity, gross)) / 2
+  if (netFromGross(probe, year) >= atPeak) return null
+
+  const climbedBack = salariesForTakeHome(atPeak, year).filter((salary) => salary > peak)
+  return { from: peak, to: Math.min(gross, ...climbedBack) }
+}
+
 /** Monthly take-home pay for an annual gross salary — the forward direction the Budget step's "enter my salary" option uses. 0 for a non-positive salary. */
 export function monthlyTakeHomeFromGross(grossAnnual: number, year: TaxYear = CURRENT_TAX_YEAR): number {
   if (grossAnnual <= 0) return 0

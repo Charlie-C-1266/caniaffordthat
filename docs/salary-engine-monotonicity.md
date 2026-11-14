@@ -91,15 +91,40 @@ and the amount to spare down to the last one below it, where take-home would dro
 under the target. While take-home rises with gross, both come to the required salary
 minus the current one, as before.
 
-**Still to do before shipping a deduction that turns the curve over.** The panel has
-no payslip wording yet for the "salary needed" jumping, or for the taper-band note's
-extreme figures near the turning point. On a curve that turns over, the headline
-"salary needed" (the lowest) can even sit below the user's salary while they still
-need a rise to the next one, and the panel must not show that without explaining it.
+**Payslip notes.** Where take-home stops rising, the panel explains what that does to
+the figures. Every note says "on your payslip", so none of them can suggest anyone
+ends the year worse off for earning more:
+
+- **A stretch where pay takes home no more than its start.** `takeHomePlateauBelow`
+  finds the last peak below the salary needed and where take-home climbs back to it.
+  The panel then says pay between those two takes home no more than the peak does, so
+  the first salary past that stretch to take home enough is the salary needed. This is
+  the "salary needed jumps" case: just above the peak's take-home, the salary needed
+  leaps from the peak to the far side of the dip.
+- **A lower salary that reaches the target while the user's does not.** In salary
+  mode, the lowest salary that takes home enough can sit below the user's own while
+  their take-home falls short. The panel names both that salary and the next one above
+  theirs.
+- **The taper note.** It quotes "every extra £1 of take-home needs about £X of salary"
+  only while at least 10p of an extra £1 is kept (`MIN_KEPT_TO_QUOTE`). Below that, the
+  figure balloons (£33.33 at 3p, £166.67 at 0.6p), so the note says less than 10p is
+  kept instead.
+
+**Still to do before shipping a deduction that turns the curve over.**
+
+- The salary methodology page must explain, with live figures, why payslip take-home
+  can fall as salary rises while the year's position still rises. The site publishes
+  its working before its figures.
+- Once the relief-at-source pension exists, the stretch note should name it and add
+  that, over the whole year, once higher-rate relief is claimed back, earning more
+  still leaves you better off. Today the panel can't know the cause, so it says only
+  what is true on the payslip.
+- The test asserting first-crossing correctness across the full domain, with the taper
+  band, both loans and a high relief-at-source rate all active, belongs with the
+  deductions themselves.
+
 The monotonicity sweep in `salary.test.ts` stays as the tripwire: it fails if a
-shipped table turns over, and its message points here. The test asserting
-first-crossing correctness across the full domain, with the taper band, both loans
-and a high relief-at-source rate all active, belongs with the deductions themselves.
+shipped table turns over, and its message points here.
 
 ## Working
 

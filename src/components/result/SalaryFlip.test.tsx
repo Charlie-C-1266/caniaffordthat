@@ -5,7 +5,8 @@ import { SalaryFlip } from './SalaryFlip'
 import { salaryFlip, type CurrentPay } from '../../lib/reverse'
 import { fmt } from '../../lib/calculations'
 import type { TaxYear } from '../../lib/taxYears'
-import { STEEP_TAPER_TAX_YEAR } from '../../test/taxYearFixtures'
+import { netFromGross } from '../../lib/salary'
+import { FIVE_PENCE_TAPER_TAX_YEAR, STEEP_TAPER_TAX_YEAR } from '../../test/taxYearFixtures'
 
 // The engine (lib/reverse.ts) is already well tested; these tests cover the
 // *display* branching this component owns: which subheadline renders, which
@@ -104,7 +105,7 @@ describe('SalaryFlip display branches', () => {
     expect(flip.inTaperBand).toBe(true)
 
     expect(screen.getByText(/tax trap/)).toBeTruthy()
-    expect(screen.getByText(new RegExp(`£\\s*${flip.salaryPerTakeHome.toFixed(2)} of salary`))).toBeTruthy()
+    expect(screen.getByText(new RegExp(`£\\s*${known(flip.salaryPerTakeHome).toFixed(2)} of salary`))).toBeTruthy()
   })
 
   it('omits the taper-band note for an ordinary salary', () => {
@@ -190,5 +191,75 @@ describe('SalaryFlip when more than one salary gives the take-home entered', () 
   it('names the tax year it was worked out for', () => {
     renderFlip(5000, ambiguousTakeHome, STEEP_TAPER_TAX_YEAR)
     expect(screen.getByText(/steep taper \(test only\)/)).toBeTruthy()
+  })
+})
+
+// Every note here says "on your payslip": the figures are right for this
+// month's budget, and none of them may suggest anyone ends the year worse off
+// for earning more.
+describe('SalaryFlip on the payslip where take-home stops rising', () => {
+  afterEach(cleanup)
+
+  /** Any of the payslip notes. */
+  const PAYSLIP_NOTE = /^On your payslip/
+
+  it('shows no payslip note under the current table', () => {
+    renderFlip(3000, 2000)
+    expect(screen.queryByText(PAYSLIP_NOTE)).toBeNull()
+
+    cleanup()
+
+    renderFlip(3000, salary(40000))
+    expect(screen.queryByText(PAYSLIP_NOTE)).toBeNull()
+  })
+
+  it('explains a salary needed that sits past a stretch where take-home stops rising', () => {
+    // £58,700 a year is just above what £100,000 takes home on this table, and
+    // take-home only climbs back to that level at about £110,673.
+    const flip = renderFlip(58700 / 12, 3000, STEEP_TAPER_TAX_YEAR)
+    expect(flip.payslipPlateau).not.toBeNull()
+
+    expect(
+      screen.getByText(
+        'On your payslip, pay between about £100,000 and £110,700 takes home no more than £100,000 does, so the first salary past that stretch to take home enough is about £110,800.',
+      ),
+    ).toBeTruthy()
+  })
+
+  it("explains a lower salary reaching the target while the user's own falls short", () => {
+    // On £104,000 the user takes home £57,176.50. £57,300 is reached at about
+    // £97,441, and then not again until about £108,113.
+    const flip = renderFlip(57300 / 12, salary(104000), STEEP_TAPER_TAX_YEAR)
+    expect(flip.alreadyEnough).toBe(false)
+    expect(flip.requiredGross).toBeLessThan(104000)
+
+    expect(
+      screen.getByText(
+        'On your payslip, a salary of about £97,400 also takes home enough, but from your £104,000 salary the next salary that does is about £108,100.',
+      ),
+    ).toBeTruthy()
+    expect(screen.getByText('PAY RISE NEEDED')).toBeTruthy()
+  })
+
+  it("says nothing about a lower salary when the user's own already covers the plan", () => {
+    const flip = renderFlip(57100 / 12, salary(104000), STEEP_TAPER_TAX_YEAR)
+    expect(flip.alreadyEnough).toBe(true)
+    expect(flip.requiredGross).toBeLessThan(104000)
+
+    expect(screen.queryByText(PAYSLIP_NOTE)).toBeNull()
+  })
+
+  it('says how little is kept, instead of a ballooning figure, where an extra £1 keeps under 10p', () => {
+    const year = FIVE_PENCE_TAPER_TAX_YEAR
+    const flip = renderFlip(netFromGross(110000, year) / 12, 2000, year)
+    expect(flip.inTaperBand).toBe(true)
+    expect(flip.salaryPerTakeHome).toBeNull()
+
+    expect(
+      screen.getByText(
+        'This lands in the £100k “tax trap”, where the personal allowance tapers away — on your payslip you keep less than 10p of each extra £1 of salary here.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText(/of salary\.$/)).toBeNull()
   })
 })
