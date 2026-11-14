@@ -7,8 +7,9 @@ import { TotalRow } from './TotalRow'
 import { ResultActions } from './ResultActions'
 import { TextLink } from '../TextLink'
 import { useCalculator } from '../../state/calculatorContext'
-import { fmt, num } from '../../lib/calculations'
+import { fmt } from '../../lib/calculations'
 import { accentColorFor, resultAccents } from '../../lib/mode'
+import { currentPayOf } from '../../lib/reverse'
 import { financeRowLabel } from '../../lib/vehicle'
 import type { VehicleResult } from '../../lib/vehicle'
 
@@ -91,11 +92,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
         </div>
       )}
 
-      <SalaryFlip
-        requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
-        currentTakeHomeMonthly={num(state.takeHome)}
-        accentColor={eyebrowColor}
-      />
+      <SalaryFlip requiredTakeHomeMonthly={result.requiredTakeHomeMonthly} current={currentPayOf(state)} accentColor={eyebrowColor} />
 
       <div style={{ marginBottom: 16, fontSize: 'var(--fs-helper)', fontWeight: 600 }}>
         <TextLink href="/methodology/vehicle/" newTab>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   netFromGross,
   grossFromNet,
+  salariesForTakeHome,
   incomeTaxOn,
   nationalInsuranceOn,
   marginalNetRate,
@@ -10,6 +11,7 @@ import {
 } from './salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 import * as taxYearsModule from './taxYears'
+import { STEEP_TAPER_TAX_YEAR } from '../test/taxYearFixtures'
 
 // Golden figures hand-computed from the 2026/27 rest-of-UK rules in taxYears.ts
 // (PA £12,570 tapering over £100k; tax 20/40/45 at £50,270/£125,140; NI 8/2 at
@@ -51,11 +53,13 @@ describe('grossFromNet', () => {
     expect(grossFromNet(-100)).toBe(0)
   })
 
-  // The defensive ceiling-growth loop. `hi` starts at net * 2 + 200000, which
-  // brackets any target under the real UK table (gross is never more than
-  // ~1.9x net), so the loop body never runs with the shipped figures. A table
-  // with a punitive rate does need it, and without the loop the bisection
+  // The defensive ceiling-growth loop on the open-ended stretch past the last
+  // threshold. Its ceiling starts net * 2 + 200000 beyond that threshold,
+  // which brackets any target under the real UK table (gross is never more
+  // than ~1.9x net), so the loop body never runs with the shipped figures. A
+  // table with a punitive rate does need it, and without the loop the search
   // would return the un-bracketing ceiling and understate the gross badly.
+  // This table has no thresholds at all, so that stretch starts at £0.
   it('grows its ceiling until it brackets the target under a punitive table', () => {
     // 99% flat rate, no allowance: gross is 100x net, far outside the
     // starting bracket for any meaningful target.
@@ -100,6 +104,87 @@ describe('grossFromNet', () => {
     expect(Number.isFinite(gross)).toBe(true)
     expect(Number.isNaN(gross)).toBe(false)
     expect(gross).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * How many times take-home crosses `net` between £0 and £300,000, counted by
+ * stepping £5 at a time: slow and blunt, but it can't skip a threshold it
+ * doesn't know about, which is the one way the real search could go wrong.
+ */
+function crossingsByScan(net: number, year: TaxYear): number {
+  let crossings = 0
+  let previous = netFromGross(0, year) - net
+  for (let gross = 5; gross <= 300000; gross += 5) {
+    const current = netFromGross(gross, year) - net
+    if (current === 0 || (previous !== 0 && previous < 0 !== current < 0)) crossings++
+    previous = current
+  }
+  return crossings
+}
+
+describe('salariesForTakeHome', () => {
+  it('finds exactly one salary for every take-home under the current table', () => {
+    // Take-home rises with gross under today's figures, so a take-home names
+    // one salary, and it is the one grossFromNet returns.
+    for (const gross of [5000, 12570, 30000, 50270, 75000, 100000, 110000, 125140, 200000]) {
+      const net = netFromGross(gross)
+      const salaries = salariesForTakeHome(net)
+      expect(salaries, `the take-home £${gross} earns`).toHaveLength(1)
+      expect(salaries[0]).toBeCloseTo(gross, 0)
+      expect(salaries[0]).toBe(grossFromNet(net))
+    }
+  })
+
+  it('reaches a non-positive take-home at £0', () => {
+    expect(salariesForTakeHome(0)).toEqual([0])
+    expect(salariesForTakeHome(-100)).toEqual([0])
+  })
+
+  it('finds all three salaries behind a take-home where the curve turns over', () => {
+    // £57,500 sits between the £56,331.05 trough and the £58,656.50 peak: it
+    // is reached rising before £100,000, falling inside the taper, and rising
+    // again once the allowance has gone.
+    const salaries = salariesForTakeHome(57500, STEEP_TAPER_TAX_YEAR)
+    expect(salaries.map(Math.round)).toEqual([97818, 103126, 108491])
+    for (const gross of salaries) expect(netFromGross(gross, STEEP_TAPER_TAX_YEAR)).toBeCloseTo(57500, 2)
+    expect(grossFromNet(57500, STEEP_TAPER_TAX_YEAR)).toBe(salaries[0])
+  })
+
+  it('finds every crossing a £5 scan finds, including around a band edge inside the taper', () => {
+    // The 70% band ends at £100,000 of *taxable* income, which the taper
+    // moves to £108,380 of gross. Take-home falls from £100,000 to there and
+    // rises after, so if the search missed that slope change it would miss a
+    // salary on one side of it.
+    const bandInTaper: TaxYear = {
+      id: 'test-band-in-taper',
+      label: 'band edge inside the taper (test only)',
+      personalAllowance: 12570,
+      taperThreshold: 100000,
+      taperRate: 0.5,
+      incomeTaxBands: [
+        { upTo: 37700, rate: 0.2 },
+        { upTo: 100000, rate: 0.7 },
+        { upTo: Infinity, rate: 0.3 },
+      ],
+      niBands: [
+        { upTo: 12570, rate: 0 },
+        { upTo: 50270, rate: 0.08 },
+        { upTo: Infinity, rate: 0.02 },
+      ],
+      medianFullTimeSalary: 30000,
+    }
+    expect(netFromGross(108380, bandInTaper)).toBeLessThan(netFromGross(100000, bandInTaper))
+    expect(salariesForTakeHome(53300, bandInTaper)).toHaveLength(3)
+
+    for (const [year, targets] of [
+      [bandInTaper, [30000, 53300, 53600, 60000]],
+      [STEEP_TAPER_TAX_YEAR, [50000, 56500, 57500, 58000, 60000]],
+    ] as const) {
+      for (const net of targets) {
+        expect(salariesForTakeHome(net, year), `${year.label}, take-home £${net}`).toHaveLength(crossingsByScan(net, year))
+      }
+    }
   })
 })
 
@@ -233,11 +318,13 @@ function roundTripViolations(year: TaxYear): string[] {
 
 describe('netFromGross is monotonically non-decreasing', () => {
   it.each(allTaxYears().map((year) => [year.label, year] as const))('never lets take-home fall as gross rises, %s', (_label, year) => {
-    // The message, not just the failure, is the point: a future deduction
-    // that turns the curve over has to be told that bisection breaks with it.
+    // The message, not just the failure, is the point. grossFromNet copes
+    // with a curve that turns over, but the flip panel has no payslip wording
+    // yet for a "salary needed" that jumps, so a shipped table must not
+    // produce one until that wording exists.
     expect(
       monotonicityViolations(year),
-      `netFromGross must never fall as gross rises — grossFromNet bisects on it. Read ${MONOTONICITY_DOC} before adding a deduction; the inversion has to change in the same commit.`,
+      `netFromGross fell as gross rose under a shipped table. The inversion copes, but the flip panel's copy does not yet. Read ${MONOTONICITY_DOC} before shipping a deduction that does this.`,
     ).toEqual([])
   })
 
@@ -266,34 +353,24 @@ describe('netFromGross is monotonically non-decreasing', () => {
     // once: a steep taper makes each extra £1 of gross add £3 to taxable
     // income, so at 45% the marginal tax is £1.35 and take-home *falls*.
     // Exactly the shape a 9% student loan or a large pension would produce.
-    const turnsOver: TaxYear = {
-      id: 'test-steep-taper',
-      label: 'steep taper (test only)',
-      personalAllowance: 12570,
-      taperThreshold: 100000,
-      taperRate: 2,
-      incomeTaxBands: [{ upTo: Infinity, rate: 0.45 }],
-      niBands: [{ upTo: Infinity, rate: 0.02 }],
-      medianFullTimeSalary: 30000,
-    }
+    const turnsOver = STEEP_TAPER_TAX_YEAR
 
     const violations = monotonicityViolations(turnsOver)
     expect(violations.length).toBeGreaterThan(0)
     expect(violations[0]).toContain('take-home fell by')
 
-    // And here is why the sweep above has to exist as its own guard: on this
-    // table the net round-trip still passes *everywhere*. Bisection lands on
-    // a gross with the right take-home, just not the one asked about — so
-    // net -> gross -> net is a necessary check, not a sufficient one.
+    // The net round-trip passes on this table too, which is why it can't
+    // stand in for the sweep above: any salary with the right take-home
+    // round-trips, whether or not it is the one asked about.
     expect(roundTripViolations(turnsOver)).toEqual([])
 
-    // What actually breaks is the answer reverse mode shows: asked for the
-    // take-home that £100,000 earns, bisection replies £110,672.
+    // Plain bisection over the whole range used to answer the take-home that
+    // £100,000 earns with £110,672 — a salary that earns the same, matching
+    // to the penny, which made the error silent. Walking the straight
+    // stretches between thresholds finds both, and answers with the lowest.
     const net = netFromGross(100000, turnsOver)
-    expect(Math.abs(grossFromNet(net, turnsOver) - 100000)).toBeGreaterThan(1000)
-    // ...while reporting a take-home for that wrong salary that matches to
-    // the penny, which is what makes the error silent.
-    expect(netFromGross(grossFromNet(net, turnsOver), turnsOver)).toBeCloseTo(net, 2)
+    expect(salariesForTakeHome(net, turnsOver).map(Math.round)).toEqual([100000, 110673])
+    expect(grossFromNet(net, turnsOver)).toBeCloseTo(100000, 2)
   })
 })
 
