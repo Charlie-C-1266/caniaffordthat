@@ -1,12 +1,14 @@
 # The salary engine's monotonicity precondition
 
-`grossFromNet` in `src/lib/salary.ts` inverts take-home back to gross by bisection.
-That is only correct while `netFromGross` is **monotonically increasing**. Today it
-is, so the code is sound as written — but the student loan and pension deductions
-we have designed will break the assumption for one combination of inputs.
+`grossFromNet` in `src/lib/salary.ts` turns take-home back into gross. It used to
+bisect over the whole range, which is only correct while `netFromGross` is
+**monotonically increasing**. Today it is, but the student loan and pension
+deductions we have designed break that for one combination of inputs.
 
-This note exists so that whoever adds those deductions changes the inversion at the
-same time, rather than discovering the problem from a wrong answer.
+The inversion no longer depends on it: see
+[What the code does about it](#what-the-code-does-about-it). This note records why
+the curve can turn over, how the code copes, and what is still needed before a
+deduction that turns it over can ship.
 
 ## The combination that breaks it
 
@@ -56,21 +58,48 @@ This matters twice over:
   more. Where the taper commentary could read as "a raise made me poorer", the copy
   has to say _this month_ or _on your payslip_ explicitly.
 
-## What to do about it
+## What the code does about it
 
-Prefer **bracket, then bisect**. We want the lowest gross that reaches the target,
-so scan forward coarsely until the function crosses it, then bisect inside that
-bracket alone. Within a single crossing the function is well behaved, and the answer
-is the one a person would recognise. The cost is one cheap forward scan.
+**Bracket, then bisect.** Take-home is a straight line between the points where some
+figure crosses a threshold in the tax-year table: where tax starts, each income-tax
+band edge, the taper's start and end, and each NI band edge. `slopeChangesOf` lists
+those points in gross terms. `salariesForTakeHome` walks each straight stretch
+between them and bisects inside any stretch whose two ends sit either side of the
+target. A straight stretch can cross the target at most once, so this finds every
+salary that gives a take-home, lowest first. `grossFromNet` returns the lowest, which
+is the answer a person would recognise: every salary below it takes home less.
 
-Capping the pension percentage below 28.75% is less code but forbids a legitimate
-input — and a notable one, since contributing 30% or more precisely to duck below
-£100,000 is exactly the behaviour the result card is meant to surface. Treat it as
-the fallback, not the plan.
+A new deduction must add its own thresholds to `slopeChangesOf` (a loan threshold;
+for a percentage pension, each threshold divided by `1 - p`), or a crossing between
+two of them could be missed. `salary.test.ts` checks the search against a £5 scan on
+two tables that turn over, one of them with a band edge inside the taper.
 
-Whichever is chosen, add a test asserting first-crossing correctness across the full
-domain with the taper band, both loans and a high relief-at-source rate all active at
-once. That combination is the whole hazard; nothing narrower would catch it.
+**The flip panel** (`salaryFlip` in `src/lib/reverse.ts`, drawn by
+`src/components/result/SalaryFlip.tsx`) follows three rules:
+
+- A salary typed in salary mode is used as typed, never worked back out of the
+  take-home it produces.
+- "Already enough" compares take-home, not salaries. Where the curve turns over, the
+  lowest salary that reaches a target can sit below the user's own salary while
+  their take-home still falls short of it.
+- In take-home mode, when more than one salary gives the take-home entered, the panel
+  shows no salary estimate and no pay-rise figure. It still says whether the plan
+  fits, gives the gap in take-home, and suggests entering a salary instead.
+
+A pay rise is measured to the next salary above the user's that reaches the target,
+and the amount to spare down to the last one below it, where take-home would drop
+under the target. While take-home rises with gross, both come to the required salary
+minus the current one, as before.
+
+**Still to do before shipping a deduction that turns the curve over.** The panel has
+no payslip wording yet for the "salary needed" jumping, or for the taper-band note's
+extreme figures near the turning point. On a curve that turns over, the headline
+"salary needed" (the lowest) can even sit below the user's salary while they still
+need a rise to the next one, and the panel must not show that without explaining it.
+The monotonicity sweep in `salary.test.ts` stays as the tripwire: it fails if a
+shipped table turns over, and its message points here. The test asserting
+first-crossing correctness across the full domain, with the taper band, both loans
+and a high relief-at-source rate all active, belongs with the deductions themselves.
 
 ## Working
 

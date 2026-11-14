@@ -8,6 +8,7 @@ import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { accentColorFor, resultAccents } from '../../lib/mode'
+import { currentPayOf } from '../../lib/reverse'
 import type { DerivedResult } from '../../lib/derive'
 
 interface StandardResultCardProps {
@@ -48,11 +49,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
       </BreakdownBox>
 
       {result.requiredTakeHomeMonthly !== null && (
-        <SalaryFlip
-          requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
-          currentTakeHomeMonthly={num(state.takeHome)}
-          accentColor={eyebrowColor}
-        />
+        <SalaryFlip requiredTakeHomeMonthly={result.requiredTakeHomeMonthly} current={currentPayOf(state)} accentColor={eyebrowColor} />
       )}
 
       <ResultActions scrollToIndex={scrollToIndex} />
