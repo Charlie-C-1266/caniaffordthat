@@ -1,21 +1,34 @@
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
+import {
+  NO_DEDUCTIONS,
+  baseAt,
+  basesFor,
+  grossWhereBaseIs,
+  loanThresholdsFor,
+  pensionAt,
+  pensionSlopeChangesFor,
+  studentLoansOn,
+  type PayProfile,
+} from './deductions'
 
-// Gross salary ⇄ take-home pay for the reverse "what would I need to earn?"
-// mode. `netFromGross` is the forward PAYE calc (income tax + employee NI).
-// The reverse direction never untangles the algebra, which the personal-
-// allowance taper makes fiddly and easy to get subtly wrong: it searches the
-// forward function instead, so it is right whenever the forward function is.
-// All figures are annual, rest-of-UK, employment income (see taxYears.ts for
-// the assumptions).
+// Gross salary ⇄ take-home pay. `takeHomeBreakdown` is the forward PAYE calc:
+// income tax, employee NI, and any student loan and workplace pension in the
+// pay profile (see deductions.ts for how those are charged). The reverse
+// direction never untangles the algebra, which the personal-allowance taper
+// makes fiddly and easy to get subtly wrong: it searches the forward function
+// instead, so it is right whenever the forward function is. All figures are
+// annual, rest-of-UK, employment income (see taxYears.ts for the
+// assumptions), and every function takes the pay profile last, defaulting to
+// no deductions.
 //
 // The search does not assume take-home keeps rising as gross rises. Under
-// today's tables it does, but a relief-at-source pension above ~28.75% in the
-// £100k taper band would make it fall for a stretch, and then one take-home
-// comes from more than one salary. Take-home is a straight line between the
-// points where some figure crosses a threshold in the table, so
-// `salariesForTakeHome` lists those points, and bisects inside each straight
-// stretch whose ends sit either side of the target. A straight stretch can
-// cross the target at most once, so this finds every salary, not just one.
+// today's tables it does with no deductions, but a relief-at-source pension
+// above ~28.75% in the £100k taper band, with both loans, makes it fall for a
+// stretch, and then one take-home comes from more than one salary. Take-home
+// never changes direction between the points where some base crosses a
+// threshold, so `salariesForTakeHome` lists those points and bisects inside
+// each stretch whose ends sit either side of the target. Such a stretch
+// crosses the target at most once, so this finds every salary, not just one.
 // The catch: a new deduction must add its own thresholds to `slopeChangesOf`,
 // or a crossing between two of them could be missed. Read
 // docs/salary-engine-monotonicity.md before adding one.
@@ -38,21 +51,67 @@ function allowanceFor(gross: number, year: TaxYear): number {
   return Math.max(0, year.personalAllowance - over * year.taperRate)
 }
 
-/** Annual income tax due on a gross salary. */
+/**
+ * Annual income tax due on a gross salary. With a pension that comes off
+ * before tax, pass the pay left after it: the allowance tapers on that too.
+ */
 export function incomeTaxOn(gross: number, year: TaxYear = CURRENT_TAX_YEAR): number {
   const taxable = Math.max(0, gross - allowanceFor(gross, year))
   return chargeOver(taxable, year.incomeTaxBands)
 }
 
-/** Annual employee National Insurance due on a gross salary. */
+/** Annual employee National Insurance due on a gross salary. With salary sacrifice, pass the salary after it. */
 export function nationalInsuranceOn(gross: number, year: TaxYear = CURRENT_TAX_YEAR): number {
   return chargeOver(Math.max(0, gross), year.niBands)
 }
 
-/** Annual take-home pay for a gross salary: gross less income tax and employee NI. */
-export function netFromGross(gross: number, year: TaxYear = CURRENT_TAX_YEAR): number {
+/** Every line between a gross salary and take-home, annually. */
+export interface TakeHomeBreakdown {
+  gross: number
+  incomeTax: number
+  nationalInsurance: number
+  /** The undergraduate plan's repayment. */
+  studentLoan: number
+  postgraduateLoan: number
+  /**
+   * What the pension costs take-home: the salary given up under salary
+   * sacrifice, or what comes out of pay under net pay and relief at source.
+   * Under relief at source that is 80p for each £1 in the pot.
+   */
+  pension: number
+  /** What lands in the pension pot, relief at source's 20% included. Employer contributions aren't counted. */
+  intoPension: number
+  takeHome: number
+}
+
+/**
+ * The forward calculation: everything taken from a gross salary on the way
+ * to take-home, under a pay profile. Take-home never goes below nothing, even
+ * for a pension that would take more than the payslip has left.
+ */
+export function takeHomeBreakdown(gross: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): TakeHomeBreakdown {
   const g = Math.max(0, gross)
-  return g - incomeTaxOn(g, year) - nationalInsuranceOn(g, year)
+  const bases = basesFor(profile.pension)
+  const loanBase = baseAt(bases.ni, g)
+  const incomeTax = incomeTaxOn(baseAt(bases.tax, g), year)
+  const nationalInsurance = nationalInsuranceOn(loanBase, year)
+  const { studentLoan, postgraduateLoan } = studentLoansOn(loanBase, profile, year)
+  const { intoPension, fromPay } = pensionAt(g, profile.pension, year)
+  return {
+    gross: g,
+    incomeTax,
+    nationalInsurance,
+    studentLoan,
+    postgraduateLoan,
+    pension: fromPay,
+    intoPension,
+    takeHome: Math.max(0, g - incomeTax - nationalInsurance - studentLoan - postgraduateLoan - fromPay),
+  }
+}
+
+/** Annual take-home pay for a gross salary under a pay profile. */
+export function netFromGross(gross: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): number {
+  return takeHomeBreakdown(gross, year, profile).takeHome
 }
 
 /** Where the personal allowance has tapered to nothing, or Infinity for a table without a taper. */
@@ -76,18 +135,28 @@ function grossForTaxable(taxable: number, year: TaxYear): number {
 }
 
 /**
- * Every gross salary at which take-home changes slope, ascending from £0:
- * where tax starts, each income-tax band edge, the taper's start and end, and
- * each NI band edge. Between two neighbours take-home is a straight line.
+ * Every gross salary at which take-home can change direction, ascending from
+ * £0. Income tax changes slope where its base reaches tax, each band edge,
+ * and the taper's start and end; NI at each band edge of its base; student
+ * loans at each repayment threshold on that same base. A pension adds where
+ * each base leaves zero and where a fixed contribution stops growing. Between
+ * two neighbours take-home is a straight line, or one that bottoms out at £0.
  */
-function slopeChangesOf(year: TaxYear): number[] {
-  const points = [
+function slopeChangesOf(year: TaxYear, profile: PayProfile): number[] {
+  const bases = basesFor(profile.pension)
+  const onTaxBase = [
     0,
     year.taperThreshold,
     taperEndOf(year),
     grossForTaxable(0, year),
     ...year.incomeTaxBands.map((band) => grossForTaxable(band.upTo, year)),
-    ...year.niBands.map((band) => band.upTo),
+  ]
+  const onNiBase = [0, ...year.niBands.map((band) => band.upTo), ...loanThresholdsFor(profile, year)]
+  const points = [
+    0,
+    ...onTaxBase.map((point) => grossWhereBaseIs(point, bases.tax)),
+    ...onNiBase.map((point) => grossWhereBaseIs(point, bases.ni)),
+    ...pensionSlopeChangesFor(profile.pension, year),
   ]
   return [...new Set(points.filter((point) => Number.isFinite(point) && point >= 0))].toSorted((a, b) => a - b)
 }
@@ -98,18 +167,25 @@ const BISECTION_STEPS = 60
 /** How many times the open-ended last stretch's ceiling may double before the search gives up. */
 const CEILING_DOUBLINGS = 64
 
+/** A take-home target to search for, under a table and a pay profile. */
+interface Search {
+  net: number
+  year: TaxYear
+  profile: PayProfile
+}
+
 /**
- * The gross between `lo` and `hi` whose take-home is `net`. The caller
- * guarantees take-home is a straight line between them with `net` strictly
- * inside, whether it rises or falls across the stretch.
+ * The gross between `lo` and `hi` whose take-home is the target. The caller
+ * guarantees take-home doesn't change direction between them and the target
+ * is strictly inside, whether take-home rises or falls across the stretch.
  */
-function bisect(lo: number, hi: number, net: number, year: TaxYear): number {
-  const rising = netFromGross(lo, year) < net
+function bisect(lo: number, hi: number, { net, year, profile }: Search): number {
+  const rising = netFromGross(lo, year, profile) < net
   for (let i = 0; i < BISECTION_STEPS; i++) {
     const mid = (lo + hi) / 2
     // Short of the target on a rising stretch, or still above it on a falling
     // one, means the crossing is further on.
-    if (netFromGross(mid, year) < net === rising) lo = mid
+    if (netFromGross(mid, year, profile) < net === rising) lo = mid
     else hi = mid
   }
   return (lo + hi) / 2
@@ -123,36 +199,38 @@ interface Crossings {
   searchedTo: number
 }
 
-/** Walks every straight stretch of take-home looking for a positive annual target. */
-function crossingsOf(net: number, year: TaxYear): Crossings {
-  const kinks = slopeChangesOf(year)
+/** Walks every stretch of take-home looking for a positive annual target. */
+function crossingsOf(search: Search): Crossings {
+  const { net, year, profile } = search
+  const takeHome = (gross: number) => netFromGross(gross, year, profile)
+  const kinks = slopeChangesOf(year, profile)
   const salaries: number[] = []
 
   // A target hit exactly at a slope change is recorded there, once. Neither
   // stretch either side of it counts it again, because a stretch is only
   // searched when its ends are *strictly* either side of the target.
   for (const [i, lo] of kinks.entries()) {
-    const atLo = netFromGross(lo, year)
+    const atLo = takeHome(lo)
     if (atLo === net) salaries.push(lo)
     const hi = kinks[i + 1]
-    if (hi !== undefined && (atLo - net) * (netFromGross(hi, year) - net) < 0) salaries.push(bisect(lo, hi, net, year))
+    if (hi !== undefined && (atLo - net) * (takeHome(hi) - net) < 0) salaries.push(bisect(lo, hi, search))
   }
 
-  // Past the last threshold take-home runs on as one straight line, so it can
-  // reach the target at most once more: rising towards it from below, or
-  // falling to it from above. Grow a ceiling until it is past the target, then
-  // bisect. Under a table whose rates take every extra pound the ceiling never
-  // gets there, and the guard ends the search with a finite answer rather
-  // than looping or returning Infinity.
+  // Past the last threshold take-home runs on in one direction for good, so
+  // it can reach the target at most once more: rising towards it from below,
+  // or falling to it from above. Grow a ceiling until it is past the target,
+  // then bisect. Under a table whose rates take every extra pound the ceiling
+  // never gets there, and the guard ends the search with a finite answer
+  // rather than looping or returning Infinity.
   // Never empty: slopeChangesOf always starts at £0.
   const last = kinks[kinks.length - 1]
-  const atLast = netFromGross(last, year)
-  const falling = netFromGross(last + 1, year) < atLast
+  const atLast = takeHome(last)
+  const falling = takeHome(last + 1) < atLast
   let hi = last + net * 2 + 200000
   if (atLast < net || (atLast > net && falling)) {
-    const stillShort = (gross: number) => netFromGross(gross, year) < net === atLast < net
+    const stillShort = (gross: number) => takeHome(gross) < net === atLast < net
     for (let guard = 0; guard < CEILING_DOUBLINGS && stillShort(hi); guard++) hi = last + (hi - last) * 2
-    if (!stillShort(hi)) salaries.push(bisect(last, hi, net, year))
+    if (!stillShort(hi)) salaries.push(bisect(last, hi, search))
   }
 
   return { salaries, searchedTo: hi }
@@ -161,15 +239,16 @@ function crossingsOf(net: number, year: TaxYear): Crossings {
 /**
  * Every gross salary whose annual take-home is `net`, lowest first.
  *
- * Under today's tables that is always exactly one, because take-home rises
- * with gross. More than one means take-home falls somewhere in between, and
- * then a take-home figure on its own can't say which salary someone earns.
- * Empty only under a table whose rates take every extra pound, where the
- * target can't be reached at all. A non-positive target is reached at £0.
+ * Under today's tables with no deductions that is always exactly one,
+ * because take-home rises with gross. More than one means take-home falls
+ * somewhere in between, and then a take-home figure on its own can't say
+ * which salary someone earns. Empty when no salary reaches the target at all:
+ * under a table whose rates take every extra pound, or a profile whose
+ * deductions do past some salary. A non-positive target is reached at £0.
  */
-export function salariesForTakeHome(net: number, year: TaxYear = CURRENT_TAX_YEAR): number[] {
+export function salariesForTakeHome(net: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): number[] {
   if (net <= 0) return [0]
-  return crossingsOf(net, year).salaries
+  return crossingsOf({ net, year, profile }).salaries
 }
 
 /**
@@ -177,12 +256,13 @@ export function salariesForTakeHome(net: number, year: TaxYear = CURRENT_TAX_YEA
  * "what would I need to earn?", since every salary below it takes home less.
  * Accurate to well under £1. Returns 0 for a non-positive target.
  *
- * If no salary reaches the target, which only a table that takes every extra
- * pound can cause, this returns the finite ceiling where the search stopped.
+ * If no salary reaches the target, this returns the finite ceiling where the
+ * search stopped. Check `salariesForTakeHome` for an empty list first wherever
+ * that can happen.
  */
-export function grossFromNet(net: number, year: TaxYear = CURRENT_TAX_YEAR): number {
+export function grossFromNet(net: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): number {
   if (net <= 0) return 0
-  const { salaries, searchedTo } = crossingsOf(net, year)
+  const { salaries, searchedTo } = crossingsOf({ net, year, profile })
   return salaries[0] ?? searchedTo
 }
 
@@ -198,38 +278,54 @@ export interface TakeHomePlateau {
  * The last stretch of pay below `gross` that takes home no more than its own
  * start does: from a salary where take-home peaks and then falls, to where it
  * has climbed back to that peak. `null` while take-home rises all the way up
- * to `gross`, as it always does under today's tables.
+ * to `gross`, as it always does under today's tables with no deductions.
  *
- * Take-home is a straight line between slope changes, so a peak is always at
- * one of them, and the highest one below `gross` is the peak that matters.
+ * Take-home doesn't change direction between slope changes, so a peak is
+ * always at one of them, and the highest one below `gross` is the peak that
+ * matters.
  */
-export function takeHomePlateauBelow(gross: number, year: TaxYear = CURRENT_TAX_YEAR): TakeHomePlateau | null {
-  const kinks = slopeChangesOf(year)
+export function takeHomePlateauBelow(
+  gross: number,
+  year: TaxYear = CURRENT_TAX_YEAR,
+  profile: PayProfile = NO_DEDUCTIONS,
+): TakeHomePlateau | null {
+  const takeHome = (salary: number) => netFromGross(salary, year, profile)
+  const kinks = slopeChangesOf(year, profile)
   let peak = 0
-  for (const kink of kinks) if (kink < gross && netFromGross(kink, year) > netFromGross(peak, year)) peak = kink
-  const atPeak = netFromGross(peak, year)
+  for (const kink of kinks) if (kink < gross && takeHome(kink) > takeHome(peak)) peak = kink
+  const atPeak = takeHome(peak)
 
   // Only a peak if take-home falls straight after it. Probe halfway along the
   // stretch that follows, or halfway to `gross` if that comes first.
   const probe = (peak + Math.min(kinks.find((kink) => kink > peak) ?? Infinity, gross)) / 2
-  if (netFromGross(probe, year) >= atPeak) return null
+  if (takeHome(probe) >= atPeak) return null
 
-  const climbedBack = salariesForTakeHome(atPeak, year).filter((salary) => salary > peak)
+  const climbedBack = salariesForTakeHome(atPeak, year, profile).filter((salary) => salary > peak)
   return { from: peak, to: Math.min(gross, ...climbedBack) }
 }
 
 /** Monthly take-home pay for an annual gross salary — the forward direction the Budget step's "enter my salary" option uses. 0 for a non-positive salary. */
-export function monthlyTakeHomeFromGross(grossAnnual: number, year: TaxYear = CURRENT_TAX_YEAR): number {
+export function monthlyTakeHomeFromGross(
+  grossAnnual: number,
+  year: TaxYear = CURRENT_TAX_YEAR,
+  profile: PayProfile = NO_DEDUCTIONS,
+): number {
   if (grossAnnual <= 0) return 0
-  return netFromGross(grossAnnual, year) / 12
+  return netFromGross(grossAnnual, year, profile) / 12
 }
 
-/** The fraction of the next £1 of gross salary kept after tax and NI at a given income — 0.72 in the basic-rate band, ~0.38 in the £100k allowance-taper band. */
-export function marginalNetRate(gross: number, year: TaxYear = CURRENT_TAX_YEAR): number {
-  return netFromGross(gross + 1, year) - netFromGross(gross, year)
+/** The fraction of the next £1 of gross salary kept as take-home at a given income — 0.72 in the basic-rate band, ~0.38 in the £100k allowance-taper band, with no deductions. */
+export function marginalNetRate(gross: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): number {
+  return netFromGross(gross + 1, year, profile) - netFromGross(gross, year, profile)
 }
 
-/** True when a gross salary sits in the £100k–£125,140 allowance-taper band, where the effective marginal rate spikes. */
-export function inAllowanceTaper(gross: number, year: TaxYear = CURRENT_TAX_YEAR): boolean {
-  return gross > year.taperThreshold && gross < year.taperThreshold + year.personalAllowance / year.taperRate
+/**
+ * True when a gross salary sits in the £100k–£125,140 allowance-taper band,
+ * where the effective marginal rate spikes. The taper applies to pay after a
+ * pension that comes off before tax, so salary sacrifice or net pay can move
+ * a salary out of it; relief at source can't, on the payslip.
+ */
+export function inAllowanceTaper(gross: number, year: TaxYear = CURRENT_TAX_YEAR, profile: PayProfile = NO_DEDUCTIONS): boolean {
+  const taxBase = baseAt(basesFor(profile.pension).tax, gross)
+  return taxBase > year.taperThreshold && taxBase < year.taperThreshold + year.personalAllowance / year.taperRate
 }

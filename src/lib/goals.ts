@@ -195,8 +195,9 @@ export interface KindPresentation {
 
 // Anything already deducted from the payslip must not be entered again: in
 // take-home mode the figure typed in is net of a workplace pension already,
-// and in salary mode the tax engine models no pension at all (see
-// lib/salary.ts), so counting one here would be wrong in both directions.
+// and salary mode will take a pension in through the pay profile (see
+// lib/deductions.ts) rather than through this field. Counting one here would
+// be wrong in both directions.
 const REGULAR_SAVING_HINT =
   'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension.'
 
