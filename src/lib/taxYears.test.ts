@@ -122,3 +122,24 @@ describe('CURRENT_TAX_YEAR student loans and relief at source', () => {
     expect(CURRENT_TAX_YEAR.reliefAtSourceRate).toBe(CURRENT_TAX_YEAR.incomeTaxBands[0].rate)
   })
 })
+
+describe('CURRENT_TAX_YEAR housekeeping', () => {
+  it('orders the auto-enrolment qualifying earnings band', () => {
+    const { lower, upper } = CURRENT_TAX_YEAR.qualifyingEarnings
+    expect(lower).toBeGreaterThan(0)
+    expect(upper).toBeGreaterThan(lower)
+  })
+
+  it('was last checked on a real date, no earlier than the year before and no later than the end of its tax year', () => {
+    // The methodology page prints this date, so a typo'd one would mislead
+    // readers about how fresh the figures are. A new year's table is often
+    // checked before its 6 April start, so the window opens a year early.
+    const { verifiedOn, id } = CURRENT_TAX_YEAR
+    expect(verifiedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    const checked = new Date(`${verifiedOn}T00:00:00Z`)
+    expect(checked.toISOString().slice(0, 10)).toBe(verifiedOn)
+    const startYear = Number(id.slice(0, 4))
+    expect(checked.getTime()).toBeGreaterThanOrEqual(Date.UTC(startYear - 1, 3, 6))
+    expect(checked.getTime()).toBeLessThan(Date.UTC(startYear + 1, 3, 6))
+  })
+})

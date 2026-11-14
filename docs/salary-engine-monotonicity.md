@@ -2,9 +2,11 @@
 
 `grossFromNet` in `src/lib/salary.ts` turns take-home back into gross. It used to
 bisect over the whole range, which is only correct while `netFromGross` is
-**monotonically increasing**. With no deductions it is. The engine now also models
-student loans and workplace pensions (`src/lib/deductions.ts`), though the site
-doesn't ask for them yet, and one combination of them breaks that.
+**monotonically increasing**. With no deductions it is. The engine also models
+student loans and workplace pensions (`src/lib/deductions.ts`), and one combination
+of them breaks that. The Budget step's "About your pay" section asks for student
+loans, salary sacrifice and net pay, none of which can; it doesn't offer relief at
+source, the one that can, yet.
 
 The inversion no longer depends on it: see
 [What the code does about it](#what-the-code-does-about-it). This note records why
@@ -127,14 +129,14 @@ loans, each extra £1 above £125,140 costs more than £1 on the payslip (45% ta
 returns an empty list; `grossFromNet` returns the finite ceiling its search stopped
 at, which must never reach the screen as a salary.
 
-**Still to do before the site asks for these deductions.**
+**Still to do before the site offers relief at source.**
 
 - The salary methodology page must explain, with live figures, why payslip take-home
   can fall as salary rises while the year's position still rises. The site publishes
   its working before its figures.
-- The flip panel must pass the profile through, name the relief-at-source pension in
-  the stretch note, and add that, over the whole year, once higher-rate relief is
-  claimed back, earning more still leaves you better off.
+- The flip panel must name the relief-at-source pension in the stretch note, and add
+  that, over the whole year, once higher-rate relief is claimed back, earning more
+  still leaves you better off. (It already works under the pay profile.)
 - The flip panel must say plainly when no salary reaches a take-home, rather than
   show a salary.
 

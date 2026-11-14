@@ -35,6 +35,10 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
         background: 'var(--tile-bg)',
         border: '1px solid var(--divider)',
         width: md ? undefined : 'fit-content',
+        // A compact control with many options (the five student loan plans)
+        // wraps onto a second row on a narrow phone rather than pushing the
+        // page sideways. Two-option toggles never get that wide.
+        flexWrap: md ? undefined : 'wrap',
       }}
     >
       {options.map((option) => {

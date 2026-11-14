@@ -8,6 +8,7 @@ import {
   APR_RANGE,
   COVER_MONTHS_RANGE,
   FINANCE_TERM_RANGE,
+  PENSION_PERCENT_RANGE,
   SAVE_RATE_RANGE,
   SAVINGS_INTEREST_RANGE,
   VEHICLE_AGE_RANGE,
@@ -134,6 +135,7 @@ const SLIDER_LINKS = [
   { param: 'term', range: FINANCE_TERM_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
   { param: 'coverMonths', range: COVER_MONTHS_RANGE, link: '?goalId=emergency&mode=save' },
   { param: 'vehicleAge', range: VEHICLE_AGE_RANGE, link: '?goalId=car&itemPrice=9000' },
+  { param: 'pensionPercent', range: PENSION_PERCENT_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
 ] as const satisfies readonly { param: keyof typeof DEFAULT_STATE; range: SliderRange; link: string }[]
 
 /** Each row with the name its range is exported under, for the test titles. */
@@ -404,6 +406,56 @@ describe('hydrateStateFromUrl — vehicle finance term', () => {
     // An invalid method falls back to the default (pcp), so the pcp range applies.
     expect(DEFAULT_STATE.vehicleMethod).toBe('pcp')
     expect(hydrateStateFromUrl('?goalId=car&vehicleMethod=lease&term=84').term).toBe(TERM_RANGES.pcp.max)
+  })
+})
+
+describe('hydrateStateFromUrl — pay profile', () => {
+  const LINK = '?goalId=big&mode=save&itemPrice=900'
+
+  it('round-trips a student loan, a Postgraduate Loan and a pension', () => {
+    const state = {
+      ...DEFAULT_STATE,
+      goalId: 'big' as const,
+      itemPrice: '900',
+      studentPlan: 'plan4' as const,
+      postgradLoan: true,
+      pensionArrangement: 'netpay' as const,
+      pensionMode: 'amount' as const,
+      pensionPercent: 7.5,
+      pensionMonthlyAmount: '150',
+    }
+    const hydrated = hydrateStateFromUrl(`?${buildShareParams(state).toString()}`)
+    expect(hydrated.studentPlan).toBe('plan4')
+    expect(hydrated.postgradLoan).toBe(true)
+    expect(hydrated.pensionArrangement).toBe('netpay')
+    expect(hydrated.pensionMode).toBe('amount')
+    expect(hydrated.pensionPercent).toBe(7.5)
+    expect(hydrated.pensionMonthlyAmount).toBe('150')
+  })
+
+  it('leaves an older link without any of these on no loan and no pension', () => {
+    const hydrated = hydrateStateFromUrl(LINK)
+    expect(hydrated.studentPlan).toBe('none')
+    expect(hydrated.postgradLoan).toBe(false)
+    expect(hydrated.pensionArrangement).toBe('none')
+  })
+
+  it('ignores an unknown plan, arrangement or mode rather than trusting the query string', () => {
+    const hydrated = hydrateStateFromUrl(`${LINK}&studentPlan=plan3&pensionArrangement=employer&pensionMode=lots`)
+    expect(hydrated.studentPlan).toBe('none')
+    expect(hydrated.pensionArrangement).toBe('none')
+    expect(hydrated.pensionMode).toBe('percent')
+  })
+
+  it('does not switch on relief at source, which the Budget step does not offer yet', () => {
+    expect(hydrateStateFromUrl(`${LINK}&pensionArrangement=ras`).pensionArrangement).toBe('none')
+  })
+
+  it("reads the Postgraduate Loan from '1' or '0' only", () => {
+    expect(hydrateStateFromUrl(`${LINK}&postgradLoan=1`).postgradLoan).toBe(true)
+    expect(hydrateStateFromUrl(`${LINK}&postgradLoan=0`).postgradLoan).toBe(false)
+    expect(hydrateStateFromUrl(`${LINK}&postgradLoan=yes`).postgradLoan).toBe(false)
+    expect(hydrateStateFromUrl(`${LINK}&postgradLoan=true`).postgradLoan).toBe(false)
   })
 })
 

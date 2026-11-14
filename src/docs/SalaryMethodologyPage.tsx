@@ -8,8 +8,10 @@ import { Num } from './article/Num'
 import { DocPage } from './article/DocPage'
 import { ModelLimitations } from './article/ModelLimitations'
 import { MethodologySources } from './article/MethodologySources'
-import { fmt } from '../lib/calculations'
-import { incomeTaxOn, nationalInsuranceOn, netFromGross, grossFromNet, marginalNetRate } from '../lib/salary'
+import { fmt, fmtPence } from '../lib/calculations'
+import type { PayProfile, PensionInput } from '../lib/deductions'
+import { STUDENT_LOAN_PLANS, STUDENT_PLAN_LABELS } from '../lib/payProfile'
+import { incomeTaxOn, nationalInsuranceOn, netFromGross, grossFromNet, marginalNetRate, takeHomeBreakdown } from '../lib/salary'
 import { CURRENT_TAX_YEAR } from '../lib/taxYears'
 import { SALARY_SOURCES, SOURCES } from '../lib/sources'
 
@@ -62,6 +64,45 @@ const TAPER = (() => {
 /** Rounds a salary to the nearest £100 for the "about £X" figures the panel shows. */
 const roundSalary = (n: number) => Math.round(n / 100) * 100
 
+/** "13 November 2026" from "2026-11-13", read as a calendar date wherever the reader is. */
+const longDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+// Student loans and pensions, worked through at one salary. Every figure is
+// computed by the engine, like everything else on this page.
+const LOAN_EXAMPLE = (() => {
+  const gross = 35000
+  const plan2: PayProfile = { studentPlan: 'plan2', postgradLoan: false, pension: null }
+  const repaid = takeHomeBreakdown(gross, TY, plan2).studentLoan
+  return { gross, threshold: TY.studentLoanPlans.plan2.threshold, repaid }
+})()
+
+const PENSION_EXAMPLE = (() => {
+  const gross = 35000
+  const percent = 5
+  const withPension = (pension: PensionInput | null) => takeHomeBreakdown(gross, TY, { studentPlan: 'plan2', postgradLoan: false, pension })
+  const fivePercent = (arrangement: 'sacrifice' | 'netpay'): PensionInput => ({ arrangement, mode: 'percent', percent, monthlyAmount: 0 })
+  return {
+    gross,
+    percent,
+    none: withPension(null),
+    sacrifice: withPension(fivePercent('sacrifice')),
+    netpay: withPension(fivePercent('netpay')),
+  }
+})()
+
+// A 5% contribution at £35,000 on the whole salary, against the same 5% on
+// auto-enrolment's qualifying earnings only.
+const QUALIFYING = (() => {
+  const { lower, upper } = TY.qualifyingEarnings
+  const gross = 35000
+  const onWhole = 0.05 * gross
+  const onBand = 0.05 * (Math.min(gross, upper) - lower)
+  return { lower, upper, gross, onWhole, onBand }
+})()
+
+const pctOf = (rate: number) => `${Math.round(rate * 100)}%`
+
 /** The public "show your working" page for the reverse "what salary would I need?" mode. */
 export function SalaryMethodologyPage() {
   return (
@@ -74,9 +115,13 @@ export function SalaryMethodologyPage() {
       </P>
       <P>
         It's an estimate for illustration, not financial advice or a tax calculation for your own return. It assumes a single{' '}
-        <Strong>{TY.label}</Strong> PAYE salary in England, Wales or Northern Ireland on the standard tax code, with{' '}
-        <Strong>no student loan and no pension contributions</Strong> — the two things most likely to make your own payslip differ. Scotland
-        has its own tax bands and isn't modelled yet.
+        <Strong>{TY.label}</Strong> PAYE salary in England, Wales or Northern Ireland on the standard tax code. If you tell us about a{' '}
+        <Strong>student loan</Strong> or a <Strong>workplace pension</Strong> under &ldquo;About your pay&rdquo; on the Budget step, your
+        take-home and the salary a plan needs both allow for it; if you don't, we assume neither. Scotland has its own tax bands and isn't
+        modelled yet.
+      </P>
+      <P>
+        Every rate and threshold below was last checked against GOV.UK on <Strong>{longDate(TY.verifiedOn)}</Strong>.
       </P>
 
       <Section title="Step 1 — from the plan to a take-home target">
@@ -161,10 +206,95 @@ export function SalaryMethodologyPage() {
           ]}
         />
 
-        <Formula>{`take-home = gross − income tax − National Insurance`}</Formula>
+        <Formula>{`take-home = gross − income tax − National Insurance − student loans − pension`}</Formula>
         <P>
-          So a <Strong>{fmt(FORWARD.gross)}</Strong> salary pays <Num>{fmt(FORWARD.tax)}</Num> income tax and <Num>{fmt(FORWARD.ni)}</Num>{' '}
-          NI, leaving <Strong>{fmt(FORWARD.net)}</Strong> take-home a year.
+          So a <Strong>{fmt(FORWARD.gross)}</Strong> salary with no student loan or pension pays <Num>{fmt(FORWARD.tax)}</Num> income tax
+          and <Num>{fmt(FORWARD.ni)}</Num> NI, leaving <Strong>{fmt(FORWARD.net)}</Strong> take-home a year. The next two sections cover the
+          other two lines.
+        </P>
+      </Section>
+
+      <Section title="Student loans">
+        <P>
+          An undergraduate <ExternalLink href={SOURCES.studentLoanRepayments.url}>student loan</ExternalLink> is repaid at a fixed share of
+          your pay over a yearly threshold, which depends on your plan:
+        </P>
+        <DataTable
+          head={['Plan', 'Repaid', 'On pay over']}
+          rows={[
+            ...STUDENT_LOAN_PLANS.map((plan) => [
+              STUDENT_PLAN_LABELS[plan],
+              pctOf(TY.studentLoanPlans[plan].rate),
+              fmt(TY.studentLoanPlans[plan].threshold),
+            ]),
+            ['Postgraduate Loan', pctOf(TY.postgraduateLoan.rate), fmt(TY.postgraduateLoan.threshold)],
+          ]}
+        />
+        <P>
+          Your plan depends on where and when you applied for funding, not where you live now, which is why Plan 4 (Scotland) works
+          alongside the England, Wales and Northern Ireland tax bands here. A Postgraduate Loan is repaid <em>on top of</em> any
+          undergraduate plan. If you have more than one undergraduate plan, you make a single repayment, at{' '}
+          {pctOf(TY.studentLoanPlans.plan1.rate)} over the lowest of their thresholds, so choose the plan with the lowest one.
+        </P>
+        <P>
+          Repayments are worked out on the same pay your employer works{' '}
+          <ExternalLink href={SOURCES.studentLoanEmployers.url}>National Insurance</ExternalLink> out on. So a{' '}
+          <Strong>{fmt(LOAN_EXAMPLE.gross)}</Strong> salary on Plan 2 repays {pctOf(TY.studentLoanPlans.plan2.rate)} of the{' '}
+          {fmt(LOAN_EXAMPLE.gross - LOAN_EXAMPLE.threshold)} over {fmt(LOAN_EXAMPLE.threshold)}: <Num>{fmtPence(LOAN_EXAMPLE.repaid)}</Num>{' '}
+          a year, or <Strong>{fmtPence(LOAN_EXAMPLE.repaid / 12)}</Strong> a month.
+        </P>
+      </Section>
+
+      <Section title="Workplace pensions">
+        <P>
+          How much a pension takes from your take-home depends on how it is paid. We offer the two arrangements that come out of pay before
+          income tax:
+        </P>
+        <DataTable
+          head={['Arrangement', 'How it is taken', 'Lowers income tax', 'Lowers NI and student loan']}
+          rows={[
+            [
+              'Salary sacrifice',
+              <>
+                Your <ExternalLink href={SOURCES.salarySacrifice.url}>salary itself is lowered</ExternalLink>
+              </>,
+              'Yes',
+              'Yes',
+            ],
+            [
+              'Net pay',
+              <>
+                <ExternalLink href={SOURCES.pensionArrangements.url}>Taken from your pay</ExternalLink> before income tax
+              </>,
+              'Yes',
+              <>
+                No — <ExternalLink href={SOURCES.pensionNationalInsurance.url}>NI is charged before pension contributions</ExternalLink>
+              </>,
+            ],
+          ]}
+        />
+        <P>
+          On {fmt(PENSION_EXAMPLE.gross)} with Plan 2, a {PENSION_EXAMPLE.percent}% pension takes your monthly take-home from{' '}
+          <Num>{fmtPence(PENSION_EXAMPLE.none.takeHome / 12)}</Num> to <Strong>{fmtPence(PENSION_EXAMPLE.sacrifice.takeHome / 12)}</Strong>{' '}
+          under salary sacrifice, and <Strong>{fmtPence(PENSION_EXAMPLE.netpay.takeHome / 12)}</Strong> under net pay. Both put{' '}
+          {fmtPence(PENSION_EXAMPLE.netpay.intoPension / 12)} a month into the pension; salary sacrifice also saves NI and, by lowering the
+          pay the loan is worked out on, student loan. Your employer's own contribution doesn't change your take-home, so it isn't counted.
+        </P>
+        <P>
+          <Strong>What a percentage means.</Strong> We take it as a share of your whole salary. Auto-enrolment minimums are often worked out
+          on <ExternalLink href={SOURCES.autoEnrolment.url}>qualifying earnings</ExternalLink> instead: pay between {fmt(QUALIFYING.lower)}{' '}
+          and {fmt(QUALIFYING.upper)}. At {fmt(QUALIFYING.gross)}, 5% of the whole salary is {fmt(QUALIFYING.onWhole)} a year, but 5% of
+          qualifying earnings is {fmt(QUALIFYING.onBand)}. If your scheme works that way, enter the £ amount from your payslip instead.
+        </P>
+        <P>
+          <Strong>What a monthly amount means.</Strong> The amount taken from your pay each month, as it shows on your payslip. The pension
+          never gets more than your whole salary, since{' '}
+          <ExternalLink href={SOURCES.pensionTaxRelief.url}>tax relief only covers contributions up to 100% of your earnings</ExternalLink>.
+        </P>
+        <P>
+          <Strong>Relief at source</Strong>, where the pension comes out after tax and your provider adds 20%, isn't offered yet. If that's
+          yours and you only pay basic-rate tax, choose net pay and enter the percentage your scheme quotes: the take-home comes out the
+          same.
         </P>
       </Section>
 
@@ -203,12 +333,36 @@ export function SalaryMethodologyPage() {
             'Scotland has its own six income-tax bands. We use the England/Wales/NI bands; a Scottish salary will come out a little different.',
           ],
           [
-            'Student loans',
-            "A Plan 2 student-loan deduction (9% over its threshold) is larger than NI for many people — leaving it out understates the salary you'd really need.",
+            'Relief at source',
+            "Pensions taken after tax, with your provider adding 20%, aren't offered yet. On basic-rate tax, net pay with your scheme's percentage gives the same take-home.",
+          ],
+          ['Employer contributions', "Your employer's pension contribution doesn't change your take-home, so it isn't shown or counted."],
+          [
+            'Percentage of whole salary',
+            `A pension percentage is taken as a share of your full salary. If your scheme uses qualifying earnings (${fmt(QUALIFYING.lower)} to ${fmt(QUALIFYING.upper)}), enter the £ amount from your payslip instead.`,
           ],
           [
-            'Pension contributions',
-            'Workplace pension contributions reduce take-home (and sometimes tax); we model gross-to-take-home with no pension, so a real payslip with auto-enrolment will differ.',
+            'Monthly rounding',
+            'Employers round each student loan repayment down to the whole pound every payday. We work out the year and divide by 12, so your payslip may be up to £1 a month lower per loan.',
+          ],
+          [
+            'One job, steady pay',
+            'Student loan repayments are taken each payday against a weekly or monthly threshold, job by job. We assume one job paying the same every month.',
+          ],
+          [
+            'Low earners in net pay schemes',
+            <>
+              If you earn less than the personal allowance, a net pay pension gets no tax relief on your payslip. HMRC{' '}
+              <ExternalLink href={SOURCES.pensionTaxReliefGuide.url}>pays a top-up after the year</ExternalLink>, which we don't show.
+            </>,
+          ],
+          ['Other salary sacrifice', 'Only pension salary sacrifice is modelled, not cycle-to-work, car or childcare schemes.'],
+          [
+            'Salary sacrifice from April 2029',
+            <>
+              <ExternalLink href={SOURCES.salarySacrificeReform.url}>National Insurance will apply</ExternalLink> to pension salary
+              sacrifice over £2,000 a year from 6 April 2029. These figures are for {TY.label} and don't include it.
+            </>,
           ],
           [
             'One income',
@@ -219,16 +373,16 @@ export function SalaryMethodologyPage() {
             'Employment income on the standard tax code, not dividends, self-employment or benefits-in-kind, which are taxed differently.',
           ],
           [
-            'Frozen thresholds',
-            `The bands are frozen until 2030/31, so the figures stay put for now — but we refresh them (and the ${fmt(
+            'Thresholds that move',
+            `Income tax and NI bands are frozen until 2030/31, but Plan 1 and Plan 4 student loan thresholds rise every April, and Plan 5's from April 2027. We refresh every figure, and the ${fmt(
               TY.medianFullTimeSalary,
-            )} median) each year to be safe.`,
+            )} median, each year; they were last checked on ${longDate(TY.verifiedOn)}.`,
           ],
         ]}
       />
 
       <MethodologySources
-        intro="The official rates and the earnings figure everything above is built on:"
+        intro="The official rates, rules and the earnings figure everything above is built on:"
         sources={SALARY_SOURCES}
         emailSubject="Salary methodology"
       />

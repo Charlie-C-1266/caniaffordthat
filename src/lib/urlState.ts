@@ -1,17 +1,30 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
 import { isMoneyValue, sanitiseItemName } from './fields'
+import { OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS } from './payProfile'
 import { TERM_RANGES } from './vehicle'
 import {
   APR_RANGE,
   COVER_MONTHS_RANGE,
   FINANCE_TERM_RANGE,
+  PENSION_PERCENT_RANGE,
   SAVE_RATE_RANGE,
   SAVINGS_INTEREST_RANGE,
   VEHICLE_AGE_RANGE,
 } from './sliderRanges'
 import type { SliderRange } from './sliderRanges'
-import type { BalloonMode, CalculatorState, GoalId, Mode, RateMode, SaveFlavor, TakeHomeMode, VehicleFinanceMethod } from '../state/types'
+import type {
+  BalloonMode,
+  CalculatorState,
+  GoalId,
+  Mode,
+  PensionArrangement,
+  RateMode,
+  SaveFlavor,
+  StudentLoanPlan,
+  TakeHomeMode,
+  VehicleFinanceMethod,
+} from '../state/types'
 
 // The single source of truth for the shared-link round-trip. `buildShareParams`
 // (serialise, used by "Copy result link") and `hydrateStateFromUrl` (deserialise,
@@ -33,6 +46,7 @@ export const STRING_FIELDS = [
   'savings',
   'savingsMonthly',
   'monthlyAmount',
+  'pensionMonthlyAmount',
   // Vehicle flow (harmless no-ops for other goals; all parsed lazily via num()).
   'balloonAmount',
   'vehicleMileage',
@@ -58,7 +72,7 @@ export const STRING_FIELDS = [
  * `hydrateStateFromUrl`).
  */
 const NUMBER_FIELDS: readonly {
-  key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge'
+  key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge' | 'pensionPercent'
   min: number
   max?: number
 }[] = [
@@ -68,6 +82,7 @@ const NUMBER_FIELDS: readonly {
   { key: 'term', min: 1, max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)) },
   { key: 'coverMonths', ...COVER_MONTHS_RANGE },
   { key: 'vehicleAge', ...VEHICLE_AGE_RANGE },
+  { key: 'pensionPercent', ...PENSION_PERCENT_RANGE },
 ]
 
 /** Pulls a value into a slider's bounds. */
@@ -101,6 +116,15 @@ function isBalloonMode(value: string | null): value is BalloonMode {
   return value === 'known' || value === 'estimate'
 }
 
+function isStudentPlan(value: string | null): value is StudentLoanPlan | 'none' {
+  return value === 'none' || STUDENT_LOAN_PLANS.some((plan) => plan === value)
+}
+
+/** Only the arrangements the Budget step offers: a link can't switch on one the site doesn't explain yet. */
+function isOfferedPensionArrangement(value: string | null): value is PensionArrangement | 'none' {
+  return value === 'none' || OFFERED_PENSION_ARRANGEMENTS.some((arrangement) => arrangement === value)
+}
+
 function isGoalId(value: string | null): value is GoalId {
   return value !== null && GOALS.some((g) => g.id === value)
 }
@@ -120,6 +144,10 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
   params.set('takeHomeMode', state.takeHomeMode)
   params.set('vehicleMethod', state.vehicleMethod)
   params.set('balloonMode', state.balloonMode)
+  params.set('studentPlan', state.studentPlan)
+  params.set('postgradLoan', state.postgradLoan ? '1' : '0')
+  params.set('pensionArrangement', state.pensionArrangement)
+  params.set('pensionMode', state.pensionMode)
   for (const field of STRING_FIELDS) params.set(field, state[field])
   for (const { key } of NUMBER_FIELDS) params.set(key, String(state[key]))
   return params
@@ -165,6 +193,19 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
 
   const balloonMode = params.get('balloonMode')
   if (isBalloonMode(balloonMode)) state.balloonMode = balloonMode
+
+  const studentPlan = params.get('studentPlan')
+  if (isStudentPlan(studentPlan)) state.studentPlan = studentPlan
+
+  // A boolean travels as '1' or '0'; anything else leaves the default.
+  const postgradLoan = params.get('postgradLoan')
+  if (postgradLoan === '1' || postgradLoan === '0') state.postgradLoan = postgradLoan === '1'
+
+  const pensionArrangement = params.get('pensionArrangement')
+  if (isOfferedPensionArrangement(pensionArrangement)) state.pensionArrangement = pensionArrangement
+
+  const pensionMode = params.get('pensionMode')
+  if (isRateMode(pensionMode)) state.pensionMode = pensionMode
 
   // The string fields were previously copied verbatim, which let a link carry
   // values the inputs themselves refuse: a negative price (`MoneyInput` clamps

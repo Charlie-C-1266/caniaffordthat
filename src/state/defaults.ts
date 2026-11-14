@@ -19,6 +19,15 @@ export const DEFAULT_STATE: CalculatorState = {
   takeHome: '',
   takeHomeMode: 'takehome',
   grossSalary: '',
+  // No loan and no pension, so take-home is exactly what it was before these
+  // existed. The 5% is the auto-enrolment employee minimum, ready for when
+  // someone picks an arrangement; nothing comes off until they do.
+  studentPlan: 'none',
+  postgradLoan: false,
+  pensionArrangement: 'none',
+  pensionMode: 'percent',
+  pensionPercent: 5,
+  pensionMonthlyAmount: '',
   housing: '0',
   utilities: '0',
   groceries: '0',

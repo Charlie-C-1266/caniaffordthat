@@ -13,6 +13,16 @@ export function fmt(n: number): string {
   })
 }
 
+/** Formats a sum of money to the penny (£1,234.56), for figures meant to be checked against a payslip. NaN reads as £0.00. */
+export function fmtPence(n: number): string {
+  return (n || 0).toLocaleString('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 /** Parses a form field's value, treating anything non-positive or non-finite as 0. */
 export function num(v: number | string): number {
   const n = Number(v)

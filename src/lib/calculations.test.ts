@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   fmt,
+  fmtPence,
   num,
   monthsToSave,
   contributionForGoal,
@@ -34,6 +35,18 @@ describe('fmt', () => {
 
   it('treats falsy input as £0', () => {
     expect(fmt(Number('not-a-number'))).toBe('£0')
+  })
+})
+
+describe('fmtPence', () => {
+  it('formats GBP to the penny', () => {
+    expect(fmtPence(1234.5)).toBe('£1,234.50')
+    expect(fmtPence(0)).toBe('£0.00')
+    expect(fmtPence(2993.304)).toBe('£2,993.30')
+  })
+
+  it('treats falsy input as £0.00', () => {
+    expect(fmtPence(Number('not-a-number'))).toBe('£0.00')
   })
 })
 

@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 
 /**
- * The mono breakdown box on a result card. The optional heading distinguishes
- * boxes when a card has more than one (the vehicle card's "Monthly costs" and
- * "The deal"); the standard card's single box goes without.
+ * The mono breakdown box on a result card, and on the Budget step's payslip.
+ * The optional heading distinguishes boxes when a card has more than one (the
+ * vehicle card's "Monthly costs" and "The deal"); the standard card's single
+ * box goes without.
  */
 export function BreakdownBox({ heading, children }: { heading?: string; children: ReactNode }) {
   return (

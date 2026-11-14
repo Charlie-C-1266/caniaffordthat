@@ -148,6 +148,17 @@ describe('StandardResultCard', () => {
 
       expect(screen.getByText('Flip it — what salary would this take?')).toBeTruthy()
     })
+
+    it('works under the loan and pension from "About your pay", and says so', () => {
+      renderCard(savingsResult({ requiredTakeHomeMonthly: 2600 }), {
+        goalId: 'holiday',
+        takeHome: '2000',
+        studentPlan: 'plan2',
+        pensionArrangement: 'sacrifice',
+      })
+
+      expect(screen.getByText(/single PAYE salary, Plan 2 student loan, 5% salary sacrifice pension\./)).toBeTruthy()
+    })
   })
 
   describe('the chart', () => {
