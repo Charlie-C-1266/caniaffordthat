@@ -92,9 +92,6 @@ function slopeChangesOf(year: TaxYear): number[] {
   return [...new Set(points.filter((point) => Number.isFinite(point) && point >= 0))].toSorted((a, b) => a - b)
 }
 
-/** Two salaries closer than this are one answer: half a penny, far below anything shown. */
-const SAME_SALARY = 0.005
-
 /** Halvings per bisection: enough to take any bracket the search uses to well under a penny. */
 const BISECTION_STEPS = 60
 
@@ -130,16 +127,15 @@ interface Crossings {
 function crossingsOf(net: number, year: TaxYear): Crossings {
   const kinks = slopeChangesOf(year)
   const salaries: number[] = []
-  const add = (gross: number) => {
-    const previous = salaries.at(-1)
-    if (previous === undefined || gross - previous > SAME_SALARY) salaries.push(gross)
-  }
 
+  // A target hit exactly at a slope change is recorded there, once. Neither
+  // stretch either side of it counts it again, because a stretch is only
+  // searched when its ends are *strictly* either side of the target.
   for (const [i, lo] of kinks.entries()) {
     const atLo = netFromGross(lo, year)
-    if (atLo === net) add(lo)
+    if (atLo === net) salaries.push(lo)
     const hi = kinks[i + 1]
-    if (hi !== undefined && (atLo - net) * (netFromGross(hi, year) - net) < 0) add(bisect(lo, hi, net, year))
+    if (hi !== undefined && (atLo - net) * (netFromGross(hi, year) - net) < 0) salaries.push(bisect(lo, hi, net, year))
   }
 
   // Past the last threshold take-home runs on as one straight line, so it can
@@ -148,14 +144,15 @@ function crossingsOf(net: number, year: TaxYear): Crossings {
   // bisect. Under a table whose rates take every extra pound the ceiling never
   // gets there, and the guard ends the search with a finite answer rather
   // than looping or returning Infinity.
-  const last = kinks.at(-1) ?? 0
+  // Never empty: slopeChangesOf always starts at £0.
+  const last = kinks[kinks.length - 1]
   const atLast = netFromGross(last, year)
   const falling = netFromGross(last + 1, year) < atLast
   let hi = last + net * 2 + 200000
   if (atLast < net || (atLast > net && falling)) {
     const stillShort = (gross: number) => netFromGross(gross, year) < net === atLast < net
     for (let guard = 0; guard < CEILING_DOUBLINGS && stillShort(hi); guard++) hi = last + (hi - last) * 2
-    if (!stillShort(hi)) add(bisect(last, hi, net, year))
+    if (!stillShort(hi)) salaries.push(bisect(last, hi, net, year))
   }
 
   return { salaries, searchedTo: hi }
