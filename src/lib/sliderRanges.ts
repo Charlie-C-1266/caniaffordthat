@@ -31,3 +31,11 @@ export const COVER_MONTHS_RANGE: SliderRange = { min: 1, max: 12, step: 1 }
 
 /** "How old is the car?", in whole years; 0 is brand new. */
 export const VEHICLE_AGE_RANGE: SliderRange = { min: 0, max: 20, step: 1 }
+
+/**
+ * "Pension contribution", as a percentage of the whole salary. It stops at
+ * 50%: enough to sacrifice pay from £125,140 down below the £100k taper, and
+ * low enough that a net pay pension can never make take-home fall as pay
+ * rises, which would take about 57.5%.
+ */
+export const PENSION_PERCENT_RANGE: SliderRange = { min: 0.5, max: 50, step: 0.5 }

@@ -199,7 +199,7 @@ export interface KindPresentation {
 // lib/deductions.ts) rather than through this field. Counting one here would
 // be wrong in both directions.
 const REGULAR_SAVING_HINT =
-  'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension.'
+  'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension — that goes under “About your pay”.'
 
 const STANDARD_PRESENTATION: KindPresentation = {
   details: { heading: null, hint: null, tilePadding: '46px 44px', wrapperHeightVh: 160 },
@@ -236,7 +236,7 @@ export const KIND_PRESENTATION: Record<GoalKind, KindPresentation> = {
       // The emergency fund has a second trap of its own: saving already going
       // into the cushion being built is the very thing this goal is about.
       regularSavingHint:
-        "Money you put away each month that isn't going into this cushion — other savings pots or investments. Leave out anything already taken off your payslip, like a workplace pension.",
+        "Money you put away each month that isn't going into this cushion — other savings pots or investments. Leave out anything already taken off your payslip, like a workplace pension — that goes under “About your pay”.",
       outgoingOverrides: {},
     },
     resultFallback: 'Scroll back up and add your take-home pay and monthly essentials to see your result.',

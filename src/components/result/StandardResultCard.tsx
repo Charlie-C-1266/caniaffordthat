@@ -1,14 +1,15 @@
 import { ResultCard } from './ResultCard'
 import { ResultChart } from './ResultChart'
 import { SalaryFlip } from './SalaryFlip'
-import { BreakdownBox } from './BreakdownBox'
-import { BreakdownRow } from './BreakdownRow'
-import { TotalRow } from './TotalRow'
+import { BreakdownBox } from '../BreakdownBox'
+import { BreakdownRow } from '../BreakdownRow'
+import { TotalRow } from '../TotalRow'
 import { ResultActions } from './ResultActions'
 import { useCalculator } from '../../state/calculatorContext'
 import { fmt, num } from '../../lib/calculations'
 import { accentColorFor, resultAccents } from '../../lib/mode'
 import { currentPayOf } from '../../lib/reverse'
+import { payProfileOf } from '../../lib/payProfile'
 import type { DerivedResult } from '../../lib/derive'
 
 interface StandardResultCardProps {
@@ -49,7 +50,12 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
       </BreakdownBox>
 
       {result.requiredTakeHomeMonthly !== null && (
-        <SalaryFlip requiredTakeHomeMonthly={result.requiredTakeHomeMonthly} current={currentPayOf(state)} accentColor={eyebrowColor} />
+        <SalaryFlip
+          requiredTakeHomeMonthly={result.requiredTakeHomeMonthly}
+          current={currentPayOf(state)}
+          profile={payProfileOf(state)}
+          accentColor={eyebrowColor}
+        />
       )}
 
       <ResultActions scrollToIndex={scrollToIndex} />

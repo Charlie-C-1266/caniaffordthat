@@ -1,10 +1,12 @@
 import { fmt } from '../../lib/calculations'
 import { MIN_KEPT_TO_QUOTE, salaryFlip, type CurrentPay } from '../../lib/reverse'
 import type { TakeHomePlateau } from '../../lib/salary'
+import { NO_DEDUCTIONS, type PayProfile } from '../../lib/deductions'
+import { describePayProfile } from '../../lib/payProfile'
 import { CURRENT_TAX_YEAR, type TaxYear } from '../../lib/taxYears'
-import { BreakdownBox } from './BreakdownBox'
-import { BreakdownRow } from './BreakdownRow'
-import { TotalRow } from './TotalRow'
+import { BreakdownBox } from '../BreakdownBox'
+import { BreakdownRow } from '../BreakdownRow'
+import { TotalRow } from '../TotalRow'
 
 // The reverse "what would I need to earn?" panel. The forward tool answers "at
 // your income, can you afford it?"; this flips it to "for this, what salary
@@ -33,6 +35,8 @@ interface SalaryFlipProps {
   accentColor: string
   /** The tax year to work in. Defaults to the current one; a parameter so a test can render a take-home that more than one salary gives. */
   year?: TaxYear
+  /** The student loan and pension from "About your pay". Both the salary needed and the user's own are worked out under it. */
+  profile?: PayProfile
 }
 
 /** Rounds a gross salary to the nearest £100 — a "you'd need about £X" figure shouldn't imply pound-precision. */
@@ -102,8 +106,14 @@ function plateauNote(plateau: TakeHomePlateau, requiredGross: number): string {
 }
 
 /** The "flip it" salary panel shown under the result breakdown. */
-export function SalaryFlip({ requiredTakeHomeMonthly, current, accentColor, year = CURRENT_TAX_YEAR }: SalaryFlipProps) {
-  const flip = salaryFlip(requiredTakeHomeMonthly, current, year)
+export function SalaryFlip({
+  requiredTakeHomeMonthly,
+  current,
+  accentColor,
+  year = CURRENT_TAX_YEAR,
+  profile = NO_DEDUCTIONS,
+}: SalaryFlipProps) {
+  const flip = salaryFlip(requiredTakeHomeMonthly, current, year, profile)
   const requiredGross = roundSalary(flip.requiredGross)
   const { subheadline, currentRow, totalLabel, totalValue, lowerSalaryNote } = wordingFor(flip, current)
 
@@ -178,7 +188,7 @@ export function SalaryFlip({ requiredTakeHomeMonthly, current, accentColor, year
           </span>
         )}
         <span style={{ color: 'var(--text-tertiary-dim)' }}>
-          Estimate for England, Wales &amp; NI, {year.label} — single PAYE salary, no student loan or pension.
+          Estimate for England, Wales &amp; NI, {year.label} — single PAYE salary, {describePayProfile(profile)}.
         </span>
         <a
           href="/methodology/salary/"

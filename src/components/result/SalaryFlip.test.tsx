@@ -7,6 +7,7 @@ import { fmt } from '../../lib/calculations'
 import type { TaxYear } from '../../lib/taxYears'
 import { netFromGross } from '../../lib/salary'
 import { FIVE_PENCE_TAPER_TAX_YEAR, STEEP_TAPER_TAX_YEAR } from '../../test/taxYearFixtures'
+import type { PayProfile } from '../../lib/deductions'
 
 // The engine (lib/reverse.ts) is already well tested; these tests cover the
 // *display* branching this component owns: which subheadline renders, which
@@ -261,5 +262,30 @@ describe('SalaryFlip on the payslip where take-home stops rising', () => {
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/of salary\.$/)).toBeNull()
+  })
+})
+
+describe('SalaryFlip under a pay profile', () => {
+  afterEach(cleanup)
+
+  const PLAN_2_NET_PAY: PayProfile = {
+    studentPlan: 'plan2',
+    postgradLoan: false,
+    pension: { arrangement: 'netpay', mode: 'percent', percent: 5, monthlyAmount: 0 },
+  }
+
+  it('works the salary needed out under the loan and pension', () => {
+    // £2,500 a month: about £36,800 with neither, about £40,400 with Plan 2
+    // and a 5% net pay pension.
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} profile={PLAN_2_NET_PAY} />)
+    expect(screen.getAllByText('£40,400/yr')).toHaveLength(2)
+  })
+
+  it('names what it applied in its caption', () => {
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} profile={PLAN_2_NET_PAY} />)
+    expect(screen.getByText(/single PAYE salary, Plan 2 student loan, 5% net pay pension\./)).toBeTruthy()
+    cleanup()
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} />)
+    expect(screen.getByText(/single PAYE salary, no student loan or pension\./)).toBeTruthy()
   })
 })

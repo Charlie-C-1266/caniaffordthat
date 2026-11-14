@@ -15,9 +15,11 @@ test.describe('salary input mode', () => {
     const salary = page.locator('input[type="number"]').nth(1)
     await salary.fill('40000')
 
-    // The tax engine's forward calc is shown live: £40k gross -> ~£2,693/month.
-    await expect(page.getByText(/take-home after tax/i)).toBeVisible()
-    await expect(page.getByText('£2,693').first()).toBeVisible()
+    // The tax engine's forward calc is shown live, as a month's payslip:
+    // £40k gross -> £2,693.30 take-home.
+    await expect(page.getByText('TAKE-HOME', { exact: true })).toBeVisible()
+    await expect(page.getByText('£2,693.30')).toBeVisible()
+    await expect(page.getByText(/^England, Wales & NI, .* single PAYE salary, no student loan or pension\./)).toBeVisible()
 
     // The computed take-home flows into the result like any other.
     await salary.press('Enter')

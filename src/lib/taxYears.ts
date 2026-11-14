@@ -15,6 +15,7 @@ import type { StudentLoanPlan } from '../state/types'
 //     on top of any plan. Repayments are worked out on the same pay as
 //     employer NI.
 //   - Relief at source: the pension provider adds 20%, the basic rate.
+//   - Auto-enrolment qualifying earnings: £6,240 to £50,270.
 //
 // Only income tax and NI are frozen (until 2030/31, Autumn 2022 / Spring
 // 2024), so the April refresh is no longer a formality:
@@ -24,6 +25,8 @@ import type { StudentLoanPlan } from '../state/types'
 //   - Plan 5 is fixed at £25,000 until 5 April 2027, then follows RPI,
 //     rounded up to the nearest £5.
 //   - The Postgraduate Loan threshold and both loan rates need checking too.
+//   - The auto-enrolment band is reviewed by DWP each winter.
+// Update `verifiedOn` whenever the figures are checked, changed or not.
 // Verified against GOV.UK income-tax-rates, national-insurance-rates,
 // "Repaying your student loan: how much you repay", the employers' rates and
 // thresholds for 2026 to 2027, and "Tax on your private pension: pension tax
@@ -71,6 +74,14 @@ export interface TaxYear {
    * even for a Scottish taxpayer whose starter rate is 19%.
    */
   reliefAtSourceRate: number
+  /**
+   * The auto-enrolment qualifying earnings band. Minimum contributions are
+   * often worked out on pay inside it rather than on the whole salary, which
+   * the pension hint has to warn about.
+   */
+  qualifyingEarnings: { lower: number; upper: number }
+  /** The date, as YYYY-MM-DD, these figures were last checked against GOV.UK. Shown on the salary methodology page. */
+  verifiedOn: string
   /** ONS median gross annual pay for full-time employees, for the "above/below the UK median" context line. */
   medianFullTimeSalary: number
 }
@@ -104,6 +115,10 @@ export const TAX_YEAR_2026_27: TaxYear = {
   },
   postgraduateLoan: { threshold: 21000, rate: 0.06 },
   reliefAtSourceRate: 0.2,
+  // GOV.UK, auto-enrolment earnings trigger and qualifying earnings band
+  // review for 2026/27: both limits held at their 2025/26 levels.
+  qualifyingEarnings: { lower: 6240, upper: 50270 },
+  verifiedOn: '2026-11-13',
   // ONS Annual Survey of Hours and Earnings — median gross pay for full-time
   // employees (provisional 2025). Refresh yearly alongside the tax figures.
   medianFullTimeSalary: 37430,

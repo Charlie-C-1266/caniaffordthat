@@ -5,7 +5,7 @@ interface BreakdownRowProps {
   total?: boolean
 }
 
-/** One label/value line in a result card's mono breakdown box. */
+/** One label/value line in a mono breakdown box: a result card's, or the Budget step's payslip. */
 export function BreakdownRow({ label, value, total = false }: BreakdownRowProps) {
   return (
     <div

@@ -8,9 +8,12 @@ import { FieldGroupHeading } from '../FieldGroupHeading'
 import { LabeledMoneyField } from '../LabeledMoneyField'
 import { MoneyInput } from '../MoneyInput'
 import { SegmentedControl, type SegmentedOption } from '../SegmentedControl'
-import { TextLink } from '../TextLink'
+import { AboutYourPay } from './budget/AboutYourPay'
+import { PayslipBreakdown } from './budget/PayslipBreakdown'
 import { useCalculator } from '../../state/calculatorContext'
-import { fmt, num } from '../../lib/calculations'
+import { num } from '../../lib/calculations'
+import type { PayProfile } from '../../lib/deductions'
+import { payProfileOf, type PayProfileState } from '../../lib/payProfile'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL, type OutgoingFieldKey } from '../../lib/budget'
@@ -27,6 +30,10 @@ const TAKE_HOME_MODE_OPTIONS: readonly SegmentedOption<TakeHomeMode>[] = [
 
 /** Rounds a computed take-home to whole pence, so the stored value isn't a long float. */
 const roundPence = (n: number): number => Math.round(n * 100) / 100
+
+/** The take-home field salary mode stores for a typed salary under a pay profile: pence, or blank for no salary. */
+const takeHomeFor = (grossSalary: string, profile: PayProfile): string =>
+  num(grossSalary) > 0 ? String(roundPence(monthlyTakeHomeFromGross(num(grossSalary), CURRENT_TAX_YEAR, profile))) : ''
 
 interface BudgetStepProps {
   /** Position in the active flow — the eyebrow number and the Enter-advance target follow it. */
@@ -61,24 +68,33 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   const incomeInputId = useId()
 
   // Take-home entry: typed directly, or worked out from an annual salary. In
-  // salary mode the tax engine computes the monthly take-home and writes it to
-  // `takeHome`, so everything downstream (spare cash, the verdict, the reverse
-  // flip) reads a single source of truth and needs no salary awareness.
+  // salary mode the tax engine computes the monthly take-home, under the pay
+  // profile from "About your pay", and writes it to `takeHome`, so everything
+  // downstream (spare cash, the verdict, the reverse flip) reads a single
+  // source of truth and needs no salary awareness. Anything that changes the
+  // salary or the profile re-works it.
   const salaryMode = state.takeHomeMode === 'salary'
-  const monthlyTakeHome = monthlyTakeHomeFromGross(num(state.grossSalary))
+  const profile = payProfileOf(state)
 
   const handleSalaryChange = (value: string) => {
-    setFields({ grossSalary: value, takeHome: num(value) > 0 ? String(roundPence(monthlyTakeHomeFromGross(num(value)))) : '' })
+    setFields({ grossSalary: value, takeHome: takeHomeFor(value, profile) })
   }
 
   const handleTakeHomeModeChange = (mode: TakeHomeMode) => {
     // Switching to salary mode with a salary already typed syncs take-home to
     // it; otherwise just flip the toggle and leave take-home untouched.
     if (mode === 'salary' && num(state.grossSalary) > 0) {
-      setFields({ takeHomeMode: 'salary', takeHome: String(roundPence(monthlyTakeHomeFromGross(num(state.grossSalary)))) })
+      setFields({ takeHomeMode: 'salary', takeHome: takeHomeFor(state.grossSalary, profile) })
     } else {
       setField('takeHomeMode', mode)
     }
+  }
+
+  // In take-home mode the figure typed is already net of these, so it stays
+  // as typed; they only feed the "what salary would this take?" panel.
+  const handleProfileChange = (patch: Partial<PayProfileState>) => {
+    const resync = salaryMode && num(state.grossSalary) > 0
+    setFields(resync ? { ...patch, takeHome: takeHomeFor(state.grossSalary, payProfileOf({ ...state, ...patch })) } : patch)
   }
 
   // What differs by kind of goal: see KIND_PRESENTATION in lib/goals.ts.
@@ -185,21 +201,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                   paddingBottom={10}
                   paddingLeft={30}
                 />
-                {num(state.grossSalary) > 0 && (
-                  <div style={{ marginTop: 12, fontSize: 'var(--fs-body)', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                    ≈{' '}
-                    <span className="mono" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-                      {fmt(monthlyTakeHome)}
-                    </span>
-                    /month take-home after tax &amp; NI
-                    <div style={{ marginTop: 5, fontSize: 'var(--fs-helper)', color: 'var(--text-tertiary-dim)', fontWeight: 600 }}>
-                      England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, no student loan or pension.{' '}
-                      <TextLink href="/methodology/salary/" newTab>
-                        How this is worked out →
-                      </TextLink>
-                    </div>
-                  </div>
-                )}
+                {num(state.grossSalary) > 0 && <PayslipBreakdown grossAnnual={num(state.grossSalary)} profile={profile} />}
               </>
             ) : (
               <MoneyInput
@@ -215,6 +217,10 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                 paddingLeft={30}
               />
             )}
+          </div>
+
+          <div style={{ marginTop: -6, marginBottom: 26 }}>
+            <AboutYourPay salaryMode={salaryMode} accentColor={accent} onChange={handleProfileChange} />
           </div>
 
           {outgoings.length > 0 && (

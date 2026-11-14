@@ -4,7 +4,9 @@ import { screen, cleanup, fireEvent } from '@testing-library/react'
 import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { BudgetStep } from './BudgetStep'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
-import { fmt } from '../../lib/calculations'
+import { fmtPence } from '../../lib/calculations'
+import { payProfileOf } from '../../lib/payProfile'
+import { DEFAULT_STATE } from '../../state/defaults'
 import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
 import { OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL } from '../../lib/budget'
 import type { CalculatorState, GoalId } from '../../state/types'
@@ -61,6 +63,12 @@ function accessibleDescription(element: HTMLElement): string {
     .join(' ')
     .trim()
 }
+
+/** The take-home salary mode should store for a salary under a set of profile fields. */
+const takeHomeUnder = (grossAnnual: number, patch: Partial<CalculatorState>) =>
+  String(Math.round(monthlyTakeHomeFromGross(grossAnnual, CURRENT_TAX_YEAR, payProfileOf({ ...DEFAULT_STATE, ...patch })) * 100) / 100)
+
+const openAboutYourPay = () => fireEvent.click(screen.getByRole('button', { name: /^About your pay/ }))
 
 describe('BudgetStep', () => {
   afterEach(() => {
@@ -219,10 +227,10 @@ describe('BudgetStep', () => {
   })
 
   describe('the derived take-home summary', () => {
-    it('shows the monthly figure, the tax-year caveat and the methodology link once a salary is in', () => {
+    it('shows the monthly payslip, the tax-year caveat and the methodology link once a salary is in', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '45000' })
 
-      expect(screen.getByText(fmt(monthlyTakeHomeFromGross(45000)))).toBeTruthy()
+      expect(screen.getByText('TAKE-HOME').nextElementSibling?.textContent).toBe(fmtPence(monthlyTakeHomeFromGross(45000)))
       expect(screen.getByText(new RegExp(CURRENT_TAX_YEAR.label))).toBeTruthy()
       expect(screen.getByRole('link', { name: /How this is worked out/ }).getAttribute('href')).toBe('/methodology/salary/')
     })
@@ -246,6 +254,59 @@ describe('BudgetStep', () => {
       renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', grossSalary: '45000' })
 
       expect(screen.queryByRole('link', { name: /How this is worked out/ })).toBeNull()
+    })
+  })
+
+  describe('About your pay', () => {
+    it('re-works take-home in salary mode as a loan or pension is set', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '35000', takeHome: expectedTakeHome(35000) })
+      openAboutYourPay()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Plan 2' }))
+      expect(calculator().state.studentPlan).toBe('plan2')
+      expect(calculator().state.takeHome).toBe(takeHomeUnder(35000, { studentPlan: 'plan2' }))
+
+      fireEvent.click(screen.getByRole('button', { name: 'Net pay' }))
+      expect(calculator().state.takeHome).toBe(takeHomeUnder(35000, { studentPlan: 'plan2', pensionArrangement: 'netpay' }))
+      // £35,000, Plan 2, 5% net pay: £2,234.52 a month.
+      expect(calculator().state.takeHome).toBe('2234.52')
+      expect(screen.getByText('STUDENT LOAN')).toBeTruthy()
+      expect(screen.getByText('PENSION')).toBeTruthy()
+    })
+
+    it('works a newly typed salary out under the loans and pension already set', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', studentPlan: 'plan5', postgradLoan: true })
+
+      fireEvent.change(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { target: { value: '45000' } })
+
+      expect(calculator().state.takeHome).toBe(takeHomeUnder(45000, { studentPlan: 'plan5', postgradLoan: true }))
+    })
+
+    it('leaves a typed take-home alone in take-home mode, where it is already net of them', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', takeHome: '2400' })
+      openAboutYourPay()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Plan 1' }))
+
+      expect(calculator().state.studentPlan).toBe('plan1')
+      expect(calculator().state.takeHome).toBe('2400')
+    })
+
+    it('leaves take-home blank in salary mode until a salary is typed', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary' })
+      openAboutYourPay()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Plan 1' }))
+
+      expect(calculator().state.takeHome).toBe('')
+    })
+
+    it('syncs to the profile on switching into salary mode', () => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'takehome', grossSalary: '35000', studentPlan: 'plan2' })
+
+      fireEvent.click(modeButton(SALARY_MODE_LABEL))
+
+      expect(calculator().state.takeHome).toBe(takeHomeUnder(35000, { studentPlan: 'plan2' }))
     })
   })
 

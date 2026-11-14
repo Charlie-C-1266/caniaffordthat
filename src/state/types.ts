@@ -54,6 +54,21 @@ export interface CalculatorState {
   takeHomeMode: TakeHomeMode
   /** Salary mode only: annual gross salary the user typed, from which `takeHome` is computed. */
   grossSalary: string
+  // --- Pay profile: what comes off a salary besides income tax and NI ---
+  // Salary mode works take-home out under these; the "what salary would this
+  // take?" panel uses them in both modes (see lib/payProfile.ts).
+  /** The undergraduate student loan plan being repaid, or `'none'`. */
+  studentPlan: StudentLoanPlan | 'none'
+  /** True when repaying a Postgraduate Loan, on top of any plan. */
+  postgradLoan: boolean
+  /** How a workplace pension is paid, or `'none'`. No arrangement is ever assumed: a wrong one would give a wrong take-home. */
+  pensionArrangement: PensionArrangement | 'none'
+  /** Whether the pension is a percentage of salary or a fixed monthly amount. */
+  pensionMode: RateMode
+  /** `pensionMode === 'percent'`: the scheme's rate, as a percentage of the whole salary. Slider-bound, so a number. */
+  pensionPercent: number
+  /** `pensionMode === 'amount'`: what leaves the payslip each month. Input-bound string (see note above). */
+  pensionMonthlyAmount: string
   housing: string
   utilities: string
   groceries: string

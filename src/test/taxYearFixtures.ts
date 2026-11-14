@@ -1,12 +1,15 @@
 import type { TaxYear } from '../lib/taxYears'
 
 /**
- * The loan and relief-at-source terms every made-up table here carries: the
- * 2026/27 figures, copied rather than read from the real table so a yearly
- * refresh can't move a test's numbers. Tests that aren't about loans or
- * pensions never use them.
+ * The loan, pension and record-keeping fields every made-up table here
+ * carries: the 2026/27 figures, copied rather than read from the real table
+ * so a yearly refresh can't move a test's numbers. Tests that aren't about
+ * loans or pensions never use them.
  */
-export const DEDUCTION_TERMS_FOR_TESTS: Pick<TaxYear, 'studentLoanPlans' | 'postgraduateLoan' | 'reliefAtSourceRate'> = {
+export const DEDUCTION_TERMS_FOR_TESTS: Pick<
+  TaxYear,
+  'studentLoanPlans' | 'postgraduateLoan' | 'reliefAtSourceRate' | 'qualifyingEarnings' | 'verifiedOn'
+> = {
   studentLoanPlans: {
     plan1: { threshold: 26900, rate: 0.09 },
     plan2: { threshold: 29385, rate: 0.09 },
@@ -15,6 +18,8 @@ export const DEDUCTION_TERMS_FOR_TESTS: Pick<TaxYear, 'studentLoanPlans' | 'post
   },
   postgraduateLoan: { threshold: 21000, rate: 0.06 },
   reliefAtSourceRate: 0.2,
+  qualifyingEarnings: { lower: 6240, upper: 50270 },
+  verifiedOn: '2026-11-13',
 }
 
 // Tax-year tables unlike any real year, for driving the salary engine into a

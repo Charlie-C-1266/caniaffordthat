@@ -48,7 +48,7 @@ describe('sliderRanges.ts', () => {
     expect(exported.filter(([, value]) => !isSliderRange(value)).map(([name]) => name)).toEqual([])
   })
 
-  it('exports the six ranges the calculator uses, so the checks below are not passing on an empty list', () => {
+  it('exports the seven ranges the calculator uses, so the checks below are not passing on an empty list', () => {
     expect(exported.map(([name]) => name)).toEqual(
       expect.arrayContaining([
         'SAVE_RATE_RANGE',
@@ -57,6 +57,7 @@ describe('sliderRanges.ts', () => {
         'FINANCE_TERM_RANGE',
         'COVER_MONTHS_RANGE',
         'VEHICLE_AGE_RANGE',
+        'PENSION_PERCENT_RANGE',
       ]),
     )
   })

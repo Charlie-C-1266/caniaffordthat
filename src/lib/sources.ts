@@ -64,8 +64,8 @@ export const SOURCES = {
     url: 'https://www.theaa.com/car-buying/depreciation',
     usedFor: 'The generic depreciation curve behind estimated balloons: ~25% off in year one, around half the value gone by year three.',
   },
-  // Reverse "what salary would I need?" mode: the income-tax and NI bands the
-  // gross↔take-home engine uses, and the median it's compared against.
+  // The salary engine: the income-tax and NI bands the gross↔take-home
+  // engine uses, and the median the required salary is compared against.
   incomeTax: {
     label: 'GOV.UK — Income Tax rates and personal allowances',
     url: 'https://www.gov.uk/income-tax-rates',
@@ -82,6 +82,65 @@ export const SOURCES = {
     url: 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/bulletins/annualsurveyofhoursandearnings/latest',
     usedFor: 'The "above/below the UK median" context on the required-salary panel: median gross pay for full-time employees.',
   },
+  // Student loans and workplace pensions: the thresholds, rules and caveats
+  // behind "About your pay" on the Budget step (lib/deductions.ts).
+  studentLoanRepayments: {
+    label: 'GOV.UK — Repaying your student loan: how much you repay',
+    url: 'https://www.gov.uk/repaying-your-student-loan/what-you-pay',
+    usedFor:
+      'Student loan repayments: 9% over £26,900 (Plan 1), £29,385 (Plan 2), £33,795 (Plan 4) or £25,000 (Plan 5), the Postgraduate Loan at 6% over £21,000 on top of any plan, and one repayment over the lowest threshold for more than one plan (2026-27).',
+  },
+  studentLoanPlans: {
+    label: "GOV.UK — Which repayment plan you're on",
+    url: 'https://www.gov.uk/repaying-your-student-loan/which-repayment-plan-you-are-on',
+    usedFor: 'The "which plan?" hint: where and when you applied for funding decides your plan, not where you live now.',
+  },
+  studentLoanEmployers: {
+    label: 'GOV.UK — Student loan and postgraduate loan repayment guidance for employers',
+    url: 'https://www.gov.uk/guidance/special-rules-for-student-loans',
+    usedFor:
+      'Repayments are worked out on the same pay as employer National Insurance, each payday, rounded down to the pound — why salary sacrifice lowers a repayment and net pay does not.',
+  },
+  pensionNationalInsurance: {
+    label: 'HMRC — National Insurance Manual: pension contributions (NIM02365)',
+    url: 'https://www.gov.uk/hmrc-internal-manuals/national-insurance-manual/nim02365',
+    usedFor: 'National Insurance is charged on pay before pension contributions, so a net pay pension lowers income tax but not NI.',
+  },
+  salarySacrifice: {
+    label: 'GOV.UK — Salary sacrifice and the effects on PAYE',
+    url: 'https://www.gov.uk/guidance/salary-sacrifice-and-the-effects-on-paye',
+    usedFor: 'Salary sacrifice lowers the pay that income tax and National Insurance are charged on.',
+  },
+  pensionArrangements: {
+    label: 'GOV.UK — Workplace pensions: managing your pension',
+    url: 'https://www.gov.uk/workplace-pensions/managing-your-pension',
+    usedFor:
+      'How a net pay pension comes out of pay before income tax, as the pension options describe it, and that your employer can tell you which arrangement you have.',
+  },
+  pensionTaxRelief: {
+    label: 'GOV.UK — Tax on your private pension: pension tax relief',
+    url: 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief',
+    usedFor:
+      'Tax relief covers contributions up to 100% of your earnings, so the calculator never puts more than your salary into a pension.',
+  },
+  autoEnrolment: {
+    label: 'GOV.UK — Workplace pensions: what you, your employer and the government pay',
+    url: 'https://www.gov.uk/workplace-pensions/what-you-your-employer-and-the-government-pay',
+    usedFor:
+      'The 5% employee minimum, and the £6,240–£50,270 band it is often worked out on, behind the note that a percentage here is of your whole salary.',
+  },
+  pensionTaxReliefGuide: {
+    label: 'MoneyHelper — Pension tax relief',
+    url: 'https://www.moneyhelper.org.uk/en/pensions-and-retirement/tax-and-pensions/tax-relief-and-your-pension',
+    usedFor:
+      'How each kind of pension gets tax relief, including the top-up HMRC pays low earners in a net pay scheme after the year, which the payslip figures leave out.',
+  },
+  salarySacrificeReform: {
+    label: 'GOV.UK — Salary sacrifice reform for pension contributions from 6 April 2029',
+    url: 'https://www.gov.uk/government/publications/salary-sacrifice-reform-for-pension-contributions-effective-from-6-april-2029/salary-sacrifice-reform-for-pension-contributions',
+    usedFor:
+      'Why salary sacrifice figures will change from April 2029, when National Insurance applies to sacrifice over £2,000 a year. Noted, not yet modelled.',
+  },
 } as const satisfies Record<string, Source>
 
 /** All sources in display order, for the "Our sources" panel. */
@@ -96,8 +155,22 @@ export const VEHICLE_SOURCES: readonly Source[] = [
   SOURCES.depreciation,
 ]
 
-/** The tax/earnings sources behind the reverse "what salary?" mode, cited on the salary methodology page. */
-export const SALARY_SOURCES: readonly Source[] = [SOURCES.incomeTax, SOURCES.nationalInsurance, SOURCES.medianSalary]
+/** The tax, student loan, pension and earnings sources behind the salary engine, cited on the salary methodology page. */
+export const SALARY_SOURCES: readonly Source[] = [
+  SOURCES.incomeTax,
+  SOURCES.nationalInsurance,
+  SOURCES.medianSalary,
+  SOURCES.studentLoanRepayments,
+  SOURCES.studentLoanPlans,
+  SOURCES.studentLoanEmployers,
+  SOURCES.pensionNationalInsurance,
+  SOURCES.salarySacrifice,
+  SOURCES.pensionArrangements,
+  SOURCES.pensionTaxRelief,
+  SOURCES.autoEnrolment,
+  SOURCES.pensionTaxReliefGuide,
+  SOURCES.salarySacrificeReform,
+]
 
 /** A general money-guidance resource we point people at — not something a calculation depends on. */
 export interface HelpfulLink {

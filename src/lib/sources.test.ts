@@ -56,12 +56,23 @@ describe('curated sub-lists', () => {
     expect(VEHICLE_SOURCES).toContain(SOURCES.vedRates)
   })
 
-  it('SALARY_SOURCES is a non-empty subset of SOURCES, citing the tax/earnings figures', () => {
+  it('SALARY_SOURCES is a non-empty subset of SOURCES, citing the tax, loan, pension and earnings figures', () => {
     expect(SALARY_SOURCES.length).toBeGreaterThan(0)
     for (const source of SALARY_SOURCES) {
       expect(SOURCE_LIST).toContain(source)
     }
-    expect(SALARY_SOURCES).toEqual([SOURCES.incomeTax, SOURCES.nationalInsurance, SOURCES.medianSalary])
+    expect(SALARY_SOURCES.slice(0, 3)).toEqual([SOURCES.incomeTax, SOURCES.nationalInsurance, SOURCES.medianSalary])
+    for (const source of [SOURCES.studentLoanRepayments, SOURCES.studentLoanEmployers, SOURCES.salarySacrifice, SOURCES.autoEnrolment]) {
+      expect(SALARY_SOURCES).toContain(source)
+    }
+  })
+
+  it('cites every source added for student loans and pensions on the salary methodology page', () => {
+    // Every one of these backs a figure or a rule in "About your pay", so the
+    // salary page must list it, not just the sources page.
+    const loanAndPensionKeys = Object.keys(SOURCES).slice(Object.keys(SOURCES).indexOf('studentLoanRepayments'))
+    expect(loanAndPensionKeys).toHaveLength(10)
+    for (const key of loanAndPensionKeys) expect(SALARY_SOURCES).toContain(SOURCES[key as keyof typeof SOURCES])
   })
 })
 

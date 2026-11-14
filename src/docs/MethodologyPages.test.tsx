@@ -4,6 +4,7 @@ import { render, screen, cleanup } from '@testing-library/react'
 import { SalaryMethodologyPage } from './SalaryMethodologyPage'
 import { VehicleMethodologyPage } from './VehicleMethodologyPage'
 import { SALARY_SOURCES, VEHICLE_SOURCES } from '../lib/sources'
+import { fmt } from '../lib/calculations'
 import { CURRENT_TAX_YEAR } from '../lib/taxYears'
 
 afterEach(cleanup)
@@ -69,6 +70,19 @@ describe('SalaryMethodologyPage', () => {
     for (const link of screen.getAllByRole('link').filter((a) => (a.getAttribute('href') ?? '').startsWith('/'))) {
       expect(link.getAttribute('target')).toBeNull()
     }
+  })
+
+  it('publishes the student loan thresholds, a worked repayment, and when the figures were last checked', () => {
+    render(<SalaryMethodologyPage />)
+    expect(screen.getByRole('heading', { name: 'Student loans' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Workplace pensions' })).toBeTruthy()
+    for (const [plan, terms] of Object.entries(CURRENT_TAX_YEAR.studentLoanPlans)) {
+      const row = screen.getByRole('cell', { name: `Plan ${plan.slice(-1)}` }).closest('tr')
+      expect(row?.textContent, `${plan} row`).toContain(fmt(terms.threshold))
+    }
+    // Plan 2 at £35,000: 9% of £5,615.
+    expect(screen.getByText('£42.11')).toBeTruthy()
+    expect(screen.getByText('13 November 2026')).toBeTruthy()
   })
 
   it('renders its sections and data tables rather than an empty shell', () => {

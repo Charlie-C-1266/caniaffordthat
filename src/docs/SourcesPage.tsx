@@ -26,7 +26,7 @@ const METHODOLOGY_PAGES = [
     label: 'How the required-salary calculator works',
     href: '/methodology/salary/',
     blurb:
-      'The gross↔take-home engine behind "what salary would I need?": income-tax and National Insurance bands, the £100k allowance taper, and the UK median comparison.',
+      'The gross↔take-home engine behind "what salary would I need?" and salary mode: income-tax and National Insurance bands, student loan and pension deductions, the £100k allowance taper, and the UK median comparison.',
   },
 ]
 
@@ -75,7 +75,7 @@ export function SourcesPage() {
             ],
             [
               'Your numbers stay yours',
-              'There\'s no backend: the maths runs in your browser and nothing you type is sent to or stored by us (we use anonymous page-view analytics only). "Copy result link" encodes your figures in the link itself, so share those links thoughtfully.',
+              'There\'s no backend: the maths runs in your browser and nothing you type is sent to or stored by us (we use anonymous page-view analytics only). "Copy result link" encodes your figures in the link itself, including any student loan and pension details you\'ve entered, so share those links thoughtfully.',
             ],
             [
               'Open source',
