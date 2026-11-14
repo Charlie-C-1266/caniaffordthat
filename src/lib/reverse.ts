@@ -8,6 +8,7 @@ import {
   type TakeHomePlateau,
 } from './salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
+import { NO_DEDUCTIONS, type PayProfile } from './deductions'
 import { num } from './calculations'
 import type { CalculatorState } from '../state/types'
 
@@ -101,10 +102,10 @@ export const MIN_KEPT_TO_QUOTE = 0.1
  * salary gives it. A take-home no salary reaches, possible only under a table
  * that takes every extra pound, falls back to `grossFromNet`'s finite ceiling.
  */
-function salaryBehind(takeHomeAnnual: number, year: TaxYear): number | null {
-  const salaries = salariesForTakeHome(takeHomeAnnual, year)
+function salaryBehind(takeHomeAnnual: number, year: TaxYear, profile: PayProfile): number | null {
+  const salaries = salariesForTakeHome(takeHomeAnnual, year, profile)
   if (salaries.length > 1) return null
-  return salaries[0] ?? grossFromNet(takeHomeAnnual, year)
+  return salaries[0] ?? grossFromNet(takeHomeAnnual, year, profile)
 }
 
 /**
@@ -123,23 +124,29 @@ function salaryGap(currentGross: number, targetSalaries: readonly number[], alre
 
 /**
  * Builds the salary-flip story from the plan's required take-home and the
- * user's current pay.
+ * user's current pay, under a pay profile (no deductions by default).
  *
  * `year` defaults to the current table, matching every function in ./salary —
  * it is a parameter so a test can drive the engine with a synthetic table,
  * which is the only way to reach the defensive branch below, or a take-home
  * that more than one salary gives.
  */
-export function salaryFlip(requiredTakeHomeMonthly: number, current: CurrentPay, year: TaxYear = CURRENT_TAX_YEAR): SalaryFlip {
+export function salaryFlip(
+  requiredTakeHomeMonthly: number,
+  current: CurrentPay,
+  year: TaxYear = CURRENT_TAX_YEAR,
+  profile: PayProfile = NO_DEDUCTIONS,
+): SalaryFlip {
   const requiredTakeHomeAnnual = requiredTakeHomeMonthly * 12
-  const requiredGross = grossFromNet(requiredTakeHomeAnnual, year)
+  const requiredGross = grossFromNet(requiredTakeHomeAnnual, year, profile)
   const currentTakeHomeMonthly =
-    current.kind === 'salary' ? netFromGross(current.grossAnnual, year) / 12 : Math.max(0, current.takeHomeMonthly)
-  const currentGross = current.kind === 'salary' ? Math.max(0, current.grossAnnual) : salaryBehind(currentTakeHomeMonthly * 12, year)
+    current.kind === 'salary' ? netFromGross(current.grossAnnual, year, profile) / 12 : Math.max(0, current.takeHomeMonthly)
+  const currentGross =
+    current.kind === 'salary' ? Math.max(0, current.grossAnnual) : salaryBehind(currentTakeHomeMonthly * 12, year, profile)
   const alreadyEnough = currentTakeHomeMonthly >= requiredTakeHomeMonthly
   const median = year.medianFullTimeSalary
   const ratio = requiredGross / median
-  const marginal = marginalNetRate(requiredGross, year)
+  const marginal = marginalNetRate(requiredGross, year, profile)
 
   return {
     requiredTakeHomeAnnual,
@@ -148,17 +155,17 @@ export function salaryFlip(requiredTakeHomeMonthly: number, current: CurrentPay,
     grossGap:
       currentGross === null
         ? null
-        : salaryGap(currentGross, salariesForTakeHome(requiredTakeHomeAnnual, year), alreadyEnough, requiredGross),
+        : salaryGap(currentGross, salariesForTakeHome(requiredTakeHomeAnnual, year, profile), alreadyEnough, requiredGross),
     takeHomeMonthlyGap: requiredTakeHomeMonthly - currentTakeHomeMonthly,
     alreadyEnough,
     vsMedian: ratio > 1.05 ? 'above' : ratio < 0.95 ? 'below' : 'about',
     medianFullTimeSalary: median,
-    inTaperBand: inAllowanceTaper(requiredGross, year),
+    inTaperBand: inAllowanceTaper(requiredGross, year, profile),
     // With the current tax tables the kept fraction never falls below ~0.38,
     // so this is always a figure today — reverse.test.ts sweeps every band
     // boundary to pin that claim down. Tables that keep 5p or nothing reach
     // the null, and the same tests cover them through the `year` parameter.
     salaryPerTakeHome: marginal >= MIN_KEPT_TO_QUOTE ? 1 / marginal : null,
-    payslipPlateau: takeHomePlateauBelow(requiredGross, year),
+    payslipPlateau: takeHomePlateauBelow(requiredGross, year, profile),
   }
 }

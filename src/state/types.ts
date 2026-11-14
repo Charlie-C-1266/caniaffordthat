@@ -5,6 +5,19 @@ export type RateMode = 'percent' | 'amount'
 /** How take-home pay is entered on the Budget step: typed directly, or worked out from an annual gross salary via the tax engine. */
 export type TakeHomeMode = 'takehome' | 'salary'
 /**
+ * An undergraduate student loan repayment plan. Which one applies depends on
+ * where and when the borrower applied for funding, not where they now live or
+ * pay tax, so a Plan 4 borrower on rest-of-UK tax bands is an ordinary case.
+ */
+export type StudentLoanPlan = 'plan1' | 'plan2' | 'plan4' | 'plan5'
+/**
+ * How a workplace pension contribution comes out of pay. `sacrifice` lowers
+ * the salary itself, before tax, NI and student loans. `netpay` comes off
+ * before income tax but after NI. `ras` (relief at source) comes off after
+ * tax and NI, and the provider adds basic-rate relief on top.
+ */
+export type PensionArrangement = 'sacrifice' | 'netpay' | 'ras'
+/**
  * Vehicle flow: how the car is being paid for. `cash` buys it outright,
  * `pcp` / `hp` are dealer finance (PCP with a balloon, HP without), and
  * `loan` is an unsecured personal/bank loan.

@@ -99,3 +99,26 @@ describe('CURRENT_TAX_YEAR', () => {
     expect(new Set(rates).size).toBe(rates.length)
   })
 })
+
+describe('CURRENT_TAX_YEAR student loans and relief at source', () => {
+  it('has a threshold and the 9% rate for every undergraduate plan', () => {
+    const plans = CURRENT_TAX_YEAR.studentLoanPlans
+    expect(Object.keys(plans).toSorted()).toEqual(['plan1', 'plan2', 'plan4', 'plan5'])
+    for (const [plan, terms] of Object.entries(plans)) {
+      expect(Number.isFinite(terms.threshold) && terms.threshold > 0, `${plan} threshold`).toBe(true)
+      expect(terms.rate, `${plan} rate`).toBe(0.09)
+    }
+  })
+
+  it('takes the Postgraduate Loan at 6% over a positive threshold', () => {
+    const { threshold, rate } = CURRENT_TAX_YEAR.postgraduateLoan
+    expect(rate).toBe(0.06)
+    expect(Number.isFinite(threshold) && threshold > 0).toBe(true)
+  })
+
+  it('adds relief at source at the basic rate', () => {
+    // A provider claims the rest-of-UK basic rate, so the two must move
+    // together if the basic rate ever does.
+    expect(CURRENT_TAX_YEAR.reliefAtSourceRate).toBe(CURRENT_TAX_YEAR.incomeTaxBands[0].rate)
+  })
+})

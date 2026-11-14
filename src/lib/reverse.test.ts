@@ -3,7 +3,8 @@ import { currentPayOf, MIN_KEPT_TO_QUOTE, salaryFlip, type CurrentPay } from './
 import { grossFromNet, marginalNetRate, netFromGross } from './salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 import { DEFAULT_STATE } from '../state/defaults'
-import { FIVE_PENCE_TAPER_TAX_YEAR, STEEP_TAPER_TAX_YEAR } from '../test/taxYearFixtures'
+import type { PayProfile } from './deductions'
+import { DEDUCTION_TERMS_FOR_TESTS, FIVE_PENCE_TAPER_TAX_YEAR, STEEP_TAPER_TAX_YEAR } from '../test/taxYearFixtures'
 
 /** Current pay as take-home mode reports it. */
 const takeHome = (takeHomeMonthly: number): CurrentPay => ({ kind: 'takehome', takeHomeMonthly })
@@ -152,6 +153,7 @@ describe('salaryFlip', () => {
       incomeTaxBands: [{ upTo: Infinity, rate: 1 }],
       niBands: [{ upTo: Infinity, rate: 0 }],
       medianFullTimeSalary: 30000,
+      ...DEDUCTION_TERMS_FOR_TESTS,
     }
 
     expect(marginalNetRate(100000, confiscatory)).toBe(0)
@@ -285,5 +287,90 @@ describe('currentPayOf', () => {
 
   it('uses take-home in take-home mode, even with a salary left over from salary mode', () => {
     expect(currentPayOf({ ...DEFAULT_STATE, takeHomeMode: 'takehome', grossSalary: '42000', takeHome: '2100' })).toEqual(takeHome(2100))
+  })
+})
+
+// The flip-panel scenarios the design notes worked through by hand, now run
+// through the engine. The reference profile is a relief-at-source pension of
+// 30% of salary, Plan 5 and a Postgraduate Loan: take-home peaks at
+// £33,067.40 on £100,000 and dips through the £100k taper.
+describe('salaryFlip under a pay profile', () => {
+  const year = CURRENT_TAX_YEAR
+  const reference: PayProfile = {
+    studentPlan: 'plan5',
+    postgradLoan: true,
+    pension: { arrangement: 'ras', mode: 'percent', percent: 30, monthlyAmount: 0 },
+  }
+
+  it('needs a higher salary for the same take-home once a loan and a pension come off', () => {
+    // £2,500 a month: about £36,800 with neither, about £40,400 with Plan 2
+    // and a 5% net pay pension.
+    const withDeductions: PayProfile = {
+      studentPlan: 'plan2',
+      postgradLoan: false,
+      pension: { arrangement: 'netpay', mode: 'percent', percent: 5, monthlyAmount: 0 },
+    }
+    expect(salaryFlip(2500, takeHome(2000), year).requiredGross).toBeCloseTo(36778, 0)
+    expect(salaryFlip(2500, takeHome(2000), year, withDeductions).requiredGross).toBeCloseTo(40399.58, 0)
+  })
+
+  it("works the user's own take-home out under the profile too", () => {
+    const flip = salaryFlip(2000, salary(115000), year, reference)
+    expect(flip.takeHomeMonthlyGap).toBeCloseTo(2000 - 32917.4 / 12, 6)
+  })
+
+  it('jumps the salary needed past the dip for a few pounds more take-home', () => {
+    // £33,062 a year is reached just below £100,000; £33,072 not until about
+    // £126,969, past the stretch that takes home no more than £100,000 does.
+    expect(salaryFlip(33062 / 12, takeHome(2000), year, reference).requiredGross).toBeCloseTo(99971.58, 0)
+    const jumped = salaryFlip(33072 / 12, takeHome(2000), year, reference)
+    expect(jumped.requiredGross).toBeCloseTo(126968.57, 0)
+    expect(jumped.payslipPlateau?.from).toBe(100000)
+  })
+
+  it("measures a salary-mode user's rise from the salary they typed", () => {
+    // On £115,000 the user takes home £32,917.40. A plan needing £33,072 needs
+    // about £126,969: a rise of about £11,969, not one worked out from the
+    // £99,208 that also takes home £32,917.
+    const flip = salaryFlip(33072 / 12, salary(115000), year, reference)
+    expect(flip.currentGross).toBe(115000)
+    expect(flip.grossGap).toBeCloseTo(11968.57, 0)
+  })
+
+  it('does not call a plan covered because a lower salary reaches it', () => {
+    // A plan needing £33,000 is reached at about £99,645, below £115,000, but
+    // the user's £32,917.40 falls short of it.
+    const flip = salaryFlip(33000 / 12, salary(115000), year, reference)
+    expect(flip.requiredGross).toBeCloseTo(99645.26, 0)
+    expect(flip.alreadyEnough).toBe(false)
+    expect(flip.grossGap).toBeGreaterThan(0)
+  })
+
+  it('names no salary for a take-home three salaries give', () => {
+    expect(salaryFlip(3000, takeHome(32917 / 12), year, reference).currentGross).toBeNull()
+  })
+
+  it('gives no per-pound figure inside the taper where under 10p is kept', () => {
+    // At £110,000 with Plan 5 and a Postgraduate Loan, relief at source at 25%
+    // keeps 3p of each extra £1 (£33.33 per £1) and at 28% under 1p
+    // (£166.67) — figures that would read as nonsense.
+    for (const percent of [25, 28]) {
+      const profile: PayProfile = { ...reference, pension: { arrangement: 'ras', mode: 'percent', percent, monthlyAmount: 0 } }
+      const flip = salaryFlip(netFromGross(110000, year, profile) / 12, takeHome(2000), year, profile)
+      expect(flip.requiredGross, `${percent}%`).toBeCloseTo(110000, 0)
+      expect(flip.inTaperBand).toBe(true)
+      expect(flip.salaryPerTakeHome).toBeNull()
+    }
+  })
+
+  it('takes a salary out of the taper band when a sacrifice brings pay under £100,000', () => {
+    const sacrifice: PayProfile = {
+      studentPlan: 'none',
+      postgradLoan: false,
+      pension: { arrangement: 'sacrifice', mode: 'percent', percent: 15, monthlyAmount: 0 },
+    }
+    const flip = salaryFlip(netFromGross(110000, year, sacrifice) / 12, takeHome(2000), year, sacrifice)
+    expect(flip.requiredGross).toBeCloseTo(110000, 0)
+    expect(flip.inTaperBand).toBe(false)
   })
 })

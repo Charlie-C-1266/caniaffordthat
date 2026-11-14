@@ -1,5 +1,22 @@
 import type { TaxYear } from '../lib/taxYears'
 
+/**
+ * The loan and relief-at-source terms every made-up table here carries: the
+ * 2026/27 figures, copied rather than read from the real table so a yearly
+ * refresh can't move a test's numbers. Tests that aren't about loans or
+ * pensions never use them.
+ */
+export const DEDUCTION_TERMS_FOR_TESTS: Pick<TaxYear, 'studentLoanPlans' | 'postgraduateLoan' | 'reliefAtSourceRate'> = {
+  studentLoanPlans: {
+    plan1: { threshold: 26900, rate: 0.09 },
+    plan2: { threshold: 29385, rate: 0.09 },
+    plan4: { threshold: 33795, rate: 0.09 },
+    plan5: { threshold: 25000, rate: 0.09 },
+  },
+  postgraduateLoan: { threshold: 21000, rate: 0.06 },
+  reliefAtSourceRate: 0.2,
+}
+
 // Tax-year tables unlike any real year, for driving the salary engine into a
 // shape today's figures never produce: take-home that falls for a stretch as
 // gross rises. Shared, so the engine, the flip logic and the flip panel are
@@ -22,6 +39,7 @@ export const STEEP_TAPER_TAX_YEAR: TaxYear = {
   incomeTaxBands: [{ upTo: Infinity, rate: 0.45 }],
   niBands: [{ upTo: Infinity, rate: 0.02 }],
   medianFullTimeSalary: 30000,
+  ...DEDUCTION_TERMS_FOR_TESTS,
 }
 
 /**
@@ -48,4 +66,5 @@ export const FIVE_PENCE_TAPER_TAX_YEAR: TaxYear = {
     { upTo: Infinity, rate: 0.02 },
   ],
   medianFullTimeSalary: 37430,
+  ...DEDUCTION_TERMS_FOR_TESTS,
 }

@@ -2,8 +2,9 @@
 
 `grossFromNet` in `src/lib/salary.ts` turns take-home back into gross. It used to
 bisect over the whole range, which is only correct while `netFromGross` is
-**monotonically increasing**. Today it is, but the student loan and pension
-deductions we have designed break that for one combination of inputs.
+**monotonically increasing**. With no deductions it is. The engine now also models
+student loans and workplace pensions (`src/lib/deductions.ts`), though the site
+doesn't ask for them yet, and one combination of them breaks that.
 
 The inversion no longer depends on it: see
 [What the code does about it](#what-the-code-does-about-it). This note records why
@@ -61,18 +62,27 @@ This matters twice over:
 ## What the code does about it
 
 **Bracket, then bisect.** Take-home is a straight line between the points where some
-figure crosses a threshold in the tax-year table: where tax starts, each income-tax
-band edge, the taper's start and end, and each NI band edge. `slopeChangesOf` lists
-those points in gross terms. `salariesForTakeHome` walks each straight stretch
-between them and bisects inside any stretch whose two ends sit either side of the
-target. A straight stretch can cross the target at most once, so this finds every
-salary that gives a take-home, lowest first. `grossFromNet` returns the lowest, which
-is the answer a person would recognise: every salary below it takes home less.
+base crosses a threshold: where tax starts, each income-tax band edge, the taper's
+start and end, each NI band edge, and each student loan threshold. A pension moves
+those points. Salary sacrifice and net pay lower the base income tax is charged on,
+and salary sacrifice also lowers the base NI and student loans use. Each base is a
+straight line in gross (`LinearBase` in `deductions.ts`), so a threshold maps back to
+a gross salary exactly: divided by `1 - p` for a percentage, shifted by a fixed
+amount. `slopeChangesOf` lists every such point in gross terms, plus where a fixed
+contribution stops growing. `salariesForTakeHome` walks each stretch between them and
+bisects inside any stretch whose two ends sit either side of the target. A stretch
+can cross the target at most once, so this finds every salary that gives a
+take-home, lowest first. `grossFromNet` returns the lowest, which is the answer a
+person would recognise: every salary below it takes home less. (Take-home is floored
+at £0 for a pension bigger than the payslip, which bends a stretch but never turns
+it back, so the bisection still holds.)
 
-A new deduction must add its own thresholds to `slopeChangesOf` (a loan threshold;
-for a percentage pension, each threshold divided by `1 - p`), or a crossing between
-two of them could be missed. `salary.test.ts` checks the search against a £5 scan on
-two tables that turn over, one of them with a band edge inside the taper.
+A new deduction must add its own thresholds to `slopeChangesOf`, or a crossing
+between two of them could be missed. `salary.test.ts` checks the search against a £5
+scan on two made-up tables that turn over and on five pay profiles, including the
+reference profile and fixed monthly pensions with both loans. It also checks the
+answer is the first salary to reach each take-home, across the whole range, for
+relief at source at 30%, 40% and 50% with both loans.
 
 **The flip panel** (`salaryFlip` in `src/lib/reverse.ts`, drawn by
 `src/components/result/SalaryFlip.tsx`) follows three rules:
@@ -110,18 +120,23 @@ ends the year worse off for earning more:
   figure balloons (£33.33 at 3p, £166.67 at 0.6p), so the note says less than 10p is
   kept instead.
 
-**Still to do before shipping a deduction that turns the curve over.**
+**A take-home no salary reaches.** At relief at source above about 47.5% with both
+loans, each extra £1 above £125,140 costs more than £1 on the payslip (45% tax, 2% NI,
+15% in loans, 40p of pension), so take-home has a ceiling: £17,067.40, reached at
+£100,000, at 50%. A plan needing more has no salary at all. `salariesForTakeHome`
+returns an empty list; `grossFromNet` returns the finite ceiling its search stopped
+at, which must never reach the screen as a salary.
+
+**Still to do before the site asks for these deductions.**
 
 - The salary methodology page must explain, with live figures, why payslip take-home
   can fall as salary rises while the year's position still rises. The site publishes
   its working before its figures.
-- Once the relief-at-source pension exists, the stretch note should name it and add
-  that, over the whole year, once higher-rate relief is claimed back, earning more
-  still leaves you better off. Today the panel can't know the cause, so it says only
-  what is true on the payslip.
-- The test asserting first-crossing correctness across the full domain, with the taper
-  band, both loans and a high relief-at-source rate all active, belongs with the
-  deductions themselves.
+- The flip panel must pass the profile through, name the relief-at-source pension in
+  the stretch note, and add that, over the whole year, once higher-rate relief is
+  claimed back, earning more still leaves you better off.
+- The flip panel must say plainly when no salary reaches a take-home, rather than
+  show a salary.
 
 The monotonicity sweep in `salary.test.ts` stays as the tripwire: it fails if a
 shipped table turns over, and its message points here.
