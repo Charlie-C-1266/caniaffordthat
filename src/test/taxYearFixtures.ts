@@ -23,3 +23,29 @@ export const STEEP_TAPER_TAX_YEAR: TaxYear = {
   niBands: [{ upTo: Infinity, rate: 0.02 }],
   medianFullTimeSalary: 30000,
 }
+
+/**
+ * The real 2026/27 shape, but with a 62% higher rate. Inside the £100k taper
+ * each extra £1 of gross then costs 93p of tax and 2p of NI, keeping just 5p.
+ * Take-home still rises everywhere, so the inversion is unaffected: this is
+ * for the taper note, which only quotes "£X of salary per £1" while at least
+ * 10p of each extra £1 is kept.
+ */
+export const FIVE_PENCE_TAPER_TAX_YEAR: TaxYear = {
+  id: 'test-five-pence-taper',
+  label: 'five-pence taper (test only)',
+  personalAllowance: 12570,
+  taperThreshold: 100000,
+  taperRate: 0.5,
+  incomeTaxBands: [
+    { upTo: 37700, rate: 0.2 },
+    { upTo: 125140, rate: 0.62 },
+    { upTo: Infinity, rate: 0.45 },
+  ],
+  niBands: [
+    { upTo: 12570, rate: 0 },
+    { upTo: 50270, rate: 0.08 },
+    { upTo: Infinity, rate: 0.02 },
+  ],
+  medianFullTimeSalary: 37430,
+}

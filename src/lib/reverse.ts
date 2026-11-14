@@ -1,4 +1,12 @@
-import { grossFromNet, marginalNetRate, inAllowanceTaper, netFromGross, salariesForTakeHome } from './salary'
+import {
+  grossFromNet,
+  marginalNetRate,
+  inAllowanceTaper,
+  netFromGross,
+  salariesForTakeHome,
+  takeHomePlateauBelow,
+  type TakeHomePlateau,
+} from './salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 import { num } from './calculations'
 import type { CalculatorState } from '../state/types'
@@ -62,12 +70,31 @@ interface SalaryFlip {
   medianFullTimeSalary: number
   /** True when the required gross lands in the £100k personal-allowance taper band. */
   inTaperBand: boolean
-  /** £ of extra salary each extra £1 of take-home costs at the required gross — the taper-band "delight" figure. */
-  salaryPerTakeHome: number
+  /**
+   * £ of extra salary each extra £1 of take-home costs at the required gross —
+   * the taper-band "delight" figure. `null` when an extra £1 of salary keeps
+   * less than `MIN_KEPT_TO_QUOTE` of it, or nothing at all.
+   */
+  salaryPerTakeHome: number | null
+  /**
+   * A stretch of pay below the salary needed that takes home no more than its
+   * start does on the payslip, which is why the salary needed sits past it.
+   * `null` while take-home rises all the way up, as it always does under
+   * today's tables.
+   */
+  payslipPlateau: TakeHomePlateau | null
 }
 
 /** Slack for comparing a salary the search found with one it was asked about: a penny, well under anything shown. */
 const PENNY = 0.01
+
+/**
+ * The least of each extra £1 of salary that must be kept on the payslip for
+ * the taper note to quote "£X of salary per £1 of take-home". Below 10p the
+ * figure balloons (£33.33 at 3p kept, £166.67 at 0.6p) and stops meaning
+ * much, so the note says how little is kept instead.
+ */
+export const MIN_KEPT_TO_QUOTE = 0.1
 
 /**
  * The salary behind a take-home the user typed, or `null` when more than one
@@ -127,11 +154,11 @@ export function salaryFlip(requiredTakeHomeMonthly: number, current: CurrentPay,
     vsMedian: ratio > 1.05 ? 'above' : ratio < 0.95 ? 'below' : 'about',
     medianFullTimeSalary: median,
     inTaperBand: inAllowanceTaper(requiredGross, year),
-    // Defensive: with the current tax tables the kept fraction never falls
-    // below ~0.38, so this can't divide by zero today — reverse.test.ts sweeps
-    // every band boundary to pin that claim down. A table with a 100% marginal
-    // band would reach the fallback, and the same test covers it through the
-    // `year` parameter rather than leaving the branch unexercised.
-    salaryPerTakeHome: marginal > 0 ? 1 / marginal : 0,
+    // With the current tax tables the kept fraction never falls below ~0.38,
+    // so this is always a figure today — reverse.test.ts sweeps every band
+    // boundary to pin that claim down. Tables that keep 5p or nothing reach
+    // the null, and the same tests cover them through the `year` parameter.
+    salaryPerTakeHome: marginal >= MIN_KEPT_TO_QUOTE ? 1 / marginal : null,
+    payslipPlateau: takeHomePlateauBelow(requiredGross, year),
   }
 }

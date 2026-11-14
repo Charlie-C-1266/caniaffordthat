@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { currentPayOf, salaryFlip, type CurrentPay } from './reverse'
+import { currentPayOf, MIN_KEPT_TO_QUOTE, salaryFlip, type CurrentPay } from './reverse'
 import { grossFromNet, marginalNetRate, netFromGross } from './salary'
 import { CURRENT_TAX_YEAR, type TaxYear } from './taxYears'
 import { DEFAULT_STATE } from '../state/defaults'
-import { STEEP_TAPER_TAX_YEAR } from '../test/taxYearFixtures'
+import { FIVE_PENCE_TAPER_TAX_YEAR, STEEP_TAPER_TAX_YEAR } from '../test/taxYearFixtures'
 
 /** Current pay as take-home mode reports it. */
 const takeHome = (takeHomeMonthly: number): CurrentPay => ({ kind: 'takehome', takeHomeMonthly })
@@ -65,20 +65,20 @@ describe('salaryFlip', () => {
     expect(flip.salaryPerTakeHome).toBeLessThan(2.75)
   })
 
-  it('documents that the marginal <= 0 fallback in salaryPerTakeHome is unreachable with the current tax tables', () => {
-    // salaryFlip guards `salaryPerTakeHome` with `marginal > 0 ? 1 / marginal : 0`,
-    // purely defensively: under the current UK bands the *worst* combined
-    // marginal deduction is 62% (40% higher rate + an implicit 20% from the
-    // £100k allowance taper + 2% NI), so the kept fraction never falls below
-    // ~0.38 — and can never reach 0 — at any gross. Sweep every band boundary
+  it('documents that the null in salaryPerTakeHome is unreachable with the current tax tables', () => {
+    // salaryFlip only quotes a per-pound figure while at least 10p of an
+    // extra £1 is kept (`MIN_KEPT_TO_QUOTE`). Under the current UK bands the
+    // *worst* combined marginal deduction is 62% (40% higher rate + an
+    // implicit 20% from the £100k allowance taper + 2% NI), so the kept
+    // fraction never falls below ~0.38 at any gross. Sweep every band boundary
     // (±£1) plus points inside each band to pin that down; if a future tax
-    // table ever pushes a marginal rate to 100%+, this test is the tripwire.
+    // table ever pushes the kept fraction under 10p, this test is the tripwire.
     const grosses = [
       0, 1, 5000, 12569, 12570, 12571, 30000, 50269, 50270, 50271, 75000, 99999, 100000, 100001, 110000, 125139, 125140, 125141, 200000,
       1000000,
     ]
     for (const gross of grosses) {
-      expect(marginalNetRate(gross), `marginal net rate at gross £${gross}`).toBeGreaterThan(0)
+      expect(marginalNetRate(gross), `marginal net rate at gross £${gross}`).toBeGreaterThanOrEqual(MIN_KEPT_TO_QUOTE)
     }
     // And so salaryFlip always reports a real, positive £-of-salary figure —
     // including at the degenerate gross of £0 (required take-home of £0).
@@ -125,10 +125,22 @@ describe('salaryFlip', () => {
   })
 
   // The other side of the band sweep above: the sweep proves the fallback is
-  // unreachable with *today's* table, and this proves the fallback itself
+  // unreachable with *today's* table, and these prove the fallback itself
   // behaves if a future table ever reaches it. `year` is a parameter for
   // exactly this reason, matching every function in ./salary.
-  it('falls back to 0 salaryPerTakeHome under a table with no take-home to gain', () => {
+  it('gives no per-pound figure where an extra £1 keeps under 10p', () => {
+    // Inside this table's taper each extra £1 of gross keeps 5p, so the
+    // figure would read "£20.00 of salary per £1".
+    const year = FIVE_PENCE_TAPER_TAX_YEAR
+    const flip = salaryFlip(netFromGross(110000, year) / 12, takeHome(2000), year)
+
+    expect(flip.requiredGross).toBeCloseTo(110000, 0)
+    expect(flip.inTaperBand).toBe(true)
+    expect(marginalNetRate(110000, year)).toBeCloseTo(0.05, 6)
+    expect(flip.salaryPerTakeHome).toBeNull()
+  })
+
+  it('gives no per-pound figure under a table with no take-home to gain', () => {
     // A 100% flat rate: every extra £1 of gross is taken, so the marginal
     // kept fraction is 0 and 1 / marginal would be Infinity.
     const confiscatory: TaxYear = {
@@ -146,9 +158,8 @@ describe('salaryFlip', () => {
 
     const flip = salaryFlip(2000, takeHome(1000), confiscatory)
 
-    expect(flip.salaryPerTakeHome).toBe(0)
+    expect(flip.salaryPerTakeHome).toBeNull()
     // And nothing downstream becomes Infinity or NaN.
-    expect(Number.isFinite(flip.salaryPerTakeHome)).toBe(true)
     expect(Number.isFinite(flip.requiredGross)).toBe(true)
     expect(Number.isFinite(flip.grossGap)).toBe(true)
     expect(Number.isNaN(flip.requiredGross)).toBe(false)
@@ -234,6 +245,32 @@ describe('salaryFlip where one take-home comes from more than one salary', () =>
     const flip = salaryFlip(57100 / 12, salary(104000), year)
     expect(flip.alreadyEnough).toBe(true)
     expect(flip.grossGap).toBeCloseTo(97063.21 - 104000, 0)
+  })
+})
+
+describe('salaryFlip where take-home stops rising with pay', () => {
+  it('finds no payslip plateau anywhere under the current table', () => {
+    for (const requiredMonthly of [0, 500, 2000, 4000, 5700, 6100, 6500, 8000, 20000]) {
+      expect(salaryFlip(requiredMonthly, takeHome(2000)).payslipPlateau, `£${requiredMonthly}/month needed`).toBeNull()
+    }
+  })
+
+  it('reports the plateau the salary needed has to get past', () => {
+    // £58,700 a year is just above the £58,656.50 that £100,000 takes home on
+    // STEEP_TAPER_TAX_YEAR. Take-home falls after £100,000 and only climbs
+    // back to that level at about £110,673, so the salary needed is about
+    // £110,755, where £58,600 would have needed about £99,893.
+    const flip = salaryFlip(58700 / 12, takeHome(3000), STEEP_TAPER_TAX_YEAR)
+
+    expect(flip.requiredGross).toBeCloseTo(110754.72, 0)
+    expect(flip.payslipPlateau?.from).toBe(100000)
+    expect(flip.payslipPlateau?.to).toBeCloseTo(110672.64, 0)
+    expect(salaryFlip(58600 / 12, takeHome(3000), STEEP_TAPER_TAX_YEAR).requiredGross).toBeCloseTo(99893.4, 0)
+  })
+
+  it('reports no plateau when the salary needed comes before the peak', () => {
+    // £57,500 is first reached at about £97,818, on the way up to the peak.
+    expect(salaryFlip(57500 / 12, takeHome(3000), STEEP_TAPER_TAX_YEAR).payslipPlateau).toBeNull()
   })
 })
 
