@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { PENSION_PERCENT_RANGE } from '../src/lib/sliderRanges'
 
 // A "Copy result link" URL is user-editable input. MoneyInput refuses a
 // negative at the keystroke and on paste, clamping it to "0" so the figure on
@@ -72,4 +73,122 @@ test.describe('a shared link cannot smuggle in a value the UI would refuse', () 
     // maxLength on the input is what keeps the two paths consistent.
     expect((await name.inputValue()).length).toBe(60)
   })
+})
+
+// #296: #127 proved hydration never shows a value the UI couldn't produce, but
+// only for the older fields. The pay-profile fields #291 added each have
+// guards in `urlState.ts` that are unit-tested and never run end to end. A
+// link naming relief at source is the likeliest of these, since the design doc
+// lists it as a deliberate fallback.
+//
+// Tests only. Every case below was probed against dev first and already
+// behaves correctly — nothing here records a bug.
+
+/**
+ * Opens a salary-mode link and lands on the Budget step, where "About your
+ * pay" lives. `takeHome` is carried too, so the flow can reach a result: these
+ * tests follow the figures all the way through, not just onto the Budget step.
+ */
+async function openPayLink(page: Page, params: string) {
+  await page.goto(`/?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=2393.30&${params}`)
+  await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+  const box = page.locator('div.mono').first()
+  await expect(box.getByText('SALARY', { exact: true })).toBeVisible()
+  return box
+}
+
+/** The take-home a £35,000 salary reaches with nothing taken but tax and NI. */
+const NO_DEDUCTIONS_TAKE_HOME = '£2,393.30'
+
+test.describe('a shared link cannot smuggle in a pay profile the UI would refuse', () => {
+  test('relief at source falls back to no pension, leaving take-home untouched', async ({ page }) => {
+    // The one arrangement the site deliberately does not offer yet.
+    const box = await openPayLink(page, 'pensionArrangement=ras&pensionMode=percent&pensionPercent=5')
+
+    await expect(box.getByText('PENSION', { exact: true })).toHaveCount(0)
+    await expect(box.getByText(NO_DEDUCTIONS_TAKE_HOME)).toBeVisible()
+    await expect(page.getByText(/no student loan or pension/).first()).toBeVisible()
+
+    // It must not be offered as a choice either, and it must not force the
+    // section open by itself.
+    await expect(page.getByRole('group', { name: 'Workplace pension' }).getByRole('button', { name: 'Relief at source' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^About your pay/ })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  for (const [name, params] of [
+    ['an unknown pension arrangement', 'pensionArrangement=bogus'],
+    ['an unknown student loan plan', 'studentPlan=plan9'],
+    ['a non-boolean postgraduate loan', 'postgradLoan=yes'],
+  ] as const) {
+    test(`ignores ${name}`, async ({ page }) => {
+      const box = await openPayLink(page, params)
+
+      await expect(box.getByText(NO_DEDUCTIONS_TAKE_HOME)).toBeVisible()
+      await expect(page.getByText(/no student loan or pension/).first()).toBeVisible()
+    })
+  }
+
+  for (const [name, percent, expected] of [
+    ['above the range', '999', PENSION_PERCENT_RANGE.max],
+    ['below the range', '-5', PENSION_PERCENT_RANGE.min],
+  ] as const) {
+    test(`clamps a pension percentage ${name} into the slider's own bounds`, async ({ page }) => {
+      await openPayLink(page, `pensionArrangement=netpay&pensionMode=percent&pensionPercent=${percent}`)
+
+      // The slider shows the clamped value, and so does the caption beside it.
+      await expect(page.getByRole('slider', { name: 'Your contribution' })).toHaveValue(String(expected))
+      await expect(page.getByText(`${expected}% of salary`).first()).toBeVisible()
+      await expect(page.getByText(new RegExp(`${expected}% net pay pension`)).first()).toBeVisible()
+    })
+  }
+
+  for (const [name, amount] of [
+    ['a negative amount', '-100'],
+    ['non-numeric junk', 'abc'],
+  ] as const) {
+    test(`rejects ${name} for the monthly pension, as the other money fields are held`, async ({ page }) => {
+      const box = await openPayLink(page, `pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=${amount}`)
+
+      // Sanitised to the default, so nothing is taken — exactly what an empty
+      // amount means.
+      await expect(box.getByText('PENSION', { exact: true })).toHaveCount(0)
+      await expect(box.getByText(NO_DEDUCTIONS_TAKE_HOME)).toBeVisible()
+      await expect(page.getByLabel('Your contribution')).toHaveValue('')
+    })
+  }
+
+  for (const [name, params] of [
+    ['relief at source', 'pensionArrangement=ras&pensionMode=percent&pensionPercent=5'],
+    ['an unknown arrangement', 'pensionArrangement=bogus'],
+    ['an unknown plan', 'studentPlan=plan9'],
+    ['a non-boolean loan flag', 'postgradLoan=yes'],
+    ['an out-of-range percentage', 'pensionArrangement=netpay&pensionMode=percent&pensionPercent=999'],
+    ['a negative percentage', 'pensionArrangement=netpay&pensionMode=percent&pensionPercent=-5'],
+    ['a negative amount', 'pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=-100'],
+    ['junk for an amount', 'pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=abc'],
+    ['an unknown pension mode', 'pensionArrangement=netpay&pensionMode=sideways&pensionPercent=5'],
+  ] as const) {
+    test(`leaves no NaN, no negative figure and no console error for ${name}`, async ({ page }) => {
+      const errors: string[] = []
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(message.text())
+      })
+      page.on('pageerror', (error) => errors.push(String(error)))
+
+      await openPayLink(page, params)
+      const budgetText = await page.locator('body').innerText()
+      expect(budgetText, 'the Budget step shows no NaN').not.toContain('NaN')
+
+      // On to the result, where the same figures are spent.
+      await page.getByLabel('Step progress').getByRole('button', { name: 'Result', exact: true }).click()
+      await page.getByText('Copy result link').waitFor()
+      const resultText = await page.locator('body').innerText()
+      expect(resultText, 'the result shows no NaN').not.toContain('NaN')
+      // The payslip's own deductions use a true minus sign (U+2212) joined to
+      // the figure, so a hyphen-minus before a £ would be a real negative.
+      expect(resultText, 'no negative money figure').not.toMatch(/-£/)
+
+      expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([])
+    })
+  }
 })
