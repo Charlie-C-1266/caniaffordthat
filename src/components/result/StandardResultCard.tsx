@@ -37,7 +37,7 @@ export function StandardResultCard({ result, scrollToIndex }: StandardResultCard
       )}
 
       <BreakdownBox>
-        <BreakdownRow label="GOAL" value={result.goalRowValue} />
+        <BreakdownRow label="GOAL" value={result.goalRowValue} wrapValue />
         {/* Only shown when there is some, so a reader who saves nothing isn't
               asked to parse a £0 row before the figure that matters. */}
         {result.regularSaving > 0 && <BreakdownRow label="REGULAR SAVING" value={fmt(result.regularSaving)} />}
