@@ -106,4 +106,76 @@ describe('ProgressRail', () => {
     expect(dotOf('Details').style.background).toBe('rgb(120, 200, 255)')
     expect(dotOf('Goal').style.background).toBe('transparent')
   })
+
+  // #286: each button used to wrap only the visible dot (`padding: 0`), so a
+  // step's hit area *was* the dot — 7×7px inactive, 10×10px active, against
+  // WCAG 2.2 SC 2.5.8 Target Size (Minimum)'s 24×24px (AA). The real sizes are
+  // measured in a browser by e2e/progress-rail-target-size.spec.ts; these pin
+  // the styling that produces them, and that the dot keeps its own size.
+  describe('target size (#286)', () => {
+    it.each([
+      ['the active step', 0],
+      ['an inactive step', 2],
+    ])('gives %s a button at least the minimum target size', (_case, activeIndex) => {
+      render(<ProgressRail activeIndex={activeIndex} labels={LABELS} accentColor={ACCENT} onSelect={() => {}} />)
+
+      for (const dot of dots()) {
+        expect(dot.style.minWidth).toBe('var(--target-size-min)')
+        expect(dot.style.minHeight).toBe('var(--target-size-min)')
+        // Centred, so the dot sits in the middle of its hit area.
+        expect(dot.style.justifyContent).toBe('center')
+        expect(dot.style.alignItems).toBe('center')
+      }
+    })
+
+    it('leaves the dot itself at its own size, so nothing looks different', () => {
+      render(<ProgressRail activeIndex={1} labels={LABELS} accentColor={ACCENT} onSelect={() => {}} />)
+
+      // The visible mark is still driven by the dot tokens, not the target size.
+      expect(dotOf('Details').style.width).toBe('var(--dot-size-active)')
+      expect(dotOf('Details').style.height).toBe('var(--dot-size-active)')
+      expect(dotOf('Goal').style.width).toBe('var(--dot-size-inactive)')
+      expect(dotOf('Goal').style.height).toBe('var(--dot-size-inactive)')
+      expect(dotOf('Goal').style.border).toBe('var(--border-width-dot) solid var(--text-tertiary-dim)')
+    })
+
+    it('leaves the rail enough gap that neighbouring buttons cannot overlap', () => {
+      // The spacing exception to SC 2.5.8 did not apply before: with gap 16
+      // and a 7px dot, two inactive centres were 23px apart, so 24px circles
+      // centred on them overlapped. A positive gap between 24px buttons means
+      // the hit areas are separate by construction.
+      const { container } = render(<ProgressRail activeIndex={0} labels={LABELS} accentColor={ACCENT} onSelect={() => {}} />)
+      const nav = container.querySelector('nav')
+
+      expect(nav).not.toBeNull()
+      expect(Number.parseFloat((nav as HTMLElement).style.gap)).toBeGreaterThan(0)
+    })
+
+    it.each([
+      ['a single step', ['Goal']],
+      ['the first step active', LABELS],
+      ['a long rail', ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']],
+    ])('sizes every button on %s', (_case, labels) => {
+      render(<ProgressRail activeIndex={0} labels={labels} accentColor={ACCENT} onSelect={() => {}} />)
+
+      expect(dots()).toHaveLength(labels.length)
+      for (const dot of dots()) expect(dot.style.minHeight).toBe('var(--target-size-min)')
+    })
+
+    it("sizes the last step's button too when it is the active one", () => {
+      render(<ProgressRail activeIndex={LABELS.length - 1} labels={LABELS} accentColor={ACCENT} onSelect={() => {}} />)
+
+      const last = screen.getByRole('button', { name: 'Result' })
+      expect(last.getAttribute('aria-current')).toBe('step')
+      expect(last.style.minWidth).toBe('var(--target-size-min)')
+      // The bigger button must not have swallowed the dot's own sizing.
+      expect(dotOf('Result').style.width).toBe('var(--dot-size-active)')
+    })
+
+    it('keeps no padding on the button, so the minimum size is what sets the hit area', () => {
+      render(<ProgressRail activeIndex={0} labels={LABELS} accentColor={ACCENT} onSelect={() => {}} />)
+
+      expect(dots()[0].style.padding).toBe('0px')
+    })
+  })
 })

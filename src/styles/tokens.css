@@ -157,6 +157,10 @@
   --border-width-dot: 1.5px;
   --dot-size-inactive: 7px;
   --dot-size-active: 10px;
+  /* The smallest a pointer target may be: WCAG 2.2 SC 2.5.8 Target Size
+     (Minimum), level AA. The dots above are what a rail step *looks* like; this
+     is how big the button around one has to be (#286). */
+  --target-size-min: 24px;
   --shadow-tile: 0 30px 80px rgba(0, 0, 0, 0.35);
   --shadow-card: 0 16px 40px rgba(0, 0, 0, 0.3);
   --shadow-card-focused: 0 26px 70px rgba(46, 213, 115, 0.22);
