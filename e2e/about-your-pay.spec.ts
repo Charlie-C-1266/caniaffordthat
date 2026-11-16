@@ -79,4 +79,31 @@ test.describe('About your pay', () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(0)
   })
+  test('a salary-mode link with a wrong take-home shows the payslip figure everywhere (#292)', async ({ page }) => {
+    // The link claims £2,393.30 — the no-deductions figure for £35,000 — while
+    // a Plan 2 salary with a 5% net-pay pension actually takes home £2,234.52.
+    // Before #292 hydration trusted the link, so the Budget step's payslip
+    // recomputed and showed £2,234.52 while the verdict and result were worked
+    // out on £2,393.30.
+    const STALE = '2393.30'
+    const DERIVED = '£2,234.52'
+    await goToBudget(
+      page,
+      `?goalId=big&mode=save&saveFlavor=goal&itemName=New+sofa&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=${STALE}` +
+        '&studentPlan=plan2&postgradLoan=0&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    // The payslip's TAKE-HOME line, derived from the salary and the profile.
+    const payslip = page.locator('div.mono').first()
+    await expect(payslip.getByText('TAKE-HOME', { exact: true }).locator('xpath=following-sibling::span')).toHaveText(DERIVED)
+    // The stale figure is nowhere on the step.
+    await expect(page.getByText('£2,393.30')).toHaveCount(0)
+
+    // And the result agrees: its spare-cash row is the derived take-home, not
+    // the link's, since no outgoings are set.
+    await goToResult(page)
+    await expect(page.getByText('SPARE CASH', { exact: true }).locator('xpath=following-sibling::span')).toHaveText('£2,235')
+    await expect(page.getByText('£2,393')).toHaveCount(0)
+  })
 })

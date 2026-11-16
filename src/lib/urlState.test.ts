@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
+import { payProfileOf, takeHomeFor, OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS } from './payProfile'
+import { monthlyTakeHomeFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 import { ITEM_NAME_MAX_LENGTH } from './fields'
 import { TERM_RANGES } from './vehicle'
 import * as sliderRanges from './sliderRanges'
@@ -456,6 +459,166 @@ describe('hydrateStateFromUrl — pay profile', () => {
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=0`).postgradLoan).toBe(false)
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=yes`).postgradLoan).toBe(false)
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=true`).postgradLoan).toBe(false)
+  })
+})
+
+// #292: in salary mode `takeHome` is derived, never typed — BudgetStep
+// recomputes it from the salary and the pay profile, and everything downstream
+// reads only `takeHome`. A link was the one path that didn't: it copied
+// `takeHome` as a plain money string, so a salary-mode link whose figure
+// didn't match its salary and profile loaded inconsistent. The Budget step's
+// payslip recomputed and showed one take-home while the verdict and result
+// were worked out on another.
+//
+// Expected figures come from the engine rather than literals, so the April
+// refresh of the loan thresholds updates both sides together.
+/** A salary-mode link, with the pay-profile params the caller cares about. */
+const salaryLink = (params: Record<string, string> = {}) =>
+  '?' +
+  new URLSearchParams({
+    goalId: 'big',
+    mode: 'save',
+    saveFlavor: 'goal',
+    itemPrice: '1200',
+    takeHomeMode: 'salary',
+    grossSalary: '35000',
+    ...params,
+  }).toString()
+
+describe('hydrateStateFromUrl: salary-mode take-home is derived, not trusted', () => {
+  it('replaces a mismatched takeHome with the derived figure', () => {
+    // The issue's own URL: the link claims £2,393.30 while a £35,000 Plan 2
+    // salary with a 5% net-pay pension takes home £2,234.52.
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=2393.30' +
+        '&studentPlan=plan2&postgradLoan=0&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+
+    expect(state.takeHome).toBe('2234.52')
+    expect(state.takeHome).toBe(String(Math.round(monthlyTakeHomeFromGross(35000, CURRENT_TAX_YEAR, payProfileOf(state)) * 100) / 100))
+  })
+
+  it('derives it with no takeHome param at all', () => {
+    const state = hydrateStateFromUrl(salaryLink({ studentPlan: 'plan2' }))
+
+    expect(state.takeHome).not.toBe('')
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+  })
+
+  it.each(['none', ...STUDENT_LOAN_PLANS])('derives it with studentPlan=%s', (studentPlan) => {
+    const state = hydrateStateFromUrl(salaryLink({ studentPlan, takeHome: '9999' }))
+
+    expect(state.studentPlan).toBe(studentPlan)
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+  })
+
+  it('derives it with the postgraduate loan on, taking more than with it off', () => {
+    const withLoan = hydrateStateFromUrl(salaryLink({ postgradLoan: '1', takeHome: '9999' }))
+    const without = hydrateStateFromUrl(salaryLink({ postgradLoan: '0', takeHome: '9999' }))
+
+    expect(withLoan.postgradLoan).toBe(true)
+    expect(withLoan.takeHome).toBe(takeHomeFor('35000', payProfileOf(withLoan)))
+    expect(Number(withLoan.takeHome)).toBeLessThan(Number(without.takeHome))
+  })
+
+  it.each(
+    OFFERED_PENSION_ARRANGEMENTS.flatMap((pensionArrangement) =>
+      (['percent', 'amount'] as const).map((pensionMode) => [pensionArrangement, pensionMode] as const),
+    ),
+  )('derives it for a %s pension given as %s', (pensionArrangement, pensionMode) => {
+    const state = hydrateStateFromUrl(
+      salaryLink({ pensionArrangement, pensionMode, pensionPercent: '5', pensionMonthlyAmount: '150', takeHome: '9999' }),
+    )
+
+    expect(state.pensionArrangement).toBe(pensionArrangement)
+    expect(state.pensionMode).toBe(pensionMode)
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+    // A pension was actually applied, so this isn't passing on a no-op profile.
+    expect(Number(state.takeHome)).toBeLessThan(Number(hydrateStateFromUrl(salaryLink()).takeHome))
+  })
+
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['zero', '0'],
+    ['negative', '-5000'],
+    ['junk', 'abc'],
+    ['1e999', '1e999'],
+  ])('leaves takeHome as read when grossSalary is %s', (_case, grossSalary) => {
+    // The same thing the UI does with no salary typed: nothing is derived, so
+    // whatever the link carried (held to isMoneyValue) stands.
+    const params: Record<string, string> = { takeHome: '2000' }
+    if (grossSalary !== undefined) params.grossSalary = grossSalary
+    const search =
+      '?' +
+      new URLSearchParams({
+        goalId: 'big',
+        mode: 'save',
+        saveFlavor: 'goal',
+        itemPrice: '1200',
+        takeHomeMode: 'salary',
+        ...params,
+      }).toString()
+
+    const state = hydrateStateFromUrl(search)
+    expect(state.takeHome).toBe('2000')
+  })
+
+  it('does not touch takeHome in take-home mode, even with a salary and profile present', () => {
+    // There the typed figure is the authority; the salary is just remembered.
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=takehome&grossSalary=35000&takeHome=1234.56' +
+        '&studentPlan=plan2&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+
+    expect(state.takeHomeMode).toBe('takehome')
+    expect(state.takeHome).toBe('1234.56')
+    expect(state.grossSalary).toBe('35000')
+  })
+
+  it('derives with no pension for a relief-at-source link, which is not offered yet', () => {
+    const ras = hydrateStateFromUrl(
+      salaryLink({ pensionArrangement: 'ras', pensionMode: 'percent', pensionPercent: '5', takeHome: '9999' }),
+    )
+    const none = hydrateStateFromUrl(salaryLink())
+
+    // The arrangement falls back, so the derived figure must match a no-pension one.
+    expect(ras.pensionArrangement).toBe('none')
+    expect(ras.takeHome).toBe(none.takeHome)
+    expect(ras.takeHome).toBe(takeHomeFor('35000', payProfileOf(ras)))
+  })
+
+  it('floors the derived take-home at zero when the pension takes more than the pay', () => {
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=12000' +
+        '&pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=5000&takeHome=9999',
+    )
+
+    expect(state.takeHome).toBe('0')
+    expect(Number(state.takeHome)).toBeGreaterThanOrEqual(0)
+  })
+
+  it('round-trips a state the UI produced without changing takeHome', () => {
+    // buildShareParams -> hydrateStateFromUrl must be a fixed point: the UI
+    // already derived takeHome the same way, so re-deriving changes nothing.
+    const uiState = {
+      ...DEFAULT_STATE,
+      goalId: 'big' as const,
+      itemPrice: '1200',
+      takeHomeMode: 'salary' as const,
+      grossSalary: '35000',
+      studentPlan: 'plan2' as const,
+      postgradLoan: true,
+      pensionArrangement: 'sacrifice' as const,
+      pensionMode: 'percent' as const,
+      pensionPercent: 5,
+    }
+    const derived = { ...uiState, takeHome: takeHomeFor(uiState.grossSalary, payProfileOf(uiState)) }
+
+    const round = hydrateStateFromUrl(`?${buildShareParams(derived).toString()}`)
+    expect(round.takeHome).toBe(derived.takeHome)
+    // And again, so it is stable rather than merely changed once.
+    expect(hydrateStateFromUrl(`?${buildShareParams(round).toString()}`).takeHome).toBe(derived.takeHome)
   })
 })
 

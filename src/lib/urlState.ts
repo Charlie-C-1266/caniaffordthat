@@ -1,7 +1,8 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
+import { num } from './calculations'
 import { isMoneyValue, sanitiseItemName } from './fields'
-import { OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS } from './payProfile'
+import { OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS, payProfileOf, takeHomeFor } from './payProfile'
 import { TERM_RANGES } from './vehicle'
 import {
   APR_RANGE,
@@ -159,6 +160,10 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
  * price-less emergency fund (which would otherwise never hydrate, having no
  * price to key on), `itemPrice` keeps older price-only links working. Enum and goal fields are validated rather than
  * trusted, since a query string is user-controllable input.
+ *
+ * Salary-mode take-home is re-derived from the salary and pay profile rather
+ * than trusted, so the figure can't disagree with the payslip the Budget step
+ * shows (#292). In take-home mode the typed figure is kept as read.
  */
 export function hydrateStateFromUrl(search: string): CalculatorState {
   const params = new URLSearchParams(search)
@@ -244,6 +249,28 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // interest, whose slider stops lower, so a crafted saving link is held to
   // that.
   if (goal?.kind !== 'vehicle' && state.mode === 'save') state.growth = clampTo(state.growth, SAVINGS_INTEREST_RANGE)
+
+  // In salary mode `takeHome` is derived, never typed: BudgetStep recomputes it
+  // from the salary and the pay profile whenever either changes, and everything
+  // downstream (verdict, projection, budget split) reads only `takeHome`. A
+  // link was the one path that didn't, copying `takeHome` as a plain money
+  // string — so a salary-mode link whose figure didn't match its salary and
+  // profile loaded inconsistent: the Budget step's payslip recomputed and
+  // showed one take-home while the result was worked out on another (#292).
+  //
+  // This isn't only hand-edited links. `takeHome` depends on data that changes
+  // every April — the Plan 1 and Plan 4 thresholds rise each year and Plan 5
+  // follows RPI from April 2027 (see taxYears.ts and
+  // docs/salary-engine-monotonicity.md) — so every salary-mode link with a
+  // Plan 1/4/5 loan carries a figure that goes stale when the next table lands.
+  //
+  // Re-derived here with the same helper BudgetStep uses, so the two can't
+  // disagree. It runs last, once the salary string and every pay-profile field
+  // have been read and sanitised. Take-home mode is untouched: there the typed
+  // figure is the authority.
+  if (state.takeHomeMode === 'salary' && num(state.grossSalary) > 0) {
+    state.takeHome = takeHomeFor(state.grossSalary, payProfileOf(state))
+  }
 
   return state
 }
