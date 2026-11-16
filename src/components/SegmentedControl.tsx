@@ -8,25 +8,54 @@ export interface SegmentedOption<T extends string> {
   activeColor: string
 }
 
-interface SegmentedControlProps<T extends string> {
+/**
+ * How the group is named — exactly one of the two, never both and never
+ * neither. `ariaLabelledBy` where the question is already on screen (so the
+ * name can't drift from the visible text), `ariaLabel` where it isn't.
+ *
+ * Required rather than optional, deliberately: an unnamed group is the bug
+ * #282 fixed, so the type is what stops a new call site reintroducing it.
+ */
+type SegmentedControlName = { ariaLabel: string; ariaLabelledBy?: never } | { ariaLabelledBy: string; ariaLabel?: never }
+
+type SegmentedControlProps<T extends string> = {
   options: readonly SegmentedOption<T>[]
   /** The currently selected option's value. */
   value: T
   onChange: (value: T) => void
   /** `'md'`: full-width with equal-width segments (the pay-mode toggle). `'sm'`: compact, content-sized (the rate-mode toggle). */
   size?: 'md' | 'sm'
-}
+} & SegmentedControlName
 
 /**
  * The pill-shaped segmented toggle used for either/or choices — "Save up /
  * Pay monthly" in Details and "% of spare cash / Fixed amount" in Plan. One
  * component so the two toggles share their structure and interaction styling
  * rather than each rebuilding the pill from scratch.
+ *
+ * The wrapper is a named `role="group"`. The buttons have always carried
+ * `aria-pressed`, but before #282 the choice they belong to was never named
+ * for assistive tech: the wrapper was a plain `<div>` with no role, and at
+ * most call sites the question was shown only as an unassociated sibling
+ * `<div>`. So tabbing into the Details step announced "Save up for it, toggle
+ * button, pressed" with no idea what was being asked — a WCAG 1.3.1 (Info and
+ * Relationships) / 4.1.2 (Name, Role, Value) gap, and the group-level
+ * counterpart to the `ToggleButton` state gap #272 closed.
  */
-export function SegmentedControl<T extends string>({ options, value, onChange, size = 'md' }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+  size = 'md',
+  ariaLabel,
+  ariaLabelledBy,
+}: SegmentedControlProps<T>) {
   const md = size === 'md'
   return (
     <div
+      role="group"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       style={{
         display: 'flex',
         gap: 5,
