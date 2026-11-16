@@ -130,10 +130,25 @@
   --fs-body-lg: 17px;
   --fs-input-sm: 19px;
   --fs-input-md: 24px;
-  --fs-price: 50px;
-  --fs-price-md: 36px;
-  --fs-prefix-lg: 40px;
-  --fs-prefix-md: 28px;
+  /* The two headline money sizes respond to the viewport (#298). They used to
+     be fixed, so on a narrow screen the input box was narrower than the number
+     and the leading digits stayed visible while the rest was hidden off the
+     end, with nothing to show the value had been cut off — a £25,000 price
+     read as "2500" at 360px. The ceilings are the old fixed values, so every
+     width from 476px (price) / 424px (price-md) upward, desktop included,
+     looks exactly as it did. The floors only bite below ~286px / ~282px,
+     narrower than any phone. */
+  --fs-price: clamp(30px, 10.5vw, 50px);
+  --fs-price-md: clamp(24px, 8.5vw, 36px);
+  /* The "£" glyph and the padding that clears room for it are derived from the
+     size they sit beside rather than clamped separately, so they can't drift
+     out of step with it and let the prefix overlap the first digit. The
+     fractions are the old fixed ratios, so at the ceiling these are still
+     exactly 40px/38px and 28px/30px. */
+  --fs-prefix-lg: calc(var(--fs-price) * 0.8);
+  --fs-prefix-md: calc(var(--fs-price-md) * 7 / 9);
+  --pad-price-left: calc(var(--fs-price) * 0.76);
+  --pad-price-md-left: calc(var(--fs-price-md) * 5 / 6);
   --fs-prefix-sm: 15px;
   --fs-h1-sm: 34px;
   --fs-h1-budget: 36px;
