@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Fuel,
   Gem,
   HelpCircle,
   House,
@@ -41,16 +40,16 @@ export const ICONS = {
   'arrow-right': ArrowRight,
   'chevron-left': ChevronLeft,
   'chevron-right': ChevronRight,
+  // AboutYourPay's disclosure chevron.
   'chevron-down': ChevronDown,
   check: Check,
   'help-circle': HelpCircle,
   x: X,
-  // Vehicle flow: the four purchase-method cards and the running-costs step.
+  // Vehicle flow: the four purchase-method cards.
   banknote: Banknote,
   'key-round': KeyRound,
   'calendar-clock': CalendarClock,
   landmark: Landmark,
-  fuel: Fuel,
   // Theme toggle.
   sun: Sun,
   moon: Moon,
