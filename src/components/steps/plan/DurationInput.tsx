@@ -47,7 +47,19 @@ export function DurationInput({ accentColor }: { accentColor: string }) {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ marginBottom: 18 }}>
-        <SegmentedControl size="sm" options={rateModeOptions} value={state.rateMode} onChange={chooseMode} />
+        <SegmentedControl
+          size="sm"
+          options={rateModeOptions}
+          value={state.rateMode}
+          onChange={chooseMode}
+          /*
+           * Deliberately not "…your monthly saving": the £ field below is
+           * labelled "Monthly saving", and Testing Library's and Playwright's
+           * getByLabel match substrings, so a group name containing a field's
+           * label makes every such query ambiguous.
+           */
+          ariaLabel="How you'll set the amount you save"
+        />
       </div>
 
       {state.rateMode === 'amount' ? (
