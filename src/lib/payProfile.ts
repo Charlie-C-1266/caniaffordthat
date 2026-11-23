@@ -1,4 +1,6 @@
 import { num, fmt } from './calculations'
+import { monthlyTakeHomeFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 import type { PayProfile } from './deductions'
 import type { CalculatorState, PensionArrangement, StudentLoanPlan } from '../state/types'
 
@@ -64,6 +66,39 @@ export function payProfileOf(state: PayProfileState): PayProfile {
         ? null
         : { arrangement: state.pensionArrangement, mode: state.pensionMode, percent: state.pensionPercent, monthlyAmount },
   }
+}
+
+/** The state fields that decide whether a salary leaves any take-home: the pay profile, plus the income mode and salary it applies to. */
+export type TakeHomeState = PayProfileState & Pick<CalculatorState, 'takeHomeMode' | 'grossSalary'>
+
+/**
+ * True when "About your pay" leaves nothing of the salary to plan with:
+ * salary mode, a salary typed, and a payslip whose take-home comes to £0.00.
+ *
+ * `monthlyPayslipLines` caps the PENSION line at whatever the payslip has
+ * left, so a £-a-month pension can take everything. The Budget step then
+ * won't advance and both result engines return `null` — and without knowing
+ * why, the page blames a missing price and take-home the user has already
+ * given (#317). A percentage pension can't get here: its slider stops at 50%,
+ * and the loans are a share of pay above a threshold, so neither can take
+ * everything on its own.
+ *
+ * The take-home is worked out from the salary and profile rather than read
+ * from `state.takeHome`. That field is only written when the salary or the
+ * profile changes, so a hand-made link that sets `grossSalary` and omits
+ * `takeHome` leaves it empty — and reading it would blame the pension for a
+ * take-home the link simply never carried. For such a link the generic "fill
+ * in a price and take-home pay" wording is the right answer, so this stays
+ * false and that is what shows.
+ *
+ * Compared as whole pence, which is what the payslip shows and what the
+ * Budget step stores, so this is true exactly when the step really stalls.
+ */
+export function deductionsTakeAllPay(state: TakeHomeState): boolean {
+  if (state.takeHomeMode !== 'salary') return false
+  const grossAnnual = num(state.grossSalary)
+  if (grossAnnual <= 0) return false
+  return Math.round(monthlyTakeHomeFromGross(grossAnnual, CURRENT_TAX_YEAR, payProfileOf(state)) * 100) <= 0
 }
 
 /** True when a profile takes anything at all besides income tax and NI. */
