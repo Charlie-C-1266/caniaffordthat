@@ -27,6 +27,21 @@ describe('ChoiceGroup', () => {
     expect(onChange).toHaveBeenCalledWith('plan2')
   })
 
+  // #313: only the control that needs a second row gets one, and ChoiceGroup
+  // is the one component used for both the six-option plan row and the
+  // two/three-option choices beside it.
+  it('does not let its control wrap unless asked', () => {
+    const { container } = render(<ChoiceGroup label="Postgraduate Loan" options={OPTIONS} value="none" onChange={() => {}} />)
+    const pill = container.querySelector('[role="group"] > div:last-child')
+    expect((pill as HTMLElement).style.flexWrap).toBe('')
+  })
+
+  it('passes wrapping through to its control when asked', () => {
+    const { container } = render(<ChoiceGroup label="Student loan plan" options={OPTIONS} value="none" onChange={() => {}} wrap />)
+    const pill = container.querySelector('[role="group"] > div:last-child')
+    expect((pill as HTMLElement).style.flexWrap).toBe('wrap')
+  })
+
   it('shows a "?" hint only when given one', () => {
     render(<ChoiceGroup label="Plan" options={OPTIONS} value="none" onChange={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Which one?' })).toBeNull()

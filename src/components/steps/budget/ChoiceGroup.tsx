@@ -9,6 +9,8 @@ interface ChoiceGroupProps<T extends string> {
   options: readonly SegmentedOption<T>[]
   value: T
   onChange: (value: T) => void
+  /** Lets the control take a second row when its options won't fit — for the five-option plan row (#313). */
+  wrap?: boolean
 }
 
 /**
@@ -17,7 +19,7 @@ interface ChoiceGroupProps<T extends string> {
  * the label, so a screen reader announces "Student loan plan, group" before
  * a bare "None".
  */
-export function ChoiceGroup<T extends string>({ label, hint, options, value, onChange }: ChoiceGroupProps<T>) {
+export function ChoiceGroup<T extends string>({ label, hint, options, value, onChange, wrap }: ChoiceGroupProps<T>) {
   const labelId = useId()
   return (
     <div role="group" aria-labelledby={labelId}>
@@ -35,7 +37,7 @@ export function ChoiceGroup<T extends string>({ label, hint, options, value, onC
         <span id={labelId}>{label}</span>
         {hint && <InfoHint text={hint} size={14} />}
       </div>
-      <SegmentedControl size="sm" options={options} value={value} onChange={onChange} />
+      <SegmentedControl size="sm" wrap={wrap} options={options} value={value} onChange={onChange} />
     </div>
   )
 }

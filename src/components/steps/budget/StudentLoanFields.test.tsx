@@ -16,6 +16,9 @@ function renderFields(state: Partial<CalculatorState> = {}) {
   return onChange
 }
 
+/** The segmented pill inside a labelled choice group — the flex row whose wrapping is under test. */
+const pillOf = (group: HTMLElement) => group.querySelector('div:last-child') as HTMLElement
+
 const planGroup = () => screen.getByRole('group', { name: 'Student loan plan' })
 const postgradGroup = () => screen.getByRole('group', { name: 'Postgraduate Loan' })
 
@@ -59,5 +62,16 @@ describe('StudentLoanFields', () => {
     expect(within(postgradGroup()).getByRole('button', { name: 'Yes' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'No' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: false })
+  })
+
+  // #313 made wrapping opt-in. The plan row is the one control that needs it:
+  // six options is the only compact control wide enough to want a second row
+  // on a phone, which is what #291 added wrapping for. The Yes/No beside it
+  // must not take one, or it stops reading as either/or.
+  it('lets the six-option plan row take a second row, but not the Yes/No beside it', () => {
+    renderFields()
+
+    expect(pillOf(planGroup()).style.flexWrap).toBe('wrap')
+    expect(pillOf(postgradGroup()).style.flexWrap).toBe('')
   })
 })
