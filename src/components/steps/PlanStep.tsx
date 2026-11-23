@@ -33,7 +33,7 @@ export function PlanStep({ index, panelRef, wrapperRef }: PlanStepProps) {
   return (
     <StepPanel index={index} panelRef={panelRef} wrapperRef={wrapperRef} panelStyle={{ background: 'var(--bg-dark-2)' }}>
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={640} padding="48px 48px">
+        <Tile maxWidth={640} padding="var(--tile-padding-y, 48px) var(--tile-padding-x, 48px)">
           {isSave ? (
             <>
               <Eyebrow color={accent}>Step {index} — Timeframe</Eyebrow>

@@ -53,6 +53,51 @@
 }
 
 /*
+ * Step-panel and tile geometry. On a phone the content inside a step tile was
+ * squeezed into a strip down the middle: StepPanel padded every step
+ * `120px 40px` and each step passed the Tile a fixed desktop padding
+ * (44-48px a side), neither of which shrank. Measured in Chromium at 320px,
+ * that left the Details tile 148px of content width and the Budget and Plan
+ * tiles 140px — 44% of the screen, with 180px going on gutters and padding
+ * (#316). It is the shared cause behind the big money inputs cutting off
+ * digits (#298), the payslip labels running into their amounts (#297) and the
+ * compact toggles wrapping (#313).
+ *
+ * The gutters are asymmetric on purpose: ProgressRail is `position: fixed` on
+ * the right edge, so the room it needs can't be shared with the tile. A
+ * 32px end gutter plus the tile's own 22px padding keeps every control 6px
+ * clear of the rail even at the 24x24px hit target WCAG 2.5.8 asks for and
+ * #286 moves the dots to — and 23px clear of today's 7px dots. The start
+ * gutter is free to be tight, so it is.
+ *
+ * Together these leave the content exactly `width - 90px`: 230px at 320px
+ * (up from 140px) and 270px at 360px.
+ */
+:root {
+  --step-gutter-x-start: 40px;
+  --step-gutter-x-end: 40px;
+}
+
+/*
+ * The same 600px breakpoint the header and the compact toggles use.
+ *
+ * --tile-padding-* are deliberately defined *only* here, and every Tile call
+ * site passes its current desktop padding as the `var()` fallback. Desktop
+ * padding differs per step (48px vs 44px a side, 48px vs 40px vertical) and
+ * has to stay exactly as it is, so each step keeps its own value when the
+ * property is undefined, and they collapse to one tightened value here. One
+ * media query, and no desktop value can drift by accident.
+ */
+@media (max-width: 600px) {
+  :root {
+    --step-gutter-x-start: 10px;
+    --step-gutter-x-end: 32px;
+    --tile-padding-y: 28px;
+    --tile-padding-x: 22px;
+  }
+}
+
+/*
  * Goal-carousel geometry. The design's cover-flow spec is a 250px card stepped
  * 268px from its neighbours, which needs roughly 1100px to show the focused
  * card plus one card each side. Below that the cards have to shrink and close

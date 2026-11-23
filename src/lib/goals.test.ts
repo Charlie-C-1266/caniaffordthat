@@ -171,3 +171,19 @@ describe('seedFromGoal', () => {
     expect(seedFromGoal(goalById('emergency')!).coverMonths).toBe(3)
   })
 })
+
+// #316: the Details step's padding comes from each goal's presentation, so
+// the properties have to reach it there too. The pixel fallback is what keeps
+// desktop exactly as it was — the property is defined only under the phone
+// media query.
+describe("every goal's Details tile padding", () => {
+  /** Every goal, plus the no-goal presentation behind the pre-goal Details placeholder. */
+  const PRESENTATIONS = [...GOALS.map((goal) => ({ id: String(goal.id), goal })), { id: 'no goal yet', goal: null }]
+
+  it.each(PRESENTATIONS)('$id builds it from the properties that tighten on a phone', ({ goal }) => {
+    const { tilePadding } = presentationFor(goal).details
+    // Both halves property-based, and each still naming a desktop fallback,
+    // so no step can quietly lose its padding.
+    expect(tilePadding).toMatch(/^var\(--tile-padding-y, \d+px\) var\(--tile-padding-x, \d+px\)$/)
+  })
+})

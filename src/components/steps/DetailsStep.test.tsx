@@ -32,6 +32,15 @@ function bandRow(text: string): HTMLElement | null {
   return screen.queryByText(text)
 }
 
+/**
+ * The step tile's padding, as it reaches the DOM. Since #316 each step passes
+ * `var(--tile-padding-*, <today's desktop value>)`: the property is defined
+ * only under the phone media query, so the fallback is what keeps desktop
+ * exactly as it was, and a pixel-only string here would mean a step had been
+ * left behind.
+ */
+const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
 describe('DetailsStep emergency-fund cover band copy', () => {
   afterEach(() => {
     cleanup()
@@ -471,4 +480,9 @@ describe('DetailsStep emergency-fund essentials grid', () => {
       expect(unnamed.map((input) => input.getAttribute('placeholder') ?? input.type)).toEqual([])
     })
   })
+})
+
+it('takes its tile padding from the properties that tighten on a phone (#316)', () => {
+  renderStandardDetails('big')
+  expect(tilePadding()).toBe('var(--tile-padding-y, 46px) var(--tile-padding-x, 44px)')
 })

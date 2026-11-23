@@ -53,7 +53,12 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
       index={index}
       isFinal
       panelRef={panelRef}
-      panelStyle={{ background: 'var(--bg-dark-1)', padding: '80px 40px 56px' }}
+      // Its own vertical padding, but the same gutters as every other step so
+      // the result tile gets the phone width back too (#316).
+      panelStyle={{
+        background: 'var(--bg-dark-1)',
+        padding: '80px var(--step-gutter-x-end) 56px var(--step-gutter-x-start)',
+      }}
       panelTestId="result-panel"
     >
       <RevealTile
@@ -61,7 +66,7 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
         style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}
       >
         {card ?? (
-          <Tile maxWidth={640} padding="40px 44px">
+          <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
             <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{presentationFor(goal).resultFallback}</div>
           </Tile>
         )}

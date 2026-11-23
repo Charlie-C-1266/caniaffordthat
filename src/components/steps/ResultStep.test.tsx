@@ -113,3 +113,23 @@ describe('ResultStep routing', () => {
     expect(screen.queryByText(VEHICLE_FALLBACK)).toBeNull()
   })
 })
+
+// #316: the result panel set its own `80px 40px 56px`, so it kept the desktop
+// gutters at every width while every other step's tightened. It keeps its own
+// vertical padding and takes the shared gutters.
+describe('the result panel at a narrow viewport', () => {
+  afterEach(cleanup)
+
+  it('takes the shared gutters while keeping its own vertical padding', () => {
+    renderResultStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2600' })
+    const panel = screen.getByTestId('result-panel')
+    expect(panel.style.padding).toBe('80px var(--step-gutter-x-end) 56px var(--step-gutter-x-start)')
+    expect(panel.getAttribute('style')).not.toContain('80px 40px 56px')
+  })
+
+  it('gives its fallback tile the padding properties too', () => {
+    renderResultStep({ goalId: 'holiday', itemPrice: '', takeHome: '' })
+    const tile = document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')
+    expect(tile?.style.padding).toBe('var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)')
+  })
+})

@@ -70,6 +70,15 @@ const takeHomeUnder = (grossAnnual: number, patch: Partial<CalculatorState>) =>
 
 const openAboutYourPay = () => fireEvent.click(screen.getByRole('button', { name: /^About your pay/ }))
 
+/**
+ * The step tile's padding, as it reaches the DOM. Since #316 each step passes
+ * `var(--tile-padding-*, <today's desktop value>)`: the property is defined
+ * only under the phone media query, so the fallback is what keeps desktop
+ * exactly as it was, and a pixel-only string here would mean a step had been
+ * left behind.
+ */
+const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
 describe('BudgetStep', () => {
   afterEach(() => {
     cleanup()
@@ -611,4 +620,9 @@ describe('the regular-saving field', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(advanced).toEqual([STEP_INDEX + 1])
   })
+})
+
+it('takes its tile padding from the properties that tighten on a phone (#316)', () => {
+  renderBudgetStep({ goalId: 'holiday' })
+  expect(tilePadding()).toBe('var(--tile-padding-y, 48px) var(--tile-padding-x, 48px)')
 })
