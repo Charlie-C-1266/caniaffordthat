@@ -70,6 +70,25 @@ test.describe('About your pay', () => {
     await expect(takeHome).toHaveValue('2000')
   })
 
+  // #318: the caption under the payslip formatted a £-a-month pension with
+  // whole-pound rounding, so the panel built to be checked against a real
+  // payslip showed two different figures for the same pension, one line apart.
+  test('a £-a-month pension reads the same on the PENSION line and in the caption', async ({ page }) => {
+    await goToBudget(
+      page,
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000' +
+        '&studentPlan=plan2&postgradLoan=1&pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=150.50',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    // The payslip line, to the penny...
+    const pensionRow = page.getByText('PENSION', { exact: true }).locator('xpath=following-sibling::*[1]')
+    await expect(pensionRow).toHaveText(/£150\.50/)
+    // ...and the caption below it, which used to say "£151/month".
+    await expect(page.getByText(/single PAYE salary, Plan 2 and Postgraduate Loan, £150\.50\/month net pay pension\./)).toBeVisible()
+    await expect(page.getByText(/£151\/month/)).toHaveCount(0)
+  })
+
   test('fits a narrow phone without scrolling sideways', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 })
     await goToBudget(page)
