@@ -59,27 +59,34 @@ export const STRING_FIELDS = [
 ] as const satisfies readonly (keyof CalculatorState)[]
 
 /**
- * The numeric planning fields that round-trip, each with the range it's
- * clamped to on hydration. A query string is user-editable input, so an
- * out-of-range value (`coverMonths=999`, `rate=-5`) is pulled back to the
- * matching UI control's own bounds rather than trusted. The bounds come from
- * sliderRanges.ts, the same ranges the sliders use. `goalMonths` has no upper
- * bound because the goal-date field itself accepts any future date.
+ * The numeric planning fields that round-trip, each with the range it's held
+ * to on hydration. A query string is user-editable input, so a value the
+ * slider could never have produced — out of range (`coverMonths=999`,
+ * `rate=-5`) or between its steps (`pensionPercent=5.1234567`) — is pulled
+ * onto the matching UI control's own grid rather than trusted. The bounds and
+ * steps come from sliderRanges.ts, the same ranges the sliders use.
+ * `goalMonths` has no upper bound because the goal-date field itself accepts
+ * any future date, but it is still a whole number of months.
  *
- * `growth` and `term` each drive more than one slider, so they're clamped here
- * to the widest of their sliders and narrowed to the one the shared goal and
- * mode actually show, once those are known (see the end of
- * `hydrateStateFromUrl`).
+ * `growth` and `term` each drive more than one slider, so they're held here to
+ * the widest of their sliders and narrowed to the one the shared goal and mode
+ * actually show, once those are known (see the end of `hydrateStateFromUrl`).
  */
 const NUMBER_FIELDS: readonly {
   key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge' | 'pensionPercent'
   min: number
   max?: number
+  step: number
 }[] = [
   { key: 'rate', ...SAVE_RATE_RANGE },
   { key: 'growth', ...APR_RANGE }, // the wider of the two interest sliders
-  { key: 'goalMonths', min: 1 }, // goal-date floor is next month
-  { key: 'term', min: 1, max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)) },
+  { key: 'goalMonths', min: 1, step: 1 }, // goal-date floor is next month, in whole months
+  {
+    key: 'term',
+    min: 1,
+    max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)),
+    step: 1, // every term slider, standard and per vehicle method, is in whole months
+  },
   { key: 'coverMonths', ...COVER_MONTHS_RANGE },
   { key: 'vehicleAge', ...VEHICLE_AGE_RANGE },
   { key: 'pensionPercent', ...PENSION_PERCENT_RANGE },
@@ -87,6 +94,37 @@ const NUMBER_FIELDS: readonly {
 
 /** Pulls a value into a slider's bounds. */
 const clampTo = (value: number, { min, max }: Pick<SliderRange, 'min' | 'max'>) => Math.min(max, Math.max(min, value))
+
+/**
+ * How many decimal places a step is written to. Snapping multiplies the step,
+ * which in binary floating point drifts (`0.5 * 11` is 5.500000000000001), so
+ * the result is rounded back to the step's own precision — every step here is
+ * a short decimal, so this is exact for all of them.
+ */
+function stepDecimals(step: number): number {
+  const text = String(step)
+  const point = text.indexOf('.')
+  return point === -1 ? 0 : text.length - point - 1
+}
+
+/**
+ * Pulls a value onto a slider's own grid: into `[min, max]`, then to the
+ * nearest multiple of `step` counted from `min`, then back into range in case
+ * rounding carried it past an end. An exact midpoint rounds away from zero
+ * (`Math.round`), so `pensionPercent=5.25` lands on 5.5 rather than 5.
+ *
+ * Without the snap a link could carry a value the slider itself refuses: the
+ * browser pins the thumb to the nearest step, so the control showed 5% while
+ * the label beside it and the result's maths used 5.1234567% (#319). It is the
+ * same rule as the clamp, one level finer — a shared link must never carry a
+ * value the inputs themselves could not produce (#126, #127).
+ */
+function snapTo(value: number, { min, max = Infinity, step }: { min: number; max?: number; step: number }): number {
+  const clamped = Math.min(max, Math.max(min, value))
+  const steps = Math.round((clamped - min) / step)
+  const snapped = Number((min + steps * step).toFixed(stepDecimals(step)))
+  return Math.min(max, Math.max(min, snapped))
+}
 
 // `carouselIndex` is intentionally *not* shared: on load it's derived from
 // `goalId` so a link always focuses the shared goal, regardless of where the
@@ -220,11 +258,16 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
     else state[field] = isMoneyValue(value) ? value.trim() : DEFAULT_STATE[field]
   }
 
-  for (const { key, min, max } of NUMBER_FIELDS) {
-    const value = Number(params.get(key) ?? NaN)
-    if (Number.isFinite(value)) state[key] = Math.min(max ?? Infinity, Math.max(min, value))
+  for (const field of NUMBER_FIELDS) {
+    const value = Number(params.get(field.key) ?? NaN)
+    if (Number.isFinite(value)) state[field.key] = snapTo(value, field)
   }
 
+  // The three re-clamps below narrow an already-snapped value, and every range
+  // they narrow to is a whole number of months or a multiple of 0.5% offset
+  // from the same floor as the range above, so clamping cannot knock a value
+  // back off its step. urlState.test.ts pins that rather than assuming it.
+  //
   // The 84-month ceiling above exists only for the vehicle bank loan; every
   // other flow's term slider stops at FINANCE_TERM_RANGE's max, so a crafted
   // non-vehicle link can't smuggle in a term the UI couldn't have produced.

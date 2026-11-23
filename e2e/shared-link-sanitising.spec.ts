@@ -73,3 +73,69 @@ test.describe('a shared link cannot smuggle in a value the UI would refuse', () 
     expect((await name.inputValue()).length).toBe(60)
   })
 })
+
+// #319: clamping held every shared number inside its slider's bounds but not
+// onto its steps, so a link could carry a value the slider itself refuses. The
+// browser pins the thumb to the nearest step, so the control disagreed with
+// the label beside it and with the figures in the result — and a fractional
+// `term` was quoted as a deal no lender offers.
+test.describe("a shared link cannot carry a value between a slider's steps", () => {
+  /** The reproduction link from #319: a 0.5-stepped pension and APR, and a whole-month term, all given fractions. */
+  const OFF_STEP_LINK =
+    '/?goalId=holiday&itemPrice=3000&takeHome=2500&takeHomeMode=takehome&mode=monthly' +
+    '&studentPlan=plan2&pensionArrangement=netpay&pensionMode=percent' +
+    '&pensionPercent=5.1234567&term=13.37&growth=3.14159'
+
+  /** The three sliders the link targets, with the on-step value each has to land on. */
+  const SNAPPED = [
+    { name: 'Your contribution', value: '5', readOut: '5% of salary' },
+    { name: 'Term length', value: '13', readOut: '13 months' },
+    { name: 'Interest rate (APR)', value: '3', readOut: '3%' },
+  ] as const
+
+  for (const { name, value, readOut } of SNAPPED) {
+    test(`the "${name}" slider, its read-out and its thumb all agree`, async ({ page }) => {
+      await page.goto(OFF_STEP_LINK)
+
+      const slider = page.getByRole('slider', { name })
+      // The thumb's own value, which the browser already snapped to the step...
+      await expect(slider).toHaveValue(value)
+      // ...now matches the read-out beside it, which is what used to drift.
+      await expect(slider).toHaveAttribute('aria-valuetext', readOut)
+      await expect(page.getByText(readOut, { exact: true }).first()).toBeVisible()
+
+      // Stated as the general rule too, so this keeps holding if the wording
+      // changes: the number in the read-out is the number the slider holds.
+      const thumb = await slider.inputValue()
+      const text = await slider.getAttribute('aria-valuetext')
+      expect(text?.replace(/[^\d.]/g, '')).toBe(thumb)
+    })
+  }
+
+  test('no off-step figure reaches the result', async ({ page }) => {
+    await page.goto(OFF_STEP_LINK)
+    await page.getByRole('button', { name: 'Result', exact: true }).click()
+    await page.getByText('Copy result link').waitFor()
+
+    const body = await page.locator('body').innerText()
+    // The fractions from the link, which used to be quoted back in the
+    // repayment line and the pension caption.
+    for (const fraction of ['5.1234567', '13.37', '3.14159']) expect(body).not.toContain(fraction)
+    // And nothing else fractional crept in where a whole month belongs.
+    expect(body).not.toMatch(/\d+\.\d+ months/)
+    expect(body).toContain('13 months')
+  })
+
+  test('an on-step link is still honoured exactly as written', async ({ page }) => {
+    // The guard against over-zealous snapping: 5.5%, 14 months and 3.5% are
+    // all values the sliders can produce, so they must survive untouched.
+    await page.goto(
+      '/?goalId=holiday&itemPrice=3000&takeHome=2500&takeHomeMode=takehome&mode=monthly' +
+        '&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5.5&term=14&growth=3.5',
+    )
+
+    await expect(page.getByRole('slider', { name: 'Your contribution' })).toHaveValue('5.5')
+    await expect(page.getByRole('slider', { name: 'Term length' })).toHaveValue('14')
+    await expect(page.getByRole('slider', { name: 'Interest rate (APR)' })).toHaveValue('3.5')
+  })
+})
