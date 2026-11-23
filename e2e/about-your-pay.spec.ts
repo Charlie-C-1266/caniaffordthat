@@ -70,6 +70,29 @@ test.describe('About your pay', () => {
     await expect(takeHome).toHaveValue('2000')
   })
 
+  // #315: the note and the caption under the payslip worked from the engine's
+  // unrounded, uncapped figures, so the panel built to be checked against a
+  // real payslip could give two different figures for the same pension one
+  // line apart — and the caption named an amount the payslip had capped.
+  test('a capped pension reads the same on the PENSION line, in the note and in the caption', async ({ page }) => {
+    // £5,000 a month against a £35,000 salary: only £2,916.67 can be applied.
+    await goToBudget(
+      page,
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000' +
+        '&pensionArrangement=sacrifice&pensionMode=amount&pensionMonthlyAmount=5000',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    const pensionRow = page.getByText('PENSION', { exact: true }).locator('xpath=following-sibling::*[1]')
+    await expect(pensionRow).toHaveText(/£2,916\.67/)
+    await expect(page.getByText(/Going into your pension: £2,916\.67 a month/)).toBeVisible()
+    // The caption still says what was asked for — that is what the user typed
+    // — but it is no longer left standing as if it were what was applied.
+    await expect(
+      page.getByText(/£5,000\/month salary sacrifice pension \(capped at £2,916\.67 — all that's left of your pay\)/),
+    ).toBeVisible()
+  })
+
   test('fits a narrow phone without scrolling sideways', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 })
     await goToBudget(page)

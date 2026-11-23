@@ -5,7 +5,7 @@ import { TextLink } from '../../TextLink'
 import { fmtPence } from '../../../lib/calculations'
 import type { PayProfile } from '../../../lib/deductions'
 import { describePayProfile } from '../../../lib/payProfile'
-import { PAYSLIP_DEDUCTIONS, monthlyPayslipLines, type PayslipDeduction } from '../../../lib/payslip'
+import { PAYSLIP_DEDUCTIONS, monthlyPayslipLines, payslipIntoPension, pensionWasCapped, type PayslipDeduction } from '../../../lib/payslip'
 import { takeHomeBreakdown } from '../../../lib/salary'
 import { CURRENT_TAX_YEAR } from '../../../lib/taxYears'
 
@@ -42,6 +42,15 @@ export function PayslipBreakdown({ grossAnnual, profile }: PayslipBreakdownProps
   const payslip = monthlyPayslipLines(breakdown)
   const helper = { fontSize: 'var(--fs-helper)', fontWeight: 600, lineHeight: 1.45 } as const
 
+  // Both read off the payslip, not off the engine's unrounded annual figures,
+  // so neither can name a figure the PENSION line above them contradicts
+  // (#315). `describePayProfile` still says what was *asked* for — that is
+  // what the user typed, and the clause below is what became of it.
+  const intoPension = payslipIntoPension(breakdown, payslip)
+  const cappedClause = pensionWasCapped(breakdown, profile.pension)
+    ? ` (capped at ${fromPence(payslip.pension)} — all that's left of your pay)`
+    : ''
+
   return (
     <div style={{ marginTop: 12 }}>
       <BreakdownBox heading="Each month">
@@ -53,11 +62,12 @@ export function PayslipBreakdown({ grossAnnual, profile }: PayslipBreakdownProps
       </BreakdownBox>
       {breakdown.intoPension > 0 && (
         <div style={{ ...helper, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-          Going into your pension: {fmtPence(breakdown.intoPension / 12)} a month, not counting your employer&rsquo;s contribution.
+          Going into your pension: {fromPence(intoPension)} a month, not counting your employer&rsquo;s contribution.
         </div>
       )}
       <div style={{ ...helper, color: 'var(--text-tertiary-dim)' }}>
-        England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, {describePayProfile(profile)}.{' '}
+        England, Wales &amp; NI, {CURRENT_TAX_YEAR.label} — single PAYE salary, {describePayProfile(profile)}
+        {cappedClause}.{' '}
         <TextLink href="/methodology/salary/" newTab>
           How this is worked out →
         </TextLink>
