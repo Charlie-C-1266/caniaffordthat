@@ -13,7 +13,7 @@ export function ModelLimitations({ rows }: { rows: ReactNode[][] }) {
   return (
     <Section title="What we deliberately don't model (yet)">
       <P>Being upfront about the edges of the model matters as much as the model:</P>
-      <DataTable head={['Simplification', 'What it means for you']} rows={rows} />
+      <DataTable label="What this calculator deliberately doesn't model" head={['Simplification', 'What it means for you']} rows={rows} />
     </Section>
   )
 }

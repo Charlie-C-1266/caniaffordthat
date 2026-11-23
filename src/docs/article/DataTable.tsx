@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { useOverflowX } from '../../hooks/useOverflowX'
+import { scrollerRegionProps } from './scrollerRegion'
 
 const cellStyle: CSSProperties = {
   padding: '10px 14px',
@@ -10,10 +12,29 @@ const cellStyle: CSSProperties = {
   verticalAlign: 'top',
 }
 
+interface DataTableProps {
+  head: string[]
+  rows: ReactNode[][]
+  /**
+   * What a screen reader calls this table once it is wide enough to scroll.
+   * Falls back to the first column's heading, which names the thing each row
+   * is about ("Band", "Plan", "Source") and is the best name available
+   * without one.
+   */
+  label?: string
+}
+
 /** A simple data table on a soft card; the first column is the row's name. Wide tables scroll within the card, not the page. */
-export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
+export function DataTable({ head, rows, label }: DataTableProps) {
+  const [scrollerRef, overflowing] = useOverflowX<HTMLDivElement>()
+
   return (
-    <div style={{ overflowX: 'auto', background: 'var(--tile-bg)', borderRadius: 'var(--radius-glass-sm)', marginBottom: 14 }}>
+    <div
+      ref={scrollerRef}
+      className="doc-scroller"
+      {...scrollerRegionProps(overflowing, label ?? head[0] ?? 'Table')}
+      style={{ overflowX: 'auto', background: 'var(--tile-bg)', borderRadius: 'var(--radius-glass-sm)', marginBottom: 14 }}
+    >
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 480 }}>
         <thead>
           <tr>

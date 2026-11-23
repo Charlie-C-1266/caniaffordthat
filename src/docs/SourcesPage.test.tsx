@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import type { HelpfulLink, Source } from '../lib/sources'
+import { installResizeObserver } from '../test/resizeObserver'
 
 // SourcesPage reads SOURCE_LIST/HELPFUL_LINKS at render time, so the registry
 // is mocked behind getters that normally pass the real data straight through.
@@ -29,6 +30,11 @@ vi.mock('../lib/sources', async (importOriginal) => {
 
 const { SourcesPage } = await import('./SourcesPage')
 const { SOURCE_LIST, HELPFUL_LINKS } = await import('../lib/sources')
+
+// This page renders the docs' scroll containers, which observe their own width
+// to decide whether they currently overflow (#314). jsdom has no
+// ResizeObserver, so it is stubbed before anything renders.
+beforeEach(installResizeObserver)
 
 afterEach(() => {
   overrides.sourceList = null
@@ -58,7 +64,6 @@ function methodologyHubHrefs() {
   if (!list) throw new Error('the methodology section rendered no list')
   return [...list.querySelectorAll('a')].map((anchor) => anchor.getAttribute('href'))
 }
-
 describe('SourcesPage', () => {
   it('renders its top-level heading and the page intro', () => {
     render(<SourcesPage />)

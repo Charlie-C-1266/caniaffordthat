@@ -1,13 +1,19 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { SalaryMethodologyPage } from './SalaryMethodologyPage'
 import { VehicleMethodologyPage } from './VehicleMethodologyPage'
 import { SALARY_SOURCES, VEHICLE_SOURCES } from '../lib/sources'
 import { fmt } from '../lib/calculations'
 import { CURRENT_TAX_YEAR } from '../lib/taxYears'
+import { installResizeObserver } from '../test/resizeObserver'
 
 afterEach(cleanup)
+
+// Every page here renders the docs' scroll containers, which observe their own
+// width to decide whether they currently overflow (#314). jsdom has no
+// ResizeObserver, so it is stubbed before anything renders.
+beforeEach(installResizeObserver)
 
 // These two pages are long, data-driven documents: their figures are computed
 // live from lib/salary.ts and lib/vehicle.ts (so the published working can't
@@ -31,7 +37,6 @@ function expectNewTabLinksGuarded(minimum: number) {
     expect(link.getAttribute('rel')).toContain('noreferrer')
   }
 }
-
 describe('SalaryMethodologyPage', () => {
   it('renders without throwing and exposes its top-level heading', () => {
     render(<SalaryMethodologyPage />)
