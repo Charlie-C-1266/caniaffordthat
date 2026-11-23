@@ -62,6 +62,76 @@ function canonicalProblems(html: string): string[] {
   return problems
 }
 
+/**
+ * The three description tags every entry point must carry exactly once, each with the selector that finds it.
+ * `description` feeds search results; `og:description` and `twitter:description` feed link previews (Slack, iMessage, social).
+ */
+const DESCRIPTION_TAGS = [
+  ['description', 'meta[name="description"]'],
+  ['og:description', 'meta[property="og:description"]'],
+  ['twitter:description', 'meta[name="twitter:description"]'],
+] as const
+
+/** Google truncates a search snippet past roughly this many characters, so anything longer is wasted wording. */
+const MAX_DESCRIPTION_LENGTH = 160
+
+/** Fragments that only appear when a template was never filled in: a leftover `%placeholder%`, a `{{ moustache }}`, or a TODO. */
+const UNEXPANDED_MARKERS = ['%', '{{', 'TODO']
+
+/** Everything wrong with one page's description tags; empty means the page is sound. Every message names the page and the tag. */
+function descriptionProblems(page: string, html: string): string[] {
+  const doc = parse(html, 'text/html')
+  const problems: string[] = []
+
+  for (const [label, selector] of DESCRIPTION_TAGS) {
+    const tags = [...doc.querySelectorAll(selector)]
+    if (tags.length !== 1) {
+      problems.push(`${page}: expected exactly 1 ${label} tag, found ${tags.length}`)
+      continue
+    }
+
+    // A tag with no `content` attribute at all reads the same as `content=""`.
+    const content = tags[0].getAttribute('content') ?? ''
+    if (!content.trim()) {
+      problems.push(`${page}: ${label} is empty`)
+      continue
+    }
+
+    for (const marker of UNEXPANDED_MARKERS) {
+      if (content.includes(marker)) problems.push(`${page}: ${label} contains unexpanded template text ${marker}`)
+    }
+
+    // Only the search snippet is length-capped; the preview tags are allowed the longer wording the cards show.
+    if (label === 'description' && content.length > MAX_DESCRIPTION_LENGTH) {
+      problems.push(`${page}: ${label} is ${content.length} characters, over the ${MAX_DESCRIPTION_LENGTH}-character limit`)
+    }
+  }
+
+  return problems
+}
+
+/**
+ * The deductions #291 added to the salary engine, as the salary page's own descriptions have to name them.
+ * Lower-cased, so the check is case-insensitive whichever way the wording is capitalised.
+ */
+const SALARY_PAGE_KEYWORDS = ['student loan', 'pension']
+
+/** Everything the salary page's search-and-share descriptions fail to mention; empty means they cover the whole page. */
+function salaryKeywordProblems(html: string): string[] {
+  const doc = parse(html, 'text/html')
+  const problems: string[] = []
+
+  // twitter:description is deliberately the short one, so only the two full-length tags are held to this.
+  for (const [label, selector] of DESCRIPTION_TAGS.filter(([tag]) => tag !== 'twitter:description')) {
+    const content = (doc.querySelector(selector)?.getAttribute('content') ?? '').toLowerCase()
+    for (const keyword of SALARY_PAGE_KEYWORDS) {
+      if (!content.includes(keyword)) problems.push(`salaryMethodology: ${label} does not mention ${keyword}`)
+    }
+  }
+
+  return problems
+}
+
 /** Everything wrong with the sitemap, given the canonical URLs it is meant to list exactly. */
 function sitemapProblems(xml: string, canonicals: string[]): string[] {
   let locs: string[]
@@ -112,6 +182,14 @@ const ogUrlTag = (content: string) => `<meta property="og:url" content="${conten
 const sitemapFixture = (body: string) =>
   `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</urlset>`
 const locEntry = (url: string) => `<url><loc>${url}</loc></url>`
+const descriptionTag = (content: string) => `<meta name="description" content="${content}" />`
+const ogDescriptionTag = (content: string) => `<meta property="og:description" content="${content}" />`
+const twitterDescriptionTag = (content: string) => `<meta name="twitter:description" content="${content}" />`
+/** A page whose three descriptions are all sound, with `description` overridable so one rule at a time can be broken. */
+const describedPage = (description = 'A sound search description.') =>
+  pageFixture(descriptionTag(description) + ogDescriptionTag('A sound link-preview description.') + twitterDescriptionTag('A sound card.'))
+/** A description of exactly `length` characters, so the limit can be probed from either side. */
+const descriptionOfLength = (length: number) => 'a'.repeat(length)
 
 describe('canonical tags on the HTML entry points', () => {
   const entries = htmlEntries()
@@ -122,6 +200,23 @@ describe('canonical tags on the HTML entry points', () => {
 
   it.each(entries)('%s declares exactly one canonical, equal to its og:url', (_name, html) => {
     expect(canonicalProblems(html)).toEqual([])
+  })
+})
+
+describe('search and share descriptions on the HTML entry points', () => {
+  const entries = htmlEntries()
+
+  it.each(entries)('%s carries one sound description, og:description and twitter:description', (name, html) => {
+    expect(descriptionProblems(name, html)).toEqual([])
+  })
+
+  // #320: the page gained Student loans and Workplace pensions sections in #291, but its <head> still
+  // advertised tax and NI only, so search results and link previews under-sold half the page. Nothing
+  // tested the descriptions, which is how they drifted; this is the guard that stops it happening again.
+  it('says the salary page covers student loans and pensions, as the page and the /sources/ blurb do', () => {
+    const salary = entries.find(([name]) => name === 'salaryMethodology')
+    expect(salary).toBeDefined()
+    expect(salaryKeywordProblems(salary![1])).toEqual([])
   })
 })
 
@@ -230,5 +325,89 @@ describe('the checks reject the mistakes they are meant to catch', () => {
       'does not allow crawling',
       'blanket-disallows the whole site',
     ])
+  })
+
+  it('accepts a page whose three descriptions are all sound', () => {
+    expect(descriptionProblems('page', describedPage())).toEqual([])
+  })
+
+  it('rejects a page missing each description tag in turn', () => {
+    expect(descriptionProblems('page', pageFixture(ogDescriptionTag('og') + twitterDescriptionTag('card')))).toContain(
+      'page: expected exactly 1 description tag, found 0',
+    )
+    expect(descriptionProblems('page', pageFixture(descriptionTag('search') + twitterDescriptionTag('card')))).toContain(
+      'page: expected exactly 1 og:description tag, found 0',
+    )
+    expect(descriptionProblems('page', pageFixture(descriptionTag('search') + ogDescriptionTag('og')))).toContain(
+      'page: expected exactly 1 twitter:description tag, found 0',
+    )
+  })
+
+  it('rejects a duplicated description tag rather than silently reading the first', () => {
+    const html = pageFixture(descriptionTag('search') + descriptionTag('search') + ogDescriptionTag('og') + twitterDescriptionTag('card'))
+    expect(descriptionProblems('page', html)).toEqual(['page: expected exactly 1 description tag, found 2'])
+  })
+
+  it('rejects an empty, whitespace-only or attribute-less description', () => {
+    expect(descriptionProblems('page', describedPage(''))).toEqual(['page: description is empty'])
+    expect(descriptionProblems('page', describedPage('   '))).toEqual(['page: description is empty'])
+    const noAttribute = pageFixture('<meta name="description" />' + ogDescriptionTag('og') + twitterDescriptionTag('card'))
+    expect(descriptionProblems('page', noAttribute)).toEqual(['page: description is empty'])
+  })
+
+  it('rejects unexpanded template text in any description', () => {
+    expect(descriptionProblems('page', describedPage('Saving %rate% a month.'))).toEqual([
+      'page: description contains unexpanded template text %',
+    ])
+    expect(descriptionProblems('page', describedPage('Saving {{ rate }} a month.'))).toEqual([
+      'page: description contains unexpanded template text {{',
+    ])
+    expect(descriptionProblems('page', describedPage('TODO: write this.'))).toEqual([
+      'page: description contains unexpanded template text TODO',
+    ])
+  })
+
+  it('caps the search description at 160 characters, and only that tag', () => {
+    expect(descriptionProblems('page', describedPage(descriptionOfLength(MAX_DESCRIPTION_LENGTH)))).toEqual([])
+    expect(descriptionProblems('page', describedPage(descriptionOfLength(MAX_DESCRIPTION_LENGTH + 1)))).toEqual([
+      `page: description is ${MAX_DESCRIPTION_LENGTH + 1} characters, over the ${MAX_DESCRIPTION_LENGTH}-character limit`,
+    ])
+
+    // The preview tags carry the longer wording the cards show, so the cap must not reach them.
+    const longPreviews = pageFixture(
+      descriptionTag('Short enough.') +
+        ogDescriptionTag(descriptionOfLength(MAX_DESCRIPTION_LENGTH + 40)) +
+        twitterDescriptionTag(descriptionOfLength(MAX_DESCRIPTION_LENGTH + 40)),
+    )
+    expect(descriptionProblems('page', longPreviews)).toEqual([])
+  })
+
+  it('rejects a salary-page description that leaves out student loans or pensions', () => {
+    const taxOnly = 'How UK income tax and National Insurance are inverted to turn take-home back into a gross salary.'
+    expect(salaryKeywordProblems(describedPage(taxOnly))).toEqual([
+      'salaryMethodology: description does not mention student loan',
+      'salaryMethodology: description does not mention pension',
+      'salaryMethodology: og:description does not mention student loan',
+      'salaryMethodology: og:description does not mention pension',
+    ])
+
+    const loanOnly = pageFixture(
+      descriptionTag('Income tax, National Insurance and student loan deductions.') +
+        ogDescriptionTag('Income tax, National Insurance and student loan deductions.') +
+        twitterDescriptionTag('card'),
+    )
+    expect(salaryKeywordProblems(loanOnly)).toEqual([
+      'salaryMethodology: description does not mention pension',
+      'salaryMethodology: og:description does not mention pension',
+    ])
+  })
+
+  it('matches the salary-page keywords whatever their capitalisation', () => {
+    const shouty = pageFixture(
+      descriptionTag('STUDENT LOAN and PENSION deductions.') +
+        ogDescriptionTag('Student Loan and Workplace Pension deductions.') +
+        twitterDescriptionTag('card'),
+    )
+    expect(salaryKeywordProblems(shouty)).toEqual([])
   })
 })
