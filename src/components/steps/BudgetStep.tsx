@@ -12,10 +12,7 @@ import { AboutYourPay } from './budget/AboutYourPay'
 import { PayslipBreakdown } from './budget/PayslipBreakdown'
 import { useCalculator } from '../../state/calculatorContext'
 import { num } from '../../lib/calculations'
-import type { PayProfile } from '../../lib/deductions'
-import { payProfileOf, type PayProfileState } from '../../lib/payProfile'
-import { monthlyTakeHomeFromGross } from '../../lib/salary'
-import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
+import { payProfileOf, takeHomeFor, type PayProfileState } from '../../lib/payProfile'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL, type OutgoingFieldKey } from '../../lib/budget'
 import { goalById, presentationFor } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
@@ -27,13 +24,6 @@ const TAKE_HOME_MODE_OPTIONS: readonly SegmentedOption<TakeHomeMode>[] = [
   { value: 'takehome', label: 'Monthly take-home', activeBackground: 'var(--surface-selected)', activeColor: 'var(--text-primary)' },
   { value: 'salary', label: 'Annual salary', activeBackground: 'var(--surface-selected)', activeColor: 'var(--text-primary)' },
 ]
-
-/** Rounds a computed take-home to whole pence, so the stored value isn't a long float. */
-const roundPence = (n: number): number => Math.round(n * 100) / 100
-
-/** The take-home field salary mode stores for a typed salary under a pay profile: pence, or blank for no salary. */
-const takeHomeFor = (grossSalary: string, profile: PayProfile): string =>
-  num(grossSalary) > 0 ? String(roundPence(monthlyTakeHomeFromGross(num(grossSalary), CURRENT_TAX_YEAR, profile))) : ''
 
 interface BudgetStepProps {
   /** Position in the active flow — the eyebrow number and the Enter-advance target follow it. */

@@ -1,5 +1,7 @@
 import { num, fmt } from './calculations'
 import type { PayProfile } from './deductions'
+import { monthlyTakeHomeFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 import type { CalculatorState, PensionArrangement, StudentLoanPlan } from '../state/types'
 
 // The pay profile as the site presents it: which choices the Budget step
@@ -64,6 +66,27 @@ export function payProfileOf(state: PayProfileState): PayProfile {
         ? null
         : { arrangement: state.pensionArrangement, mode: state.pensionMode, percent: state.pensionPercent, monthlyAmount },
   }
+}
+
+/** Rounds a computed take-home to whole pence, so the stored value isn't a long float. */
+const roundPence = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * The take-home field salary mode stores for a typed salary under a pay
+ * profile: pence, or blank for no salary.
+ *
+ * Lives here rather than in BudgetStep so the step and `hydrateStateFromUrl`
+ * cannot drift (#292). In salary mode `takeHome` is derived, never typed, so
+ * there must be exactly one derivation — the Budget step's payslip and the
+ * verdict showing different take-home for the same link was the bug.
+ *
+ * Floored at zero: a pension larger than the gross pay would otherwise store
+ * a negative take-home, and no field in the UI can produce one.
+ */
+export function takeHomeFor(grossSalary: string, profile: PayProfile): string {
+  const gross = num(grossSalary)
+  if (gross <= 0) return ''
+  return String(Math.max(0, roundPence(monthlyTakeHomeFromGross(gross, CURRENT_TAX_YEAR, profile))))
 }
 
 /** True when a profile takes anything at all besides income tax and NI. */
