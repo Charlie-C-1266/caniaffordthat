@@ -149,10 +149,10 @@ const pensionTable = (page: Page) => page.getByRole('table').filter({ has: page.
 /**
  * A table's row carrying the given name.
  *
- * Matched on the row's text rather than a `rowheader`, deliberately: the first
- * column is a `<td>` today and #285 proposes making it a `<th scope="row">`.
- * This has to pass either way, since it is checking the published content, not
- * the markup #285 is about.
+ * Matched on the row's text rather than a `rowheader`, deliberately: this
+ * checks the published content, not the table markup. That markup is #285's
+ * concern (the first column became a `<th scope="row">`), and its own tests
+ * pin it.
  */
 const rowNamed = (table: ReturnType<typeof loanTable>, name: string) => table.getByRole('row').filter({ hasText: name })
 

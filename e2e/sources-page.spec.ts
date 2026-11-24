@@ -54,17 +54,21 @@ test.describe('sources & ethos page: student loan and pension citations', () => 
     SOURCES.salarySacrifice,
     SOURCES.pensionArrangements,
     SOURCES.pensionTaxRelief,
+    SOURCES.autoEnrolment,
+    SOURCES.pensionTaxReliefGuide,
     SOURCES.salarySacrificeReform,
   ]
 
   test('cites every student-loan and pension source as a link to its own URL', async ({ page }) => {
     await page.goto('/sources/')
 
-    // The eight the issue lists: the student-loan repayment, plan and employer
-    // guidance pages, HMRC NIM02365, salary sacrifice, workplace pensions,
-    // pension tax relief, and salary-sacrifice reform 2029.
-    expect(CITATIONS).toHaveLength(8)
-    expect(new Set(CITATIONS.map((source) => source.url)).size).toBe(8)
+    // All ten #291 added: the eight the issue lists (the student-loan
+    // repayment, plan and employer guidance pages, HMRC NIM02365, salary
+    // sacrifice, workplace pensions, pension tax relief and salary-sacrifice
+    // reform 2029), plus the two the methodology page links inline: the
+    // auto-enrolment minimums and MoneyHelper's pension tax relief guide.
+    expect(CITATIONS).toHaveLength(10)
+    expect(new Set(CITATIONS.map((source) => source.url)).size).toBe(10)
 
     await Promise.all(
       CITATIONS.map(async (source) => {
