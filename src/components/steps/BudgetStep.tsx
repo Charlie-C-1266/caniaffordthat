@@ -195,7 +195,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                   prefixFontSize="var(--fs-prefix-md)"
                   prefixTop={4}
                   paddingBottom={10}
-                  paddingLeft={30}
+                  paddingLeft="var(--pad-price-md-left)"
                 />
                 {num(state.grossSalary) > 0 && <PayslipBreakdown grossAnnual={num(state.grossSalary)} profile={profile} />}
               </>
@@ -210,7 +210,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                 prefixFontSize="var(--fs-prefix-md)"
                 prefixTop={4}
                 paddingBottom={10}
-                paddingLeft={30}
+                paddingLeft="var(--pad-price-md-left)"
               />
             )}
           </div>
