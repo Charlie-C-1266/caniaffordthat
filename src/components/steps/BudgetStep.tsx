@@ -184,7 +184,13 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
 
           <div style={{ marginBottom: 24 }}>
             <div style={{ marginBottom: 14 }}>
-              <SegmentedControl options={TAKE_HOME_MODE_OPTIONS} value={state.takeHomeMode} onChange={handleTakeHomeModeChange} size="sm" />
+              <SegmentedControl
+                options={TAKE_HOME_MODE_OPTIONS}
+                value={state.takeHomeMode}
+                onChange={handleTakeHomeModeChange}
+                size="sm"
+                ariaLabel="How you'll enter your income"
+              />
             </div>
             <FieldLabel htmlFor={incomeInputId}>{salaryMode ? 'Annual salary (before tax)' : 'Take-home pay / month'}</FieldLabel>
             {salaryMode ? (
