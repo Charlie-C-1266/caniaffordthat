@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 import { SalaryMethodologyPage } from './SalaryMethodologyPage'
 import { VehicleMethodologyPage } from './VehicleMethodologyPage'
 import { SALARY_SOURCES, VEHICLE_SOURCES } from '../lib/sources'
@@ -29,6 +29,41 @@ function expectNewTabLinksGuarded(minimum: number) {
   for (const link of newTab) {
     expect(link.getAttribute('rel'), `${link.getAttribute('href')} is missing rel`).toContain('noopener')
     expect(link.getAttribute('rel')).toContain('noreferrer')
+  }
+}
+
+/**
+ * Every table on a docs page exposes each body row's name as a row header.
+ *
+ * The docs tables are all DataTable, whose first column is the row's name —
+ * since #285 marked up as `<th scope="row">` rather than a styled `<td>`, so a
+ * screen reader reads a row's name alongside each of its values (WCAG 1.3.1).
+ * Asserted per table rather than page-wide, so a single table losing its row
+ * headers can't hide behind the others.
+ */
+function expectEveryTableHasRowHeaders(atLeastTables: number) {
+  const tables = screen.getAllByRole('table')
+  // A floor rather than an exact count: it stops the loop below passing
+  // vacuously without needing an edit every time a page gains a table.
+  expect(tables.length).toBeGreaterThanOrEqual(atLeastTables)
+
+  for (const table of tables) {
+    const scope = within(table)
+    const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+    expect(bodyRows.length, 'the table has body rows to name').toBeGreaterThan(0)
+
+    // One row header per body row, each scoped to its row and non-empty.
+    const rowHeaders = scope.getAllByRole('rowheader')
+    expect(rowHeaders).toHaveLength(bodyRows.length)
+    for (const rowHeader of rowHeaders) {
+      expect(rowHeader.getAttribute('scope')).toBe('row')
+      expect(rowHeader.textContent?.trim()).not.toBe('')
+    }
+
+    // And the column headers are scoped too.
+    for (const columnHeader of scope.getAllByRole('columnheader')) {
+      expect(columnHeader.getAttribute('scope')).toBe('col')
+    }
   }
 }
 
@@ -77,7 +112,8 @@ describe('SalaryMethodologyPage', () => {
     expect(screen.getByRole('heading', { name: 'Student loans' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Workplace pensions' })).toBeTruthy()
     for (const [plan, terms] of Object.entries(CURRENT_TAX_YEAR.studentLoanPlans)) {
-      const row = screen.getByRole('cell', { name: `Plan ${plan.slice(-1)}` }).closest('tr')
+      // Since #285 the plan name is the row's header, not a plain cell.
+      const row = screen.getByRole('rowheader', { name: `Plan ${plan.slice(-1)}` }).closest('tr')
       expect(row?.textContent, `${plan} row`).toContain(fmt(terms.threshold))
     }
     // Plan 2 at £35,000: 9% of £5,615.
@@ -90,6 +126,17 @@ describe('SalaryMethodologyPage', () => {
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('table').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('columnheader').length).toBeGreaterThan(0)
+  })
+
+  it('names every body row of every table, "Model limitations" included', () => {
+    render(<SalaryMethodologyPage />)
+    // The page's own tables plus the shared "Model limitations" table.
+    expectEveryTableHasRowHeaders(4)
+    // The limitations table's simplifications are what a reader needs for the
+    // "What it means for you" column to make sense.
+    const limitations = screen.getAllByRole('table').at(-1)
+    expect(limitations).toBeDefined()
+    expect(within(limitations as HTMLElement).getAllByRole('rowheader').length).toBeGreaterThan(0)
   })
 })
 
@@ -134,5 +181,20 @@ describe('VehicleMethodologyPage', () => {
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('table').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('columnheader').length).toBeGreaterThan(0)
+  })
+
+  it('names every body row of every table, "Model limitations" included', () => {
+    render(<VehicleMethodologyPage />)
+    // The page's own tables plus the shared "Model limitations" table.
+    expectEveryTableHasRowHeaders(7)
+    expect(screen.getAllByRole('rowheader').length).toBeGreaterThan(0)
+  })
+
+  it('makes a non-string first cell a row header', () => {
+    // The depreciation table's first column is `<>Up to {pct(...)}</>`, not a
+    // string, so this is the one page where that path is exercised for real.
+    render(<VehicleMethodologyPage />)
+    const rowHeaders = screen.getAllByRole('rowheader')
+    expect(rowHeaders.some((th) => (th.textContent ?? '').startsWith('Up to'))).toBe(true)
   })
 })
