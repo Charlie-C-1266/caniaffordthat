@@ -84,8 +84,12 @@ test.describe('About your pay', () => {
     // The payslip line, to the penny...
     const pensionRow = page.getByText('PENSION', { exact: true }).locator('xpath=following-sibling::*[1]')
     await expect(pensionRow).toHaveText(/£150\.50/)
-    // ...and the caption below it, which used to say "£151/month".
-    await expect(page.getByText(/single PAYE salary, Plan 2 and Postgraduate Loan, £150\.50\/month net pay pension\./)).toBeVisible()
+    // ...and the caption below it, which used to say "£151/month". Anchored to
+    // its opening words, since the Result step's SalaryFlip carries the same
+    // profile wording after "Estimate for" and is in the DOM too.
+    await expect(
+      page.getByText(/^England, Wales & NI, .* — single PAYE salary, Plan 2 and Postgraduate Loan, £150\.50\/month net pay pension\./),
+    ).toBeVisible()
     await expect(page.getByText(/£151\/month/)).toHaveCount(0)
   })
 
