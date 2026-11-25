@@ -75,8 +75,15 @@ const DESCRIPTION_TAGS = [
 /** Google truncates a search snippet past roughly this many characters, so anything longer is wasted wording. */
 const MAX_DESCRIPTION_LENGTH = 160
 
-/** Fragments that only appear when a template was never filled in: a leftover `%placeholder%`, a `{{ moustache }}`, or a TODO. */
-const UNEXPANDED_MARKERS = ['%', '{{', 'TODO']
+/**
+ * Fragments that only appear when a template was never filled in: a leftover `%placeholder%`, a `{{ moustache }}`, or a TODO.
+ * Each is a pattern rather than a bare character, so honest copy such as "the 20% basic rate" isn't mistaken for a placeholder.
+ */
+const UNEXPANDED_MARKERS = [
+  ['%placeholder%', /%\w+%/],
+  ['{{', /\{\{/],
+  ['TODO', /\bTODO\b/],
+] as const
 
 /** Everything wrong with one page's description tags; empty means the page is sound. Every message names the page and the tag. */
 function descriptionProblems(page: string, html: string): string[] {
@@ -97,8 +104,8 @@ function descriptionProblems(page: string, html: string): string[] {
       continue
     }
 
-    for (const marker of UNEXPANDED_MARKERS) {
-      if (content.includes(marker)) problems.push(`${page}: ${label} contains unexpanded template text ${marker}`)
+    for (const [marker, pattern] of UNEXPANDED_MARKERS) {
+      if (pattern.test(content)) problems.push(`${page}: ${label} contains unexpanded template text ${marker}`)
     }
 
     // Only the search snippet is length-capped; the preview tags are allowed the longer wording the cards show.
@@ -357,7 +364,7 @@ describe('the checks reject the mistakes they are meant to catch', () => {
 
   it('rejects unexpanded template text in any description', () => {
     expect(descriptionProblems('page', describedPage('Saving %rate% a month.'))).toEqual([
-      'page: description contains unexpanded template text %',
+      'page: description contains unexpanded template text %placeholder%',
     ])
     expect(descriptionProblems('page', describedPage('Saving {{ rate }} a month.'))).toEqual([
       'page: description contains unexpanded template text {{',
@@ -365,6 +372,12 @@ describe('the checks reject the mistakes they are meant to catch', () => {
     expect(descriptionProblems('page', describedPage('TODO: write this.'))).toEqual([
       'page: description contains unexpanded template text TODO',
     ])
+  })
+
+  it('accepts a real percentage, or a word merely containing "todo", as filled-in copy', () => {
+    expect(descriptionProblems('page', describedPage('Tax at the 20% basic rate and 40% higher rate.'))).toEqual([])
+    expect(descriptionProblems('page', describedPage('A mortgage at 4.5% over 25 years.'))).toEqual([])
+    expect(descriptionProblems('page', describedPage('Costs for a TODOROV-brand boiler.'))).toEqual([])
   })
 
   it('caps the search description at 160 characters, and only that tag', () => {
