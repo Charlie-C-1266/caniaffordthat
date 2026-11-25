@@ -9,6 +9,8 @@ interface ChoiceGroupProps<T extends string> {
   options: readonly SegmentedOption<T>[]
   value: T
   onChange: (value: T) => void
+  /** Lets the control take a second row when its options won't fit — for the five-option plan row (#313). */
+  wrap?: boolean
 }
 
 /**
@@ -23,7 +25,7 @@ interface ChoiceGroupProps<T extends string> {
  * hint) stays out of it — but there is one group rather than two nested ones
  * with the same name.
  */
-export function ChoiceGroup<T extends string>({ label, hint, options, value, onChange }: ChoiceGroupProps<T>) {
+export function ChoiceGroup<T extends string>({ label, hint, options, value, onChange, wrap }: ChoiceGroupProps<T>) {
   const labelId = useId()
   return (
     <div>
@@ -41,7 +43,7 @@ export function ChoiceGroup<T extends string>({ label, hint, options, value, onC
         <span id={labelId}>{label}</span>
         {hint && <InfoHint text={hint} size={14} />}
       </div>
-      <SegmentedControl size="sm" options={options} value={value} onChange={onChange} ariaLabelledBy={labelId} />
+      <SegmentedControl size="sm" wrap={wrap} options={options} value={value} onChange={onChange} ariaLabelledBy={labelId} />
     </div>
   )
 }

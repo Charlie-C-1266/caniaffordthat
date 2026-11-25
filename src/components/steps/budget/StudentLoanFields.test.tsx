@@ -63,4 +63,16 @@ describe('StudentLoanFields', () => {
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'No' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: false })
   })
+
+  // #313 made wrapping opt-in. The plan row is the one control that needs it:
+  // six options is the only compact control wide enough to want a second row
+  // on a phone, which is what #291 added wrapping for. The Yes/No beside it
+  // must not take one, or it stops reading as either/or.
+  it('lets the six-option plan row take a second row, but not the Yes/No beside it', () => {
+    renderFields()
+
+    // Since #282 each named group is the pill itself.
+    expect(planGroup().style.flexWrap).toBe('wrap')
+    expect(postgradGroup().style.flexWrap).toBe('')
+  })
 })

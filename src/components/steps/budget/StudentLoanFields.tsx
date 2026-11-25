@@ -33,6 +33,9 @@ export function StudentLoanFields({ onChange }: { onChange: (patch: Partial<PayP
         <ChoiceGroup
           label="Student loan plan"
           hint={WHICH_PLAN_HINT}
+          // Six options: the only compact control wide enough to need a
+          // second row on a phone, which is what #291 added wrapping for.
+          wrap
           options={PLAN_OPTIONS}
           value={state.studentPlan}
           onChange={(studentPlan) => onChange({ studentPlan })}

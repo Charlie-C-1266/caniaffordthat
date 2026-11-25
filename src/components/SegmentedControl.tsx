@@ -25,6 +25,13 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void
   /** `'md'`: full-width with equal-width segments (the pay-mode toggle). `'sm'`: compact, content-sized (the rate-mode toggle). */
   size?: 'md' | 'sm'
+  /**
+   * Lets a compact control run onto a second row when its options won't fit.
+   * Opt-in, and only the five-option student-loan plan row takes it up: a
+   * two- or three-option toggle that wraps stops reading as either/or, which
+   * is what #313 fixed. Ignored at `md`, which is full-width already.
+   */
+  wrap?: boolean
 } & SegmentedControlName
 
 /**
@@ -32,6 +39,14 @@ type SegmentedControlProps<T extends string> = {
  * Pay monthly" in Details and "% of spare cash / Fixed amount" in Plan. One
  * component so the two toggles share their structure and interaction styling
  * rather than each rebuilding the pill from scratch.
+ *
+ * A compact control never runs onto a second row unless it asks to with
+ * `wrap`. #291 made every compact control wrap, for the five student-loan
+ * plans, on the reasoning that "two-option toggles never get that wide" —
+ * which wasn't so: the Budget step's pay-mode toggle split onto two rows at
+ * every width up to about 430px and the result's view switcher at 390px and
+ * below, leaving a pill that looked broken and no longer read as either/or
+ * (#313).
  *
  * The wrapper is a named `role="group"`. The buttons have always carried
  * `aria-pressed`, but before #282 the choice they belong to was never named
@@ -47,6 +62,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   size = 'md',
+  wrap = false,
   ariaLabel,
   ariaLabelledBy,
 }: SegmentedControlProps<T>) {
@@ -58,16 +74,22 @@ export function SegmentedControl<T extends string>({
       aria-labelledby={ariaLabelledBy}
       style={{
         display: 'flex',
-        gap: 5,
+        gap: md ? 5 : 'var(--segmented-sm-gap)',
         padding: md ? 5 : 4,
         borderRadius: md ? 14 : 12,
         background: 'var(--tile-bg)',
         border: '1px solid var(--divider)',
         width: md ? undefined : 'fit-content',
-        // A compact control with many options (the five student loan plans)
-        // wraps onto a second row on a narrow phone rather than pushing the
-        // page sideways. Two-option toggles never get that wide.
-        flexWrap: md ? undefined : 'wrap',
+        // A compact control sized to its content can still be asked for more
+        // room than the tile has. Capping it keeps it inside instead of
+        // pushing the page sideways, and the segments below share out what
+        // there is.
+        maxWidth: md ? undefined : '100%',
+        // Only where it was asked for: a control with many options (the five
+        // student loan plans) takes a second row rather than overflow, while
+        // a two- or three-option toggle stays on one row and keeps reading as
+        // either/or (#313).
+        flexWrap: !md && wrap ? 'wrap' : undefined,
       }}
     >
       {options.map((option) => {
@@ -80,10 +102,14 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             style={{
               flex: md ? 1 : undefined,
-              padding: md ? '11px 14px' : '8px 14px',
+              // A flex item won't shrink below its own content by default, so
+              // without this the labels would push a capped control's
+              // segments out of it rather than narrowing with it.
+              minWidth: md ? undefined : 0,
+              padding: md ? '11px 14px' : 'var(--segmented-sm-padding-block) var(--segmented-sm-padding-inline)',
               borderRadius: md ? 10 : 9,
               border: 'none',
-              fontSize: md ? 14 : 13,
+              fontSize: md ? 14 : 'var(--segmented-sm-font-size)',
               fontWeight: 700,
               fontFamily: 'inherit',
               cursor: 'pointer',

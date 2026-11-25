@@ -18,6 +18,9 @@ const NAME = 'How do you plan to pay?'
 
 const group = () => screen.getByRole('group', { name: NAME })
 
+/** The pill a render put at the top of its container — the flex row whose wrapping is under test. */
+const pillOf = (element: HTMLElement) => element.firstElementChild as HTMLElement
+
 describe('SegmentedControl', () => {
   afterEach(cleanup)
 
@@ -167,6 +170,69 @@ describe('SegmentedControl', () => {
       const pill = container.firstElementChild as HTMLElement
       expect(pill.style.width).toBe('fit-content')
       expect(screen.getByRole('button', { name: 'Save up' }).style.flexGrow).toBe('')
+    })
+  })
+
+  // #291 made every compact control wrap so the five student-loan plans would
+  // fit on a phone, on the reasoning that "two-option toggles never get that
+  // wide". They do: the Budget step's "Monthly take-home / Annual salary"
+  // split onto two rows at every width up to about 430px, and the result's
+  // "Balance / Budget / Table" at 390px and below, leaving a pill that no
+  // longer read as either/or (#313). Wrapping is now asked for, not assumed.
+  describe('wrapping', () => {
+    it('keeps a compact control on one row by default', () => {
+      const { container } = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} size="sm" />)
+      expect(pillOf(container).style.flexWrap).toBe('')
+    })
+
+    it('wraps a compact control only when asked', () => {
+      const { container } = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} size="sm" wrap />)
+      expect(pillOf(container).style.flexWrap).toBe('wrap')
+    })
+
+    it('treats an explicit wrap={false} as the default', () => {
+      const { container } = render(
+        <SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} size="sm" wrap={false} />,
+      )
+      expect(pillOf(container).style.flexWrap).toBe('')
+    })
+
+    it('leaves the md size alone, wrap or not — it is full-width already', () => {
+      const { container } = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} />)
+      expect(pillOf(container).style.flexWrap).toBe('')
+      cleanup()
+
+      const asked = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} wrap />)
+      expect(pillOf(asked.container).style.flexWrap).toBe('')
+      // And the md chrome is untouched: fixed padding and font, no width cap.
+      expect(pillOf(asked.container).style.maxWidth).toBe('')
+      expect(screen.getAllByRole('button', { name: 'Save up' })[0].style.fontSize).toBe('14px')
+    })
+
+    it('caps a non-wrapping compact control at its container, and lets its segments narrow', () => {
+      // Without these, a control sized to its content asks for more room than
+      // the tile has and pushes the page sideways instead of sharing out what
+      // there is.
+      const { container } = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} size="sm" />)
+      expect(pillOf(container).style.maxWidth).toBe('100%')
+      expect(screen.getByRole('button', { name: 'Save up' }).style.minWidth).toBe('0px')
+    })
+
+    it('takes its compact chrome from the tokens that tighten on a phone', () => {
+      // index.css trims the gap, font and padding under 600px; reading them
+      // from properties is what lets that happen without a second component.
+      const { container } = render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={vi.fn()} size="sm" />)
+      expect(pillOf(container).style.gap).toBe('var(--segmented-sm-gap)')
+      const button = screen.getByRole('button', { name: 'Save up' })
+      expect(button.style.fontSize).toBe('var(--segmented-sm-font-size)')
+      expect(button.style.padding).toBe('var(--segmented-sm-padding-block) var(--segmented-sm-padding-inline)')
+    })
+
+    it('still reports clicks when wrapping, so the plan row keeps working', () => {
+      const onChange = vi.fn()
+      render(<SegmentedControl ariaLabel={NAME} options={OPTIONS} value="save" onChange={onChange} size="sm" wrap />)
+      fireEvent.click(screen.getByRole('button', { name: 'Pay monthly' }))
+      expect(onChange).toHaveBeenCalledExactlyOnceWith('monthly')
     })
   })
 })
