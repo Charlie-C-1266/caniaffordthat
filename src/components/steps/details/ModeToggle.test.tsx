@@ -121,7 +121,8 @@ describe('ModeToggle', () => {
   it('leaves the inactive segment unaccented, whichever mode is on', () => {
     render(<ModeToggle mode="save" onChange={() => {}} />)
 
-    expect(monthlySegment().style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(monthlySegment().style.backgroundColor).toBe('transparent')
     expect(monthlySegment().style.color).toBe('var(--text-secondary)')
   })
 

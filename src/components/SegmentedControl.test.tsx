@@ -121,7 +121,8 @@ describe('SegmentedControl', () => {
     const active = screen.getByRole('button', { name: 'Save up' })
     const inactive = screen.getByRole('button', { name: 'Pay monthly' })
     expect(active.style.background).not.toBe('transparent')
-    expect(inactive.style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(inactive.style.backgroundColor).toBe('transparent')
   })
 
   // `size` branches layout only (flex, padding, borderRadius, width, font
