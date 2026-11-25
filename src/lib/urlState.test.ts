@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { buildShareParams, hydrateStateFromUrl, startOverUrl, STRING_FIELDS } from './urlState'
 import { DEFAULT_STATE } from '../state/defaults'
+import { payProfileOf, takeHomeFor, OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS } from './payProfile'
+import { monthlyTakeHomeFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 import { ITEM_NAME_MAX_LENGTH } from './fields'
 import { TERM_RANGES } from './vehicle'
 import * as sliderRanges from './sliderRanges'
@@ -177,6 +180,166 @@ describe("hydrateStateFromUrl — each slider's bounds", () => {
   })
 })
 
+/**
+ * One row per NUMBER_FIELDS key: the grid a hydrated value has to land on, and
+ * a link whose goal and mode make that the active control. `goalMonths` has no
+ * slider and no ceiling — the goal-date field produces it — but the UI can only
+ * ever hand it a whole number of months, so it is on a grid too.
+ */
+const SNAP_GRIDS = [
+  { param: 'rate', grid: SAVE_RATE_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+  { param: 'growth', grid: APR_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'goalMonths', grid: { min: 1, max: Infinity, step: 1 }, link: '?goalId=big&mode=save&saveFlavor=goal&itemPrice=900' },
+  { param: 'term', grid: FINANCE_TERM_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'coverMonths', grid: COVER_MONTHS_RANGE, link: '?goalId=emergency&mode=save' },
+  { param: 'vehicleAge', grid: VEHICLE_AGE_RANGE, link: '?goalId=car&itemPrice=9000' },
+  { param: 'pensionPercent', grid: PENSION_PERCENT_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+] as const satisfies readonly { param: keyof typeof DEFAULT_STATE; grid: SliderRange; link: string }[]
+
+/** True when `value` sits a whole number of `step`s above `min`, allowing for floating-point slack. */
+function isOnStep(value: number, { min, step }: Pick<SliderRange, 'min' | 'step'>): boolean {
+  const steps = (value - min) / step
+  return Math.abs(steps - Math.round(steps)) < 1e-9
+}
+
+describe("hydrateStateFromUrl — each slider's steps", () => {
+  // #319: clamping alone let a link carry a value *between* the slider's
+  // steps. The browser pins the thumb to the nearest step, so the control
+  // showed 5% while the label beside it and the result's maths used
+  // 5.1234567%, and a fractional `term` was fed into the payment maths as a
+  // deal no lender offers. Same rule as #126/#127, one level finer: a shared
+  // link must never carry a value the inputs themselves could not produce.
+
+  it('gives every numeric shared field a row, so a new one is not left unchecked', () => {
+    // Mirrors the SLIDER_LINKS completeness check above, from the other side.
+    // `activeIndex` and `carouselIndex` are the two numbers in state that
+    // deliberately don't round-trip: both are re-derived on load, so they
+    // never arrive from a link and have no grid to be held to.
+    const derivedOnLoad = new Set(['activeIndex', 'carouselIndex'])
+    const shared = (Object.keys(DEFAULT_STATE) as (keyof typeof DEFAULT_STATE)[]).filter(
+      (key) => typeof DEFAULT_STATE[key] === 'number' && !derivedOnLoad.has(key),
+    )
+    expect(shared.toSorted()).toEqual(SNAP_GRIDS.map((row) => row.param).toSorted())
+
+    // And none of them is serialised as a string field, which would bypass the grid entirely.
+    for (const key of shared) expect(STRING_FIELDS).not.toContain(key)
+  })
+
+  it.each(SNAP_GRIDS)('lands $param on its own grid and inside its bounds, whatever a link carries', ({ param, grid, link }) => {
+    // A spread of off-step, out-of-range and awkward values in one sweep.
+    for (const raw of ['0.3', '0.6', '1.1', '3.14159', '5.1234567', '12.5', '13.37', '49.9', '-5', '999', '1e-9', '5e0']) {
+      const value = hydrateStateFromUrl(`${link}&${param}=${raw}`)[param]
+      expect(value).toBeGreaterThanOrEqual(grid.min)
+      expect(value).toBeLessThanOrEqual(grid.max)
+      expect(isOnStep(value, grid)).toBe(true)
+    }
+  })
+
+  it('rounds an off-step value to the nearest step, down or up', () => {
+    const pension = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    expect(hydrateStateFromUrl(`${pension}5.1`).pensionPercent).toBe(5)
+    expect(hydrateStateFromUrl(`${pension}5.4`).pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.6').term).toBe(14)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.37').term).toBe(13)
+  })
+
+  it('rounds an exact midpoint upward, away from zero', () => {
+    // Math.round's own tie-break, kept rather than fought: 5.25 is equally far
+    // from 5 and 5.5, and rounding up matches what `<input type=range>` does
+    // when the same value is assigned to it.
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=5.25').pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.5').term).toBe(14)
+  })
+
+  it.each(SNAP_GRIDS)('leaves an already-on-step $param exactly as the link wrote it', ({ param, grid, link }) => {
+    const onStep = Number((grid.min + 4 * grid.step).toFixed(2))
+    expect(hydrateStateFromUrl(`${link}&${param}=${onStep}`)[param]).toBe(onStep)
+  })
+
+  it('keeps a value that rounds past an end inside the range', () => {
+    const pension = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    // 49.9 is nearer 50 than 49.5, and 50 is the maximum — so it may round up to it, but no further.
+    expect(hydrateStateFromUrl(`${pension}49.9`).pensionPercent).toBe(PENSION_PERCENT_RANGE.max)
+    expect(hydrateStateFromUrl(`${pension}50.2`).pensionPercent).toBe(PENSION_PERCENT_RANGE.max)
+    // 0.3 is below the 0.5 floor; clamping comes first, so it can only land on it.
+    expect(hydrateStateFromUrl(`${pension}0.3`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=0.6').term).toBe(FINANCE_TERM_RANGE.min)
+  })
+
+  it('snaps without leaving floating-point artefacts behind', () => {
+    // A decimal step can drift in binary floating point (`0.1 * 3` is
+    // 0.30000000000000004), and an artefact would reach the caption and the
+    // result as such. Today's 0.5 steps are exact, so this pins the outcome
+    // rather than the rounding: toBe, not toBeCloseTo, is the point.
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=5.4').pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=0.4').pensionPercent).toBe(0.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=10.3').growth).toBe(10.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=0.26').growth).toBe(0.5)
+  })
+
+  it('leaves the existing handling of unusable values untouched', () => {
+    const link = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    // NaN and Infinity are not finite, so the field keeps its default — as before snapping.
+    expect(hydrateStateFromUrl(`${link}NaN`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    expect(hydrateStateFromUrl(`${link}Infinity`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    expect(hydrateStateFromUrl(`${link}lots`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    // An empty value and a vanishingly small one both parse as a finite 0, so
+    // they clamp to the floor rather than falling back. Snapping leaves the
+    // floor where it was, so both answers are the same as before #319.
+    expect(hydrateStateFromUrl(`${link}`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    expect(hydrateStateFromUrl(`${link}1e-9`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    // Scientific notation that names an on-step value is honoured as written.
+    expect(hydrateStateFromUrl(`${link}5e0`).pensionPercent).toBe(5)
+  })
+
+  it('keeps a vehicle term on-step through the per-method re-clamp', () => {
+    // The method's own TERM_RANGES narrowing runs after the snap, so this
+    // proves the second clamp can't knock the value back off its step.
+    for (const [raw, expected] of [
+      ['13.37', 13],
+      ['50.4', TERM_RANGES.pcp.max], // snaps to 50, then the PCP ceiling of 48
+      ['11.6', TERM_RANGES.pcp.min], // snaps to 12, which is the PCP floor
+      ['11.2', TERM_RANGES.pcp.min], // snaps to 11, which the floor lifts to 12
+    ] as const) {
+      const term = hydrateStateFromUrl(`?goalId=car&vehicleMethod=pcp&itemPrice=15000&term=${raw}`).term
+      expect(term).toBe(expected)
+      expect(isOnStep(term, FINANCE_TERM_RANGE)).toBe(true)
+    }
+  })
+
+  // The other half of the rule: snapping must never touch a legitimate link.
+  // Every value the sliders can actually produce has to survive a full
+  // "Copy result link" round-trip byte for byte.
+  it.each(SLIDER_ROWS)('never alters any on-step $param that $name can produce', ({ param, range, link }) => {
+    const { min, max, step } = range
+    for (let value = min; value <= max; value = Number((value + step).toFixed(4))) {
+      // buildShareParams supplies the whole state exactly as "Copy result
+      // link" would; the row's link overrides the goal and mode that make
+      // this the active slider.
+      const params = buildShareParams({ ...DEFAULT_STATE, [param]: value })
+      for (const [key, carried] of new URLSearchParams(link.slice(1))) params.set(key, carried)
+      expect(hydrateStateFromUrl(`?${params.toString()}`)[param]).toBe(value)
+    }
+  })
+
+  it('never alters a whole number of goalMonths, which has no ceiling to be held to', () => {
+    for (const months of [1, 2, 6, 12, 18, 24, 60, 120, 600]) {
+      const params = buildShareParams({ ...DEFAULT_STATE, goalId: 'big', saveFlavor: 'goal', goalMonths: months })
+      expect(hydrateStateFromUrl(`?${params.toString()}`).goalMonths).toBe(months)
+    }
+  })
+
+  it('keeps savings growth on-step through the SAVINGS_INTEREST_RANGE re-clamp', () => {
+    const link = '?goalId=big&mode=save&itemPrice=900&growth='
+    expect(hydrateStateFromUrl(`${link}3.14159`).growth).toBe(3)
+    expect(hydrateStateFromUrl(`${link}3.3`).growth).toBe(3.5)
+    // Snaps to 25.5 on the wider APR grid, then the savings ceiling takes it to 20 — still on-step.
+    const capped = hydrateStateFromUrl(`${link}25.3`).growth
+    expect(capped).toBe(SAVINGS_INTEREST_RANGE.max)
+    expect(isOnStep(capped, SAVINGS_INTEREST_RANGE)).toBe(true)
+  })
+})
+
 describe('buildShareParams', () => {
   it('round-trips a full state back through hydrateStateFromUrl', () => {
     const shared = {
@@ -193,7 +356,9 @@ describe('buildShareParams', () => {
       savings: '3000',
       monthlyAmount: '450',
       rate: 30,
-      growth: 7.9,
+      // On-step for APR_RANGE: the slider moves in 0.5s, so an off-step
+      // growth is a value this state could never have held (#319).
+      growth: 7.5,
       goalMonths: 24,
       term: 60,
       coverMonths: 4,
@@ -213,7 +378,7 @@ describe('buildShareParams', () => {
     expect(restored.itemPrice).toBe('18000')
     expect(restored.savings).toBe('3000')
     expect(restored.monthlyAmount).toBe('450')
-    expect(restored.growth).toBe(7.9)
+    expect(restored.growth).toBe(7.5)
     expect(restored.term).toBe(60)
     expect(restored.coverMonths).toBe(4)
   })
@@ -249,7 +414,7 @@ describe('buildShareParams', () => {
       insuranceAnnual: '720',
       taxAnnual: '195',
       term: 48,
-      growth: 8.9,
+      growth: 8.5, // on-step for APR_RANGE, as above
     } satisfies typeof DEFAULT_STATE
 
     const restored = hydrateStateFromUrl(`?${buildShareParams(shared).toString()}`)
@@ -268,7 +433,7 @@ describe('buildShareParams', () => {
     expect(restored.insuranceAnnual).toBe('720')
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
-    expect(restored.growth).toBe(8.9)
+    expect(restored.growth).toBe(8.5)
   })
 })
 
@@ -456,6 +621,166 @@ describe('hydrateStateFromUrl — pay profile', () => {
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=0`).postgradLoan).toBe(false)
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=yes`).postgradLoan).toBe(false)
     expect(hydrateStateFromUrl(`${LINK}&postgradLoan=true`).postgradLoan).toBe(false)
+  })
+})
+
+// #292: in salary mode `takeHome` is derived, never typed — BudgetStep
+// recomputes it from the salary and the pay profile, and everything downstream
+// reads only `takeHome`. A link was the one path that didn't: it copied
+// `takeHome` as a plain money string, so a salary-mode link whose figure
+// didn't match its salary and profile loaded inconsistent. The Budget step's
+// payslip recomputed and showed one take-home while the verdict and result
+// were worked out on another.
+//
+// Expected figures come from the engine rather than literals, so the April
+// refresh of the loan thresholds updates both sides together.
+/** A salary-mode link, with the pay-profile params the caller cares about. */
+const salaryLink = (params: Record<string, string> = {}) =>
+  '?' +
+  new URLSearchParams({
+    goalId: 'big',
+    mode: 'save',
+    saveFlavor: 'goal',
+    itemPrice: '1200',
+    takeHomeMode: 'salary',
+    grossSalary: '35000',
+    ...params,
+  }).toString()
+
+describe('hydrateStateFromUrl: salary-mode take-home is derived, not trusted', () => {
+  it('replaces a mismatched takeHome with the derived figure', () => {
+    // The issue's own URL: the link claims £2,393.30 while a £35,000 Plan 2
+    // salary with a 5% net-pay pension takes home £2,234.52.
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=2393.30' +
+        '&studentPlan=plan2&postgradLoan=0&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+
+    expect(state.takeHome).toBe('2234.52')
+    expect(state.takeHome).toBe(String(Math.round(monthlyTakeHomeFromGross(35000, CURRENT_TAX_YEAR, payProfileOf(state)) * 100) / 100))
+  })
+
+  it('derives it with no takeHome param at all', () => {
+    const state = hydrateStateFromUrl(salaryLink({ studentPlan: 'plan2' }))
+
+    expect(state.takeHome).not.toBe('')
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+  })
+
+  it.each(['none', ...STUDENT_LOAN_PLANS])('derives it with studentPlan=%s', (studentPlan) => {
+    const state = hydrateStateFromUrl(salaryLink({ studentPlan, takeHome: '9999' }))
+
+    expect(state.studentPlan).toBe(studentPlan)
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+  })
+
+  it('derives it with the postgraduate loan on, taking more than with it off', () => {
+    const withLoan = hydrateStateFromUrl(salaryLink({ postgradLoan: '1', takeHome: '9999' }))
+    const without = hydrateStateFromUrl(salaryLink({ postgradLoan: '0', takeHome: '9999' }))
+
+    expect(withLoan.postgradLoan).toBe(true)
+    expect(withLoan.takeHome).toBe(takeHomeFor('35000', payProfileOf(withLoan)))
+    expect(Number(withLoan.takeHome)).toBeLessThan(Number(without.takeHome))
+  })
+
+  it.each(
+    OFFERED_PENSION_ARRANGEMENTS.flatMap((pensionArrangement) =>
+      (['percent', 'amount'] as const).map((pensionMode) => [pensionArrangement, pensionMode] as const),
+    ),
+  )('derives it for a %s pension given as %s', (pensionArrangement, pensionMode) => {
+    const state = hydrateStateFromUrl(
+      salaryLink({ pensionArrangement, pensionMode, pensionPercent: '5', pensionMonthlyAmount: '150', takeHome: '9999' }),
+    )
+
+    expect(state.pensionArrangement).toBe(pensionArrangement)
+    expect(state.pensionMode).toBe(pensionMode)
+    expect(state.takeHome).toBe(takeHomeFor('35000', payProfileOf(state)))
+    // A pension was actually applied, so this isn't passing on a no-op profile.
+    expect(Number(state.takeHome)).toBeLessThan(Number(hydrateStateFromUrl(salaryLink()).takeHome))
+  })
+
+  it.each([
+    ['missing', undefined],
+    ['empty', ''],
+    ['zero', '0'],
+    ['negative', '-5000'],
+    ['junk', 'abc'],
+    ['1e999', '1e999'],
+  ])('leaves takeHome as read when grossSalary is %s', (_case, grossSalary) => {
+    // The same thing the UI does with no salary typed: nothing is derived, so
+    // whatever the link carried (held to isMoneyValue) stands.
+    const params: Record<string, string> = { takeHome: '2000' }
+    if (grossSalary !== undefined) params.grossSalary = grossSalary
+    const search =
+      '?' +
+      new URLSearchParams({
+        goalId: 'big',
+        mode: 'save',
+        saveFlavor: 'goal',
+        itemPrice: '1200',
+        takeHomeMode: 'salary',
+        ...params,
+      }).toString()
+
+    const state = hydrateStateFromUrl(search)
+    expect(state.takeHome).toBe('2000')
+  })
+
+  it('does not touch takeHome in take-home mode, even with a salary and profile present', () => {
+    // There the typed figure is the authority; the salary is just remembered.
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=takehome&grossSalary=35000&takeHome=1234.56' +
+        '&studentPlan=plan2&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+
+    expect(state.takeHomeMode).toBe('takehome')
+    expect(state.takeHome).toBe('1234.56')
+    expect(state.grossSalary).toBe('35000')
+  })
+
+  it('derives with no pension for a relief-at-source link, which is not offered yet', () => {
+    const ras = hydrateStateFromUrl(
+      salaryLink({ pensionArrangement: 'ras', pensionMode: 'percent', pensionPercent: '5', takeHome: '9999' }),
+    )
+    const none = hydrateStateFromUrl(salaryLink())
+
+    // The arrangement falls back, so the derived figure must match a no-pension one.
+    expect(ras.pensionArrangement).toBe('none')
+    expect(ras.takeHome).toBe(none.takeHome)
+    expect(ras.takeHome).toBe(takeHomeFor('35000', payProfileOf(ras)))
+  })
+
+  it('floors the derived take-home at zero when the pension takes more than the pay', () => {
+    const state = hydrateStateFromUrl(
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=12000' +
+        '&pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=5000&takeHome=9999',
+    )
+
+    expect(state.takeHome).toBe('0')
+    expect(Number(state.takeHome)).toBeGreaterThanOrEqual(0)
+  })
+
+  it('round-trips a state the UI produced without changing takeHome', () => {
+    // buildShareParams -> hydrateStateFromUrl must be a fixed point: the UI
+    // already derived takeHome the same way, so re-deriving changes nothing.
+    const uiState = {
+      ...DEFAULT_STATE,
+      goalId: 'big' as const,
+      itemPrice: '1200',
+      takeHomeMode: 'salary' as const,
+      grossSalary: '35000',
+      studentPlan: 'plan2' as const,
+      postgradLoan: true,
+      pensionArrangement: 'sacrifice' as const,
+      pensionMode: 'percent' as const,
+      pensionPercent: 5,
+    }
+    const derived = { ...uiState, takeHome: takeHomeFor(uiState.grossSalary, payProfileOf(uiState)) }
+
+    const round = hydrateStateFromUrl(`?${buildShareParams(derived).toString()}`)
+    expect(round.takeHome).toBe(derived.takeHome)
+    // And again, so it is stable rather than merely changed once.
+    expect(hydrateStateFromUrl(`?${buildShareParams(round).toString()}`).takeHome).toBe(derived.takeHome)
   })
 })
 

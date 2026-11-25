@@ -1,5 +1,7 @@
-import { num, fmt } from './calculations'
+import { num, fmtPenceIfAny } from './calculations'
 import type { PayProfile } from './deductions'
+import { monthlyTakeHomeFromGross } from './salary'
+import { CURRENT_TAX_YEAR } from './taxYears'
 import type { CalculatorState, PensionArrangement, StudentLoanPlan } from '../state/types'
 
 // The pay profile as the site presents it: which choices the Budget step
@@ -66,6 +68,53 @@ export function payProfileOf(state: PayProfileState): PayProfile {
   }
 }
 
+/** Rounds a computed take-home to whole pence, so the stored value isn't a long float. */
+const roundPence = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * The take-home field salary mode stores for a typed salary under a pay
+ * profile: pence, or blank for no salary.
+ *
+ * Lives here rather than in BudgetStep so the step and `hydrateStateFromUrl`
+ * cannot drift (#292). In salary mode `takeHome` is derived, never typed, so
+ * there must be exactly one derivation — the Budget step's payslip and the
+ * verdict showing different take-home for the same link was the bug.
+ *
+ * Floored at zero: a pension larger than the gross pay would otherwise store
+ * a negative take-home, and no field in the UI can produce one.
+ */
+export function takeHomeFor(grossSalary: string, profile: PayProfile): string {
+  const gross = num(grossSalary)
+  if (gross <= 0) return ''
+  return String(Math.max(0, roundPence(monthlyTakeHomeFromGross(gross, CURRENT_TAX_YEAR, profile))))
+}
+
+/** The state fields that decide whether a salary leaves any take-home: the pay profile, plus the income mode and salary it applies to. */
+export type TakeHomeState = PayProfileState & Pick<CalculatorState, 'takeHomeMode' | 'grossSalary'>
+
+/**
+ * True when "About your pay" leaves nothing of the salary to plan with:
+ * salary mode, a salary typed, and a payslip whose take-home comes to £0.00.
+ *
+ * `monthlyPayslipLines` caps the PENSION line at whatever the payslip has
+ * left, so a £-a-month pension can take everything. The Budget step then
+ * won't advance and both result engines return `null` — and without knowing
+ * why, the page blames a missing price and take-home the user has already
+ * given (#317). A percentage pension can't get here: its slider stops at 50%,
+ * and the loans are a share of pay above a threshold, so neither can take
+ * everything on its own.
+ *
+ * Worked out through `takeHomeFor`, the one derivation the Budget step and
+ * hydration both store (#292), rather than read from `state.takeHome`, so a
+ * stale stored figure can neither raise nor hide the note. Its whole-pence
+ * rounding is what the payslip shows, so this is true exactly when the step
+ * really stalls.
+ */
+export function deductionsTakeAllPay(state: TakeHomeState): boolean {
+  if (state.takeHomeMode !== 'salary' || num(state.grossSalary) <= 0) return false
+  return num(takeHomeFor(state.grossSalary, payProfileOf(state))) <= 0
+}
+
 /** True when a profile takes anything at all besides income tax and NI. */
 export function hasDeductions(profile: PayProfile): boolean {
   return profile.studentPlan !== 'none' || profile.postgradLoan || profile.pension !== null
@@ -92,6 +141,9 @@ export function describePayProfile(profile: PayProfile): string {
 
   const { pension } = profile
   if (pension === null) return `${loans}, no pension`
-  const size = pension.mode === 'percent' ? `${pension.percent}%` : `${fmt(pension.monthlyAmount)}/month`
+  // The amount is shown to the penny when it has any, so the caption can never
+  // name a figure the PENSION line above it contradicts (#318). A whole-pound
+  // amount keeps its existing shorter wording.
+  const size = pension.mode === 'percent' ? `${pension.percent}%` : `${fmtPenceIfAny(pension.monthlyAmount)}/month`
   return `${loans}, ${size} ${PENSION_ARRANGEMENT_LABELS[pension.arrangement].toLowerCase()} pension`
 }

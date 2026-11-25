@@ -56,6 +56,7 @@ export function PensionFields({ accentColor, onChange }: { accentColor: string; 
             options={MODE_OPTIONS}
             value={state.pensionMode}
             onChange={(pensionMode) => onChange({ pensionMode })}
+            ariaLabel="How you'll set your pension contribution"
           />
           {state.pensionMode === 'percent' ? (
             <div>

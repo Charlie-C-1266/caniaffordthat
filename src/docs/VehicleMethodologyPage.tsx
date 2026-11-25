@@ -80,7 +80,7 @@ export function VehicleMethodologyPage() {
           together and compare the total to your <Strong>spare cash</Strong> — take-home pay minus the monthly outgoings you enter on the
           budget step, and minus any regular saving you told us you already do.
         </P>
-        <Formula>{`spare cash = take-home − essential outgoings − regular saving
+        <Formula label="spare cash and the affordability verdict">{`spare cash = take-home − essential outgoings − regular saving
 total monthly cost = finance payment + fuel + maintenance + insurance + road tax
 verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
         <P>
@@ -92,6 +92,7 @@ verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
           using the same bands as the rest of the site:
         </P>
         <DataTable
+          label="How each share of take-home pay is described"
           head={['Share of your take-home pay', 'How we describe it']}
           rows={[
             [<>Up to {pct(TAKE_HOME_COMFORTABLE_RATIO)}</>, 'Fits comfortably'],
@@ -136,6 +137,7 @@ verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
           <Strong>n</Strong> is the term in months.
         </P>
         <DataTable
+          label="What is computed for each finance method, and its term range"
           head={['Method', 'What we compute', 'Term range']}
           rows={[
             ['Cash', 'No borrowing: the price (less part-exchange) is due on the day, and only running costs count monthly.', '—'],
@@ -168,7 +170,7 @@ verdict: affordable when total monthly cost ≤ spare cash`}</Formula>
             ],
           ]}
         />
-        <Formula>{`HP / loan payment = P × i ÷ (1 − (1 + i)⁻ⁿ)
+        <Formula label="the monthly payment for HP, a loan and PCP">{`HP / loan payment = P × i ÷ (1 − (1 + i)⁻ⁿ)
 PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   where B = the balloon`}</Formula>
         <P>
           That balloon term is why PCP payments look cheaper but the borrowing costs more: on a <Strong>{fmt(EXAMPLE.price)}</Strong> car
@@ -185,6 +187,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
           exactly. If you don't, we estimate one from a <Strong>generic depreciation curve</Strong>:
         </P>
         <DataTable
+          label="Depreciation curve rules and the values used"
           head={['Rule', 'Value we use']}
           rows={[
             [
@@ -258,8 +261,9 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
 
       <Section title="Running costs">
         <P>Fuel is worked out from three numbers you can adjust — miles per year, the car's real-world mpg, and the pump price:</P>
-        <Formula>{`fuel £/month = miles per year ÷ 12 ÷ mpg × ${LITRES_PER_GALLON} litres/gallon × pence per litre ÷ 100`}</Formula>
+        <Formula label="the monthly fuel cost">{`fuel £/month = miles per year ÷ 12 ÷ mpg × ${LITRES_PER_GALLON} litres/gallon × pence per litre ÷ 100`}</Formula>
         <DataTable
+          label="Running-cost inputs, their defaults and why"
           head={['Input', 'Default', 'Why']}
           rows={[
             [
@@ -284,6 +288,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
           ]}
         />
         <DataTable
+          label="Maintenance presets, their monthly budgets and who they suit"
           head={['Maintenance preset', 'Monthly budget', 'Suits']}
           rows={MAINTENANCE_PRESETS.map((preset) => [preset.label, <Num key="m">£{preset.monthly}</Num>, preset.blurb])}
         />
@@ -300,6 +305,7 @@ PCP payment     = (P − B × (1 + i)⁻ⁿ) × i ÷ (1 − (1 + i)⁻ⁿ)   whe
           in your monthly total:
         </P>
         <DataTable
+          label="Road tax charges, the rates used and when each applies"
           head={['Charge', 'Rate we use', 'When it applies']}
           rows={[
             [

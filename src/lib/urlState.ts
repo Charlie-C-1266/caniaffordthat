@@ -1,7 +1,8 @@
 import { DEFAULT_STATE } from '../state/defaults'
 import { GOALS } from './goals'
+import { num } from './calculations'
 import { isMoneyValue, sanitiseItemName } from './fields'
-import { OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS } from './payProfile'
+import { OFFERED_PENSION_ARRANGEMENTS, STUDENT_LOAN_PLANS, payProfileOf, takeHomeFor } from './payProfile'
 import { TERM_RANGES } from './vehicle'
 import {
   APR_RANGE,
@@ -59,27 +60,34 @@ export const STRING_FIELDS = [
 ] as const satisfies readonly (keyof CalculatorState)[]
 
 /**
- * The numeric planning fields that round-trip, each with the range it's
- * clamped to on hydration. A query string is user-editable input, so an
- * out-of-range value (`coverMonths=999`, `rate=-5`) is pulled back to the
- * matching UI control's own bounds rather than trusted. The bounds come from
- * sliderRanges.ts, the same ranges the sliders use. `goalMonths` has no upper
- * bound because the goal-date field itself accepts any future date.
+ * The numeric planning fields that round-trip, each with the range it's held
+ * to on hydration. A query string is user-editable input, so a value the
+ * slider could never have produced — out of range (`coverMonths=999`,
+ * `rate=-5`) or between its steps (`pensionPercent=5.1234567`) — is pulled
+ * onto the matching UI control's own grid rather than trusted. The bounds and
+ * steps come from sliderRanges.ts, the same ranges the sliders use.
+ * `goalMonths` has no upper bound because the goal-date field itself accepts
+ * any future date, but it is still a whole number of months.
  *
- * `growth` and `term` each drive more than one slider, so they're clamped here
- * to the widest of their sliders and narrowed to the one the shared goal and
- * mode actually show, once those are known (see the end of
- * `hydrateStateFromUrl`).
+ * `growth` and `term` each drive more than one slider, so they're held here to
+ * the widest of their sliders and narrowed to the one the shared goal and mode
+ * actually show, once those are known (see the end of `hydrateStateFromUrl`).
  */
 const NUMBER_FIELDS: readonly {
   key: 'rate' | 'growth' | 'goalMonths' | 'term' | 'coverMonths' | 'vehicleAge' | 'pensionPercent'
   min: number
   max?: number
+  step: number
 }[] = [
   { key: 'rate', ...SAVE_RATE_RANGE },
   { key: 'growth', ...APR_RANGE }, // the wider of the two interest sliders
-  { key: 'goalMonths', min: 1 }, // goal-date floor is next month
-  { key: 'term', min: 1, max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)) },
+  { key: 'goalMonths', min: 1, step: 1 }, // goal-date floor is next month, in whole months
+  {
+    key: 'term',
+    min: 1,
+    max: Math.max(FINANCE_TERM_RANGE.max, ...Object.values(TERM_RANGES).map((range) => range.max)),
+    step: 1, // every term slider, standard and per vehicle method, is in whole months
+  },
   { key: 'coverMonths', ...COVER_MONTHS_RANGE },
   { key: 'vehicleAge', ...VEHICLE_AGE_RANGE },
   { key: 'pensionPercent', ...PENSION_PERCENT_RANGE },
@@ -87,6 +95,38 @@ const NUMBER_FIELDS: readonly {
 
 /** Pulls a value into a slider's bounds. */
 const clampTo = (value: number, { min, max }: Pick<SliderRange, 'min' | 'max'>) => Math.min(max, Math.max(min, value))
+
+/**
+ * How many decimal places a step is written to. Snapping multiplies the step,
+ * and a decimal step such as 0.1 drifts in binary floating point (`0.1 * 3` is
+ * 0.30000000000000004), so the result is rounded back to the step's own
+ * precision. Today's steps, 0.5 and 1, are exact in binary and never drift;
+ * this keeps a future decimal step from leaking an artefact into the caption.
+ */
+function stepDecimals(step: number): number {
+  const text = String(step)
+  const point = text.indexOf('.')
+  return point === -1 ? 0 : text.length - point - 1
+}
+
+/**
+ * Pulls a value onto a slider's own grid: into `[min, max]`, then to the
+ * nearest multiple of `step` counted from `min`, then back into range in case
+ * rounding carried it past an end. An exact midpoint rounds away from zero
+ * (`Math.round`), so `pensionPercent=5.25` lands on 5.5 rather than 5.
+ *
+ * Without the snap a link could carry a value the slider itself refuses: the
+ * browser pins the thumb to the nearest step, so the control showed 5% while
+ * the label beside it and the result's maths used 5.1234567% (#319). It is the
+ * same rule as the clamp, one level finer — a shared link must never carry a
+ * value the inputs themselves could not produce (#126, #127).
+ */
+function snapTo(value: number, { min, max = Infinity, step }: { min: number; max?: number; step: number }): number {
+  const clamped = Math.min(max, Math.max(min, value))
+  const steps = Math.round((clamped - min) / step)
+  const snapped = Number((min + steps * step).toFixed(stepDecimals(step)))
+  return Math.min(max, Math.max(min, snapped))
+}
 
 // `carouselIndex` is intentionally *not* shared: on load it's derived from
 // `goalId` so a link always focuses the shared goal, regardless of where the
@@ -159,6 +199,10 @@ export function buildShareParams(state: CalculatorState): URLSearchParams {
  * price-less emergency fund (which would otherwise never hydrate, having no
  * price to key on), `itemPrice` keeps older price-only links working. Enum and goal fields are validated rather than
  * trusted, since a query string is user-controllable input.
+ *
+ * Salary-mode take-home is re-derived from the salary and pay profile rather
+ * than trusted, so the figure can't disagree with the payslip the Budget step
+ * shows (#292). In take-home mode the typed figure is kept as read.
  */
 export function hydrateStateFromUrl(search: string): CalculatorState {
   const params = new URLSearchParams(search)
@@ -220,11 +264,16 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
     else state[field] = isMoneyValue(value) ? value.trim() : DEFAULT_STATE[field]
   }
 
-  for (const { key, min, max } of NUMBER_FIELDS) {
-    const value = Number(params.get(key) ?? NaN)
-    if (Number.isFinite(value)) state[key] = Math.min(max ?? Infinity, Math.max(min, value))
+  for (const field of NUMBER_FIELDS) {
+    const value = Number(params.get(field.key) ?? NaN)
+    if (Number.isFinite(value)) state[field.key] = snapTo(value, field)
   }
 
+  // The three re-clamps below narrow an already-snapped value, and every range
+  // they narrow to is a whole number of months or a multiple of 0.5% offset
+  // from the same floor as the range above, so clamping cannot knock a value
+  // back off its step. urlState.test.ts pins that rather than assuming it.
+  //
   // The 84-month ceiling above exists only for the vehicle bank loan; every
   // other flow's term slider stops at FINANCE_TERM_RANGE's max, so a crafted
   // non-vehicle link can't smuggle in a term the UI couldn't have produced.
@@ -244,6 +293,28 @@ export function hydrateStateFromUrl(search: string): CalculatorState {
   // interest, whose slider stops lower, so a crafted saving link is held to
   // that.
   if (goal?.kind !== 'vehicle' && state.mode === 'save') state.growth = clampTo(state.growth, SAVINGS_INTEREST_RANGE)
+
+  // In salary mode `takeHome` is derived, never typed: BudgetStep recomputes it
+  // from the salary and the pay profile whenever either changes, and everything
+  // downstream (verdict, projection, budget split) reads only `takeHome`. A
+  // link was the one path that didn't, copying `takeHome` as a plain money
+  // string — so a salary-mode link whose figure didn't match its salary and
+  // profile loaded inconsistent: the Budget step's payslip recomputed and
+  // showed one take-home while the result was worked out on another (#292).
+  //
+  // This isn't only hand-edited links. `takeHome` depends on data that changes
+  // every April — the Plan 1 and Plan 4 thresholds rise each year and Plan 5
+  // follows RPI from April 2027 (see taxYears.ts and
+  // docs/salary-engine-monotonicity.md) — so every salary-mode link with a
+  // Plan 1/4/5 loan carries a figure that goes stale when the next table lands.
+  //
+  // Re-derived here with the same helper BudgetStep uses, so the two can't
+  // disagree. It runs last, once the salary string and every pay-profile field
+  // have been read and sanitised. Take-home mode is untouched: there the typed
+  // figure is the authority.
+  if (state.takeHomeMode === 'salary' && num(state.grossSalary) > 0) {
+    state.takeHome = takeHomeFor(state.grossSalary, payProfileOf(state))
+  }
 
   return state
 }

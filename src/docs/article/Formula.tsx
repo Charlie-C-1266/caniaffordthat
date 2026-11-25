@@ -1,10 +1,22 @@
 import type { ReactNode } from 'react'
+import { useOverflowX } from '../../hooks/useOverflowX'
+import { scrollerRegionProps } from './scrollerRegion'
+
+interface FormulaProps {
+  children: ReactNode
+  /** What this formula works out, e.g. "take-home" — read as "Formula: take-home" once it is wide enough to scroll. */
+  label?: string
+}
 
 /** A formula, set in the mono face on its own soft card. Scrolls horizontally rather than wrapping. */
-export function Formula({ children }: { children: ReactNode }) {
+export function Formula({ children, label }: FormulaProps) {
+  const [scrollerRef, overflowing] = useOverflowX<HTMLPreElement>()
+
   return (
     <pre
-      className="mono"
+      ref={scrollerRef}
+      className="mono doc-scroller"
+      {...scrollerRegionProps(overflowing, label === undefined ? 'Formula' : `Formula: ${label}`)}
       style={{
         background: 'var(--tile-bg)',
         borderRadius: 'var(--radius-glass-sm)',

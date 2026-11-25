@@ -285,7 +285,8 @@ describe('GoalCard', () => {
 
     it('keeps the opacity fade either way, so a wrapped card still fades in place', () => {
       for (const teleport of [false, true]) {
-        expect(cardOf(renderCard({ teleport }).container).style.transition).toContain('opacity 0.5s ease')
+        // jsdom 31 drops the default `ease` when it reads the shorthand back.
+        expect(cardOf(renderCard({ teleport }).container).style.transition).toMatch(/(^|, )opacity 0\.5s( ease)?(,|$)/)
         cleanup()
       }
     })

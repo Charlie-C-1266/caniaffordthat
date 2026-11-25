@@ -135,6 +135,50 @@ describe('PayslipBreakdown', () => {
     expect(rowValue('TAKE-HOME')).toBe(fmtPence(10000 / 12))
   })
 
+  it('shows the same pension figure in its caption as on the PENSION line (#318)', () => {
+    // £35,000 with £150.50 a month under net pay: the payslip has plenty
+    // left, so the line is exactly what was entered — and the caption, one
+    // line below it, used to round that to "£151/month".
+    const profile: PayProfile = {
+      studentPlan: 'none',
+      postgradLoan: false,
+      pension: { arrangement: 'netpay', mode: 'amount', percent: 0, monthlyAmount: 150.5 },
+    }
+    render(<PayslipBreakdown grossAnnual={35000} profile={profile} />)
+
+    expect(rowValue('PENSION')).toBe(`${MINUS}£150.50`)
+    expect(screen.getByText(/single PAYE salary/).textContent).toContain('£150.50/month net pay pension')
+
+    // Stated as the rule rather than the figure: the caption's amount is the
+    // PENSION line's amount, whatever the tax tables do.
+    const onTheLine = (rowValue('PENSION') ?? '').replace(MINUS, '')
+    expect(screen.getByText(/single PAYE salary/).textContent).toContain(`${onTheLine}/month`)
+    expectLinesToAddUp()
+  })
+
+  it('names a pension of pennies rather than calling it £0 a month', () => {
+    const profile: PayProfile = {
+      studentPlan: 'none',
+      postgradLoan: false,
+      pension: { arrangement: 'netpay', mode: 'amount', percent: 0, monthlyAmount: 0.4 },
+    }
+    render(<PayslipBreakdown grossAnnual={35000} profile={profile} />)
+
+    expect(rowValue('PENSION')).toBe(`${MINUS}£0.40`)
+    expect(caption()).toContain('£0.40/month net pay pension')
+    expect(caption()).not.toContain('£0/month')
+  })
+
+  it('keeps the whole-pound caption wording a whole-pound amount already had', () => {
+    const profile: PayProfile = {
+      studentPlan: 'plan2',
+      postgradLoan: false,
+      pension: { arrangement: 'sacrifice', mode: 'amount', percent: 0, monthlyAmount: 150 },
+    }
+    render(<PayslipBreakdown grossAnnual={35000} profile={profile} />)
+    expect(screen.getByText(/single PAYE salary/).textContent).toContain('Plan 2 student loan, £150/month salary sacrifice pension')
+  })
+
   it('says exactly what was applied, for which tax year, and links to the working', () => {
     render(<PayslipBreakdown grossAnnual={35000} profile={PLAN_2_NET_PAY} />)
     expect(screen.getByText(/Plan 2 student loan, 5% net pay pension/).textContent).toContain(CURRENT_TAX_YEAR.label)
