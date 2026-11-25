@@ -368,6 +368,9 @@ describe('payslipIntoPension', () => {
   })
 })
 
+/** A net pay pension of `pounds` a month with no student loans. */
+const noLoans = (pounds: number): PayProfile => ({ studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', pounds) })
+
 describe('pensionWasCutShort', () => {
   it('is true when the payslip had less left than the pension asked for', () => {
     expect(cutShort(35_000, { studentPlan: 'plan2', postgradLoan: true, pension: monthlyPension('netpay', 2800) })).toBe(true)
@@ -377,6 +380,18 @@ describe('pensionWasCutShort', () => {
     expect(cutShort(35_000, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', 150) })).toBe(false)
     expect(cutShort(35_000, { studentPlan: 'none', postgradLoan: false, pension: percentPension('netpay', 50) })).toBe(false)
     expect(cutShort(35_000, NO_DEDUCTIONS)).toBe(false)
+  })
+
+  it('counts the student loans in what the payslip had left', () => {
+    // The largest whole-pound net pay pension £35,000 covers with no loans,
+    // walked up to rather than hard-coded so a tax-table change moves it.
+    let fits = 1
+    while (!cutShort(35_000, noLoans(fits + 1))) fits += 1
+    expect(cutShort(35_000, noLoans(fits))).toBe(false)
+
+    // The same pension on top of Plan 2 and a Postgraduate Loan no longer fits:
+    // the loans take their share first, so the payslip has less left for it.
+    expect(cutShort(35_000, { ...noLoans(fits), studentPlan: 'plan2', postgradLoan: true })).toBe(true)
   })
 
   it('is never true of tax, NI and the loans alone, at any salary', () => {
