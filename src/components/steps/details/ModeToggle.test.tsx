@@ -30,6 +30,23 @@ describe('ModeToggle', () => {
     expect(screen.getByText('How do you plan to pay?')).toBeDefined()
   })
 
+  it.each([
+    ['save', 'save'],
+    ['monthly', 'monthly'],
+  ] as const)('names the group from its visible question in %s mode (#282)', (_case, mode: Mode) => {
+    // The question was a sibling <div> with nothing tying it to the buttons,
+    // so a screen reader announced "Save up for it, toggle button, pressed"
+    // with no idea what was being asked. The name comes from that same text
+    // via aria-labelledby, not a duplicated string.
+    render(<ModeToggle mode={mode} onChange={() => {}} />)
+
+    const group = screen.getByRole('group', { name: 'How do you plan to pay?' })
+    const question = screen.getByText('How do you plan to pay?')
+    expect(group.getAttribute('aria-labelledby')).toBe(question.id)
+    expect(question.id).not.toBe('')
+    expect(group.hasAttribute('aria-label')).toBe(false)
+  })
+
   it('offers exactly the two ways of paying, in that order', () => {
     render(<ModeToggle mode="save" onChange={() => {}} />)
 
@@ -104,7 +121,8 @@ describe('ModeToggle', () => {
   it('leaves the inactive segment unaccented, whichever mode is on', () => {
     render(<ModeToggle mode="save" onChange={() => {}} />)
 
-    expect(monthlySegment().style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(monthlySegment().style.backgroundColor).toBe('transparent')
     expect(monthlySegment().style.color).toBe('var(--text-secondary)')
   })
 

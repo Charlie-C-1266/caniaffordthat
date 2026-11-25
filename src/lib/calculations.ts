@@ -127,3 +127,28 @@ export function monthsFromMonthYear(value: string): number | null {
   const now = startOfCurrentMonth()
   return (year - now.getFullYear()) * 12 + (month - (now.getMonth() + 1))
 }
+
+/** A draft the user has finished typing: both digits of the month and all four of the year. */
+const COMPLETE_DRAFT = /^\d{2}-\d{4}$/
+
+/**
+ * Why a complete draft was rejected, or `null` if there's nothing to say.
+ *
+ * Derived from the draft rather than stored, which is what makes the message
+ * clear itself everywhere it has to (#287): on blur the draft snaps back to a
+ * valid date, an external change (e.g. "Start over") resets it, and correcting
+ * the date re-derives to `null` — none of which needs its own bookkeeping.
+ *
+ * A partial draft is never flagged: `0`, `08-` and `08-20` are someone part-way
+ * through typing, not a mistake, so only a complete MM-YYYY is judged.
+ */
+export function monthYearError(draft: string, minMonths: number): string | null {
+  if (!COMPLETE_DRAFT.test(draft)) return null
+
+  const parsed = monthsFromMonthYear(draft)
+  // Complete and four-digit, so the only thing `monthsFromMonthYear` can
+  // reject it for is a month outside 01–12.
+  if (parsed === null) return 'Enter a month between 01 and 12.'
+  if (parsed < minMonths) return `Pick a month from ${monthYearFromMonths(minMonths)} onwards.`
+  return null
+}

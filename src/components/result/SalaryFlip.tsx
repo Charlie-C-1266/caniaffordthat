@@ -156,7 +156,7 @@ export function SalaryFlip({
         <BreakdownRow label="TAKE-HOME NEEDED" value={`${fmt(Math.round(requiredTakeHomeMonthly))}/mo`} />
         <BreakdownRow label="SALARY NEEDED" value={`${fmt(requiredGross)}/yr`} />
         {currentRow && <BreakdownRow label={currentRow.label} value={currentRow.value} />}
-        <TotalRow label={totalLabel} value={totalValue} />
+        <TotalRow label={totalLabel} value={totalValue} wrapValue />
       </BreakdownBox>
 
       <div

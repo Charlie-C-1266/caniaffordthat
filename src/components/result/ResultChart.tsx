@@ -70,7 +70,7 @@ export function ResultChart({ projection, budget, chartTitle, accentColor, newCo
     <div style={boxStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <div style={titleStyle}>{heading}</div>
-        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} size="sm" />
+        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} size="sm" ariaLabel="Result view" />
       </div>
 
       {view === 'chart' && <ProjectionChart projection={projection} accentColor={accentColor} />}

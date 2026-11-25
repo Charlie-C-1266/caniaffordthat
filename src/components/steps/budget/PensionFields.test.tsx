@@ -24,7 +24,9 @@ describe('PensionFields', () => {
     const group = arrangementGroup()
     for (const name of ['None', 'Salary sacrifice', 'Net pay']) expect(within(group).getByRole('button', { name })).toBeTruthy()
     expect(within(group).queryByRole('button', { name: 'Relief at source' })).toBeNull()
-    expect(within(group).getByRole('button', { name: /Relief at source, taken after tax/ })).toBeTruthy()
+    // The "?" hint is beside the label, outside the group of option buttons
+    // (#282 moved the group onto the segmented control itself).
+    expect(screen.getByRole('button', { name: /Relief at source, taken after tax/ })).toBeTruthy()
   })
 
   it('asks nothing about the amount until an arrangement is chosen', () => {

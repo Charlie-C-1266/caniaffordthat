@@ -1,5 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { goToResult } from './helpers'
+import { CURRENT_TAX_YEAR } from '../src/lib/taxYears'
 
 // "About your pay" on the Budget step: a student loan and a workplace pension
 // change salary mode's take-home, carry through to the "what salary would
@@ -78,5 +79,204 @@ test.describe('About your pay', () => {
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(0)
+  })
+  test('a salary-mode link with a wrong take-home shows the payslip figure everywhere (#292)', async ({ page }) => {
+    // The link claims £2,393.30 — the no-deductions figure for £35,000 — while
+    // a Plan 2 salary with a 5% net-pay pension actually takes home £2,234.52.
+    // Before #292 hydration trusted the link, so the Budget step's payslip
+    // recomputed and showed £2,234.52 while the verdict and result were worked
+    // out on £2,393.30.
+    const STALE = '2393.30'
+    const DERIVED = '£2,234.52'
+    await goToBudget(
+      page,
+      `?goalId=big&mode=save&saveFlavor=goal&itemName=New+sofa&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=${STALE}` +
+        '&studentPlan=plan2&postgradLoan=0&pensionArrangement=netpay&pensionMode=percent&pensionPercent=5',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    // The payslip's TAKE-HOME line, derived from the salary and the profile.
+    const payslip = page.locator('div.mono').first()
+    await expect(payslip.getByText('TAKE-HOME', { exact: true }).locator('xpath=following-sibling::span')).toHaveText(DERIVED)
+    // The stale figure is nowhere on the step.
+    await expect(page.getByText('£2,393.30')).toHaveCount(0)
+
+    // And the result agrees: its spare-cash row is the derived take-home, not
+    // the link's, since no outgoings are set.
+    await goToResult(page)
+    await expect(page.getByText('SPARE CASH', { exact: true }).locator('xpath=following-sibling::span')).toHaveText('£2,235')
+    await expect(page.getByText('£2,393')).toHaveCount(0)
+  })
+})
+
+// #296: three paths real users and shared links take had no browser test — the
+// "£ a month" pension mode, the postgraduate loan, and the new fields' guards
+// against hostile or stale link values. The design doc (§9) asks for "a
+// student-loan path and a pension path through Budget to the result"; only the
+// percentage, undergraduate-only version of each was in place.
+//
+// Tests only. Every edge case below was probed against dev first, and all of
+// them already behave correctly — nothing here records a bug.
+
+/** The payslip box on the Budget step. */
+const payslip = (page: Page) => page.locator('div.mono').first()
+
+/** `£2,916.67` or `−⁠£149.53` as a number, minus sign and word-joiner included. */
+const asNumber = (text: string) => Number(text.replace(/[^\d.]/g, '')) * (/[−-]/.test(text) ? -1 : 1)
+
+/**
+ * The payslip's lines must add up to the take-home it shows — the #293/#294
+ * invariant, checked end to end. The lines are rounded together precisely so
+ * this holds to the penny.
+ */
+async function expectPayslipAddsUp(box: Locator) {
+  // One read of the settled box rather than a round trip per row. Only
+  // label/value pairs count, which skips the box's own heading.
+  const pairs = await box.locator('> div').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const spans = row.querySelectorAll(':scope > span')
+      return spans.length === 2 ? [[spans[0].textContent ?? '', spans[1].textContent ?? '']] : []
+    }),
+  )
+  const lines = pairs.map(([label, value]) => ({ label, value: asNumber(value) }))
+
+  expect(lines.length, 'the payslip has lines to add up').toBeGreaterThanOrEqual(2)
+  const total = lines.at(-1)
+  expect(total?.label).toBe('TAKE-HOME')
+
+  const summed = lines.slice(0, -1).reduce((running, line) => running + line.value, 0)
+  expect(summed, 'salary less every deduction equals take-home').toBeCloseTo(total?.value ?? Number.NaN, 2)
+}
+
+/** The labels of the payslip's deduction lines, in order. */
+async function payslipLabels(box: Locator): Promise<string[]> {
+  const labels = await box.locator('> div > span:first-child').allTextContents()
+  return labels.filter((label) => label !== '')
+}
+
+test.describe('About your pay: the £-a-month pension', () => {
+  test('takes a monthly amount, shows it on the payslip, and keeps the slider when switching back', async ({ page }) => {
+    await goToBudget(page)
+    await page.getByRole('button', { name: 'Annual salary' }).click()
+    await page.locator('input[type="number"]').nth(1).fill('35000')
+    await aboutYourPay(page).click()
+
+    await page.getByRole('group', { name: 'Workplace pension' }).getByRole('button', { name: 'Salary sacrifice', exact: true }).click()
+
+    // The percentage slider is the default; note where it sits before switching.
+    const slider = page.getByRole('slider', { name: 'Your contribution' })
+    await expect(slider).toBeVisible()
+    const percentBefore = await slider.inputValue()
+
+    // The hint recommends this mode to auto-enrolment members, and nothing
+    // has ever driven it in a browser.
+    await page.getByRole('button', { name: '£ a month' }).click()
+    await expect(slider).toHaveCount(0)
+
+    const amountField = page.getByLabel('Your contribution')
+    await expect(amountField).toBeVisible()
+    await amountField.fill('150')
+
+    // £35,000 under salary sacrifice, £150 a month: the pension line is the
+    // amount itself, and the payslip adds up to the take-home shown.
+    await expect(payslip(page).getByText('PENSION', { exact: true })).toBeVisible()
+    await expect(payslip(page).getByText('−\u2060£150.00')).toBeVisible()
+    await expectPayslipAddsUp(payslip(page))
+    await expect(page.getByText(/£150\/month salary sacrifice pension/).first()).toBeVisible()
+
+    // Switching back brings the slider, still where it was.
+    await page.getByRole('button', { name: '% of salary' }).click()
+    await expect(slider).toHaveValue(percentBefore)
+  })
+
+  test('an amount of 0 and an empty amount both mean no pension yet', async ({ page }) => {
+    // Nothing is taken until an amount is typed: there is nothing to take.
+    await goToBudget(
+      page,
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000' +
+        '&pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=0',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    await expect(payslip(page).getByText('PENSION', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(/no student loan or pension/).first()).toBeVisible()
+    await expectPayslipAddsUp(payslip(page))
+
+    // And clearing the field by hand does the same.
+    await page.getByLabel('Your contribution').fill('')
+    await expect(payslip(page).getByText('PENSION', { exact: true })).toHaveCount(0)
+    await expectPayslipAddsUp(payslip(page))
+  })
+
+  test('an amount bigger than the monthly pay floors take-home at £0.00, never negative', async ({ page }) => {
+    // £12,000 a year is £1,000 a month; a £5,000-a-month pension cannot take
+    // more than there is.
+    await goToBudget(
+      page,
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=12000' +
+        '&pensionArrangement=netpay&pensionMode=amount&pensionMonthlyAmount=5000',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    await expect(payslip(page).getByText('SALARY', { exact: true })).toBeVisible()
+    const takeHome = payslip(page).getByText('TAKE-HOME', { exact: true }).locator('xpath=following-sibling::span')
+    await expect(takeHome).toHaveText('£0.00')
+    expect(asNumber((await takeHome.textContent()) ?? '')).toBeGreaterThanOrEqual(0)
+
+    // The pension is capped at the pay, not shown taking more than exists.
+    await expect(payslip(page).getByText('−\u2060£1,000.00')).toBeVisible()
+    await expectPayslipAddsUp(payslip(page))
+  })
+})
+
+test.describe('About your pay: the postgraduate loan', () => {
+  test('stacks on top of an undergraduate plan, as its own payslip line', async ({ page }) => {
+    await goToBudget(page)
+    await page.getByRole('button', { name: 'Annual salary' }).click()
+    await page.locator('input[type="number"]').nth(1).fill('35000')
+    await aboutYourPay(page).click()
+
+    await page.getByRole('group', { name: 'Student loan plan' }).getByRole('button', { name: 'Plan 2', exact: true }).click()
+    await page.getByRole('group', { name: 'Postgraduate Loan' }).getByRole('button', { name: 'Yes', exact: true }).click()
+
+    // Two separate lines, not one combined repayment.
+    await expect(payslip(page).getByText('STUDENT LOAN', { exact: true })).toBeVisible()
+    await expect(payslip(page).getByText('POSTGRADUATE LOAN', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Plan 2 and Postgraduate Loan/).first()).toBeVisible()
+    await expectPayslipAddsUp(payslip(page))
+  })
+
+  test('applies on its own with plan None', async ({ page }) => {
+    await goToBudget(page)
+    await page.getByRole('button', { name: 'Annual salary' }).click()
+    await page.locator('input[type="number"]').nth(1).fill('35000')
+    await aboutYourPay(page).click()
+
+    await page.getByRole('group', { name: 'Postgraduate Loan' }).getByRole('button', { name: 'Yes', exact: true }).click()
+    await expect(page.getByRole('group', { name: 'Student loan plan' }).getByRole('button', { name: 'None', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await expect(payslip(page).getByText('POSTGRADUATE LOAN', { exact: true })).toBeVisible()
+    await expect(payslip(page).getByText('STUDENT LOAN', { exact: true })).toHaveCount(0)
+    // The caption names the loan that was applied, and only that one.
+    await expect(page.getByText(/single PAYE salary, Postgraduate Loan, no pension/).first()).toBeVisible()
+    await expectPayslipAddsUp(payslip(page))
+  })
+
+  test('takes nothing below its threshold, and shows no £0.00 line', async ({ page }) => {
+    // The postgraduate loan starts at £21,000; £18,000 is under it.
+    expect(CURRENT_TAX_YEAR.postgraduateLoan.threshold).toBe(21_000)
+    await goToBudget(
+      page,
+      '?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=18000&studentPlan=none&postgradLoan=1',
+    )
+    await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
+
+    // The payslip hides lines that take nothing, so there is no £0.00 row.
+    await expect(payslip(page).getByText('POSTGRADUATE LOAN', { exact: true })).toHaveCount(0)
+    expect(await payslipLabels(payslip(page))).toEqual(['SALARY', 'INCOME TAX', 'NATIONAL INSURANCE', 'TAKE-HOME'])
+    await expectPayslipAddsUp(payslip(page))
   })
 })

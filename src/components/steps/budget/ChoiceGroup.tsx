@@ -16,11 +16,17 @@ interface ChoiceGroupProps<T extends string> {
  * beside it, and a segmented control. The buttons sit in a group named by
  * the label, so a screen reader announces "Student loan plan, group" before
  * a bare "None".
+ *
+ * Since #282 the group is the `SegmentedControl` itself rather than a wrapper
+ * around the label and the control. The name is unchanged — it still comes
+ * from the label span, so the hint's "?" button (whose aria-label is the whole
+ * hint) stays out of it — but there is one group rather than two nested ones
+ * with the same name.
  */
 export function ChoiceGroup<T extends string>({ label, hint, options, value, onChange }: ChoiceGroupProps<T>) {
   const labelId = useId()
   return (
-    <div role="group" aria-labelledby={labelId}>
+    <div>
       <div
         style={{
           display: 'flex',
@@ -35,7 +41,7 @@ export function ChoiceGroup<T extends string>({ label, hint, options, value, onC
         <span id={labelId}>{label}</span>
         {hint && <InfoHint text={hint} size={14} />}
       </div>
-      <SegmentedControl size="sm" options={options} value={value} onChange={onChange} />
+      <SegmentedControl size="sm" options={options} value={value} onChange={onChange} ariaLabelledBy={labelId} />
     </div>
   )
 }
