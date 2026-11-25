@@ -27,7 +27,8 @@ describe('RevealTile', () => {
   it('once revealed, is fully opaque and at its resting position', () => {
     const tile = renderTile(<RevealTile revealed={true}>content</RevealTile>)
     expect(tile.style.opacity).toBe('1')
-    expect(tile.style.transform).toBe('translateY(0)')
+    // jsdom 31 adds the unit (`translateY(0px)`); earlier versions keep what was set.
+    expect(tile.style.transform).toMatch(/^translateY\(0(px)?\)$/)
   })
 
   it('renders children in both states rather than mounting them on reveal', () => {

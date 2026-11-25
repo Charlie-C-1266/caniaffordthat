@@ -104,7 +104,8 @@ describe('ProgressRail', () => {
     render(<ProgressRail activeIndex={1} labels={LABELS} accentColor="rgb(120, 200, 255)" onSelect={() => {}} />)
 
     expect(dotOf('Details').style.background).toBe('rgb(120, 200, 255)')
-    expect(dotOf('Goal').style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(dotOf('Goal').style.backgroundColor).toBe('transparent')
   })
 
   // #286: each button used to wrap only the visible dot (`padding: 0`), so a
