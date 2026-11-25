@@ -1,5 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { PENSION_PERCENT_RANGE } from '../src/lib/sliderRanges'
+import { takeHomeBreakdown } from '../src/lib/salary'
+import { monthlyPayslipLines } from '../src/lib/payslip'
+import { fmtPence } from '../src/lib/calculations'
 
 // A "Copy result link" URL is user-editable input. MoneyInput refuses a
 // negative at the keystroke and on paste, clamping it to "0" so the figure on
@@ -86,19 +89,24 @@ test.describe('a shared link cannot smuggle in a value the UI would refuse', () 
 
 /**
  * Opens a salary-mode link and lands on the Budget step, where "About your
- * pay" lives. `takeHome` is carried too, so the flow can reach a result: these
- * tests follow the figures all the way through, not just onto the Budget step.
+ * pay" lives. No `takeHome` is carried: since #292 hydration works it out
+ * from the salary and the sanitised pay profile, so the flow reaches a result
+ * without one and a hostile profile can't hide behind a stored figure.
  */
 async function openPayLink(page: Page, params: string) {
-  await page.goto(`/?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&takeHome=2393.30&${params}`)
+  await page.goto(`/?goalId=big&mode=save&saveFlavor=goal&itemPrice=1200&takeHomeMode=salary&grossSalary=35000&${params}`)
   await page.getByLabel('Step progress').getByRole('button', { name: 'Budget', exact: true }).click()
   const box = page.locator('div.mono').first()
   await expect(box.getByText('SALARY', { exact: true })).toBeVisible()
   return box
 }
 
-/** The take-home a £35,000 salary reaches with nothing taken but tax and NI. */
-const NO_DEDUCTIONS_TAKE_HOME = '£2,393.30'
+/**
+ * The take-home a £35,000 salary reaches with nothing taken but tax and NI
+ * (£2,393.30 in 2026/27), worked out the way the payslip's TAKE-HOME row is,
+ * so the April tax-year refresh updates it along with the page.
+ */
+const NO_DEDUCTIONS_TAKE_HOME = fmtPence(monthlyPayslipLines(takeHomeBreakdown(35_000)).takeHome / 100)
 
 test.describe('a shared link cannot smuggle in a pay profile the UI would refuse', () => {
   test('relief at source falls back to no pension, leaving take-home untouched', async ({ page }) => {
@@ -178,15 +186,16 @@ test.describe('a shared link cannot smuggle in a pay profile the UI would refuse
       await openPayLink(page, params)
       const budgetText = await page.locator('body').innerText()
       expect(budgetText, 'the Budget step shows no NaN').not.toContain('NaN')
+      // The payslip's deductions use a true minus sign (U+2212) joined to the
+      // figure, so a hyphen-minus before a £ would be a real negative.
+      expect(budgetText, 'the Budget step shows no negative money figure').not.toMatch(/-£/)
 
       // On to the result, where the same figures are spent.
       await page.getByLabel('Step progress').getByRole('button', { name: 'Result', exact: true }).click()
       await page.getByText('Copy result link').waitFor()
       const resultText = await page.locator('body').innerText()
       expect(resultText, 'the result shows no NaN').not.toContain('NaN')
-      // The payslip's own deductions use a true minus sign (U+2212) joined to
-      // the figure, so a hyphen-minus before a £ would be a real negative.
-      expect(resultText, 'no negative money figure').not.toMatch(/-£/)
+      expect(resultText, 'the result shows no negative money figure').not.toMatch(/-£/)
 
       expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([])
     })
