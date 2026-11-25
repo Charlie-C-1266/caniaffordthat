@@ -180,6 +180,166 @@ describe("hydrateStateFromUrl — each slider's bounds", () => {
   })
 })
 
+/**
+ * One row per NUMBER_FIELDS key: the grid a hydrated value has to land on, and
+ * a link whose goal and mode make that the active control. `goalMonths` has no
+ * slider and no ceiling — the goal-date field produces it — but the UI can only
+ * ever hand it a whole number of months, so it is on a grid too.
+ */
+const SNAP_GRIDS = [
+  { param: 'rate', grid: SAVE_RATE_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+  { param: 'growth', grid: APR_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'goalMonths', grid: { min: 1, max: Infinity, step: 1 }, link: '?goalId=big&mode=save&saveFlavor=goal&itemPrice=900' },
+  { param: 'term', grid: FINANCE_TERM_RANGE, link: '?goalId=big&mode=monthly&itemPrice=900' },
+  { param: 'coverMonths', grid: COVER_MONTHS_RANGE, link: '?goalId=emergency&mode=save' },
+  { param: 'vehicleAge', grid: VEHICLE_AGE_RANGE, link: '?goalId=car&itemPrice=9000' },
+  { param: 'pensionPercent', grid: PENSION_PERCENT_RANGE, link: '?goalId=big&mode=save&itemPrice=900' },
+] as const satisfies readonly { param: keyof typeof DEFAULT_STATE; grid: SliderRange; link: string }[]
+
+/** True when `value` sits a whole number of `step`s above `min`, allowing for floating-point slack. */
+function isOnStep(value: number, { min, step }: Pick<SliderRange, 'min' | 'step'>): boolean {
+  const steps = (value - min) / step
+  return Math.abs(steps - Math.round(steps)) < 1e-9
+}
+
+describe("hydrateStateFromUrl — each slider's steps", () => {
+  // #319: clamping alone let a link carry a value *between* the slider's
+  // steps. The browser pins the thumb to the nearest step, so the control
+  // showed 5% while the label beside it and the result's maths used
+  // 5.1234567%, and a fractional `term` was fed into the payment maths as a
+  // deal no lender offers. Same rule as #126/#127, one level finer: a shared
+  // link must never carry a value the inputs themselves could not produce.
+
+  it('gives every numeric shared field a row, so a new one is not left unchecked', () => {
+    // Mirrors the SLIDER_LINKS completeness check above, from the other side.
+    // `activeIndex` and `carouselIndex` are the two numbers in state that
+    // deliberately don't round-trip: both are re-derived on load, so they
+    // never arrive from a link and have no grid to be held to.
+    const derivedOnLoad = new Set(['activeIndex', 'carouselIndex'])
+    const shared = (Object.keys(DEFAULT_STATE) as (keyof typeof DEFAULT_STATE)[]).filter(
+      (key) => typeof DEFAULT_STATE[key] === 'number' && !derivedOnLoad.has(key),
+    )
+    expect(shared.toSorted()).toEqual(SNAP_GRIDS.map((row) => row.param).toSorted())
+
+    // And none of them is serialised as a string field, which would bypass the grid entirely.
+    for (const key of shared) expect(STRING_FIELDS).not.toContain(key)
+  })
+
+  it.each(SNAP_GRIDS)('lands $param on its own grid and inside its bounds, whatever a link carries', ({ param, grid, link }) => {
+    // A spread of off-step, out-of-range and awkward values in one sweep.
+    for (const raw of ['0.3', '0.6', '1.1', '3.14159', '5.1234567', '12.5', '13.37', '49.9', '-5', '999', '1e-9', '5e0']) {
+      const value = hydrateStateFromUrl(`${link}&${param}=${raw}`)[param]
+      expect(value).toBeGreaterThanOrEqual(grid.min)
+      expect(value).toBeLessThanOrEqual(grid.max)
+      expect(isOnStep(value, grid)).toBe(true)
+    }
+  })
+
+  it('rounds an off-step value to the nearest step, down or up', () => {
+    const pension = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    expect(hydrateStateFromUrl(`${pension}5.1`).pensionPercent).toBe(5)
+    expect(hydrateStateFromUrl(`${pension}5.4`).pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.6').term).toBe(14)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.37').term).toBe(13)
+  })
+
+  it('rounds an exact midpoint upward, away from zero', () => {
+    // Math.round's own tie-break, kept rather than fought: 5.25 is equally far
+    // from 5 and 5.5, and rounding up matches what `<input type=range>` does
+    // when the same value is assigned to it.
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=5.25').pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=13.5').term).toBe(14)
+  })
+
+  it.each(SNAP_GRIDS)('leaves an already-on-step $param exactly as the link wrote it', ({ param, grid, link }) => {
+    const onStep = Number((grid.min + 4 * grid.step).toFixed(2))
+    expect(hydrateStateFromUrl(`${link}&${param}=${onStep}`)[param]).toBe(onStep)
+  })
+
+  it('keeps a value that rounds past an end inside the range', () => {
+    const pension = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    // 49.9 is nearer 50 than 49.5, and 50 is the maximum — so it may round up to it, but no further.
+    expect(hydrateStateFromUrl(`${pension}49.9`).pensionPercent).toBe(PENSION_PERCENT_RANGE.max)
+    expect(hydrateStateFromUrl(`${pension}50.2`).pensionPercent).toBe(PENSION_PERCENT_RANGE.max)
+    // 0.3 is below the 0.5 floor; clamping comes first, so it can only land on it.
+    expect(hydrateStateFromUrl(`${pension}0.3`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&term=0.6').term).toBe(FINANCE_TERM_RANGE.min)
+  })
+
+  it('snaps without leaving floating-point artefacts behind', () => {
+    // A decimal step can drift in binary floating point (`0.1 * 3` is
+    // 0.30000000000000004), and an artefact would reach the caption and the
+    // result as such. Today's 0.5 steps are exact, so this pins the outcome
+    // rather than the rounding: toBe, not toBeCloseTo, is the point.
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=5.4').pensionPercent).toBe(5.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=0.4').pensionPercent).toBe(0.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=10.3').growth).toBe(10.5)
+    expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=0.26').growth).toBe(0.5)
+  })
+
+  it('leaves the existing handling of unusable values untouched', () => {
+    const link = '?goalId=big&mode=save&itemPrice=900&pensionPercent='
+    // NaN and Infinity are not finite, so the field keeps its default — as before snapping.
+    expect(hydrateStateFromUrl(`${link}NaN`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    expect(hydrateStateFromUrl(`${link}Infinity`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    expect(hydrateStateFromUrl(`${link}lots`).pensionPercent).toBe(DEFAULT_STATE.pensionPercent)
+    // An empty value and a vanishingly small one both parse as a finite 0, so
+    // they clamp to the floor rather than falling back. Snapping leaves the
+    // floor where it was, so both answers are the same as before #319.
+    expect(hydrateStateFromUrl(`${link}`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    expect(hydrateStateFromUrl(`${link}1e-9`).pensionPercent).toBe(PENSION_PERCENT_RANGE.min)
+    // Scientific notation that names an on-step value is honoured as written.
+    expect(hydrateStateFromUrl(`${link}5e0`).pensionPercent).toBe(5)
+  })
+
+  it('keeps a vehicle term on-step through the per-method re-clamp', () => {
+    // The method's own TERM_RANGES narrowing runs after the snap, so this
+    // proves the second clamp can't knock the value back off its step.
+    for (const [raw, expected] of [
+      ['13.37', 13],
+      ['50.4', TERM_RANGES.pcp.max], // snaps to 50, then the PCP ceiling of 48
+      ['11.6', TERM_RANGES.pcp.min], // snaps to 12, which is the PCP floor
+      ['11.2', TERM_RANGES.pcp.min], // snaps to 11, which the floor lifts to 12
+    ] as const) {
+      const term = hydrateStateFromUrl(`?goalId=car&vehicleMethod=pcp&itemPrice=15000&term=${raw}`).term
+      expect(term).toBe(expected)
+      expect(isOnStep(term, FINANCE_TERM_RANGE)).toBe(true)
+    }
+  })
+
+  // The other half of the rule: snapping must never touch a legitimate link.
+  // Every value the sliders can actually produce has to survive a full
+  // "Copy result link" round-trip byte for byte.
+  it.each(SLIDER_ROWS)('never alters any on-step $param that $name can produce', ({ param, range, link }) => {
+    const { min, max, step } = range
+    for (let value = min; value <= max; value = Number((value + step).toFixed(4))) {
+      // buildShareParams supplies the whole state exactly as "Copy result
+      // link" would; the row's link overrides the goal and mode that make
+      // this the active slider.
+      const params = buildShareParams({ ...DEFAULT_STATE, [param]: value })
+      for (const [key, carried] of new URLSearchParams(link.slice(1))) params.set(key, carried)
+      expect(hydrateStateFromUrl(`?${params.toString()}`)[param]).toBe(value)
+    }
+  })
+
+  it('never alters a whole number of goalMonths, which has no ceiling to be held to', () => {
+    for (const months of [1, 2, 6, 12, 18, 24, 60, 120, 600]) {
+      const params = buildShareParams({ ...DEFAULT_STATE, goalId: 'big', saveFlavor: 'goal', goalMonths: months })
+      expect(hydrateStateFromUrl(`?${params.toString()}`).goalMonths).toBe(months)
+    }
+  })
+
+  it('keeps savings growth on-step through the SAVINGS_INTEREST_RANGE re-clamp', () => {
+    const link = '?goalId=big&mode=save&itemPrice=900&growth='
+    expect(hydrateStateFromUrl(`${link}3.14159`).growth).toBe(3)
+    expect(hydrateStateFromUrl(`${link}3.3`).growth).toBe(3.5)
+    // Snaps to 25.5 on the wider APR grid, then the savings ceiling takes it to 20 — still on-step.
+    const capped = hydrateStateFromUrl(`${link}25.3`).growth
+    expect(capped).toBe(SAVINGS_INTEREST_RANGE.max)
+    expect(isOnStep(capped, SAVINGS_INTEREST_RANGE)).toBe(true)
+  })
+})
+
 describe('buildShareParams', () => {
   it('round-trips a full state back through hydrateStateFromUrl', () => {
     const shared = {
@@ -196,7 +356,9 @@ describe('buildShareParams', () => {
       savings: '3000',
       monthlyAmount: '450',
       rate: 30,
-      growth: 7.9,
+      // On-step for APR_RANGE: the slider moves in 0.5s, so an off-step
+      // growth is a value this state could never have held (#319).
+      growth: 7.5,
       goalMonths: 24,
       term: 60,
       coverMonths: 4,
@@ -216,7 +378,7 @@ describe('buildShareParams', () => {
     expect(restored.itemPrice).toBe('18000')
     expect(restored.savings).toBe('3000')
     expect(restored.monthlyAmount).toBe('450')
-    expect(restored.growth).toBe(7.9)
+    expect(restored.growth).toBe(7.5)
     expect(restored.term).toBe(60)
     expect(restored.coverMonths).toBe(4)
   })
@@ -252,7 +414,7 @@ describe('buildShareParams', () => {
       insuranceAnnual: '720',
       taxAnnual: '195',
       term: 48,
-      growth: 8.9,
+      growth: 8.5, // on-step for APR_RANGE, as above
     } satisfies typeof DEFAULT_STATE
 
     const restored = hydrateStateFromUrl(`?${buildShareParams(shared).toString()}`)
@@ -271,7 +433,7 @@ describe('buildShareParams', () => {
     expect(restored.insuranceAnnual).toBe('720')
     expect(restored.taxAnnual).toBe('195')
     expect(restored.term).toBe(48)
-    expect(restored.growth).toBe(8.9)
+    expect(restored.growth).toBe(8.5)
   })
 })
 
