@@ -265,6 +265,13 @@ describe('SalaryFlip on the payslip where take-home stops rising', () => {
   })
 })
 
+/** A profile whose only deduction is a pension of `monthlyAmount` a month, paid from net pay. */
+const amountPension = (monthlyAmount: number): PayProfile => ({
+  studentPlan: 'none',
+  postgradLoan: false,
+  pension: { arrangement: 'netpay', mode: 'amount', percent: 0, monthlyAmount },
+})
+
 describe('SalaryFlip under a pay profile', () => {
   afterEach(cleanup)
 
@@ -287,5 +294,22 @@ describe('SalaryFlip under a pay profile', () => {
     cleanup()
     render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} />)
     expect(screen.getByText(/single PAYE salary, no student loan or pension\./)).toBeTruthy()
+  })
+
+  it('shows a £-a-month pension to the penny in its caption (#318)', () => {
+    // The flip panel shares describePayProfile with the Budget step's
+    // payslip, so the rounding fixed there must not come back here: £150.50
+    // read "£151/month", and 40p read "£0/month".
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} profile={amountPension(150.5)} />)
+    expect(screen.getByText(/single PAYE salary, no student loan, £150\.50\/month net pay pension\./)).toBeTruthy()
+
+    cleanup()
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} profile={amountPension(0.4)} />)
+    expect(screen.getByText(/no student loan, £0\.40\/month net pay pension\./)).toBeTruthy()
+
+    // And a whole-pound amount keeps the wording it already had.
+    cleanup()
+    render(<SalaryFlip requiredTakeHomeMonthly={2500} current={takeHome(2000)} accentColor={ACCENT} profile={amountPension(150)} />)
+    expect(screen.getByText(/no student loan, £150\/month net pay pension\./)).toBeTruthy()
   })
 })

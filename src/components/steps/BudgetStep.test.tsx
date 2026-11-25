@@ -614,6 +614,21 @@ describe('the regular-saving field', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(advanced).toEqual([STEP_INDEX + 1])
   })
+  // #282: the toggle had no name of its own, and the FieldLabel below it names
+  // the *input*, not the choice between take-home and salary.
+  describe('the income-mode group (#282)', () => {
+    it.each([
+      ['take-home', 'takehome', 'Take-home pay / month'],
+      ['salary', 'salary', 'Annual salary (before tax)'],
+    ] as const)('names the group in %s mode', (_case, takeHomeMode, pressedFieldLabel) => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode })
+
+      const group = screen.getByRole('group', { name: "How you'll enter your income" })
+      expect(group.querySelectorAll('button')).toHaveLength(2)
+      // The field below changes with the mode; the group's name does not.
+      expect(screen.getByLabelText(pressedFieldLabel)).toBeTruthy()
+    })
+  })
 })
 
 describe('when the deductions take all of the pay (#317)', () => {

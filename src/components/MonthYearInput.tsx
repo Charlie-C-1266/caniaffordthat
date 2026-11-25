@@ -1,5 +1,5 @@
-import { useState, type KeyboardEvent } from 'react'
-import { formatMonthYearDraft, monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
+import { useId, useState, type KeyboardEvent } from 'react'
+import { formatMonthYearDraft, monthYearError, monthYearFromMonths, monthsFromMonthYear } from '../lib/calculations'
 
 interface MonthYearInputProps {
   /** `id` for the `<input>`, so the goal-date `<FieldLabel htmlFor>` can point at it. */
@@ -20,10 +20,24 @@ interface MonthYearInputProps {
  * making it impossible to actually change. Input is masked to the MM-YYYY
  * shape (see `formatMonthYearDraft`); it keeps its own draft text while
  * typing and only commits once it's a fully valid, in-range date.
+ *
+ * A complete date it won't commit is now said out loud (#287). It used to be
+ * dropped in silence: typing `01-2020` left `01-2020` on screen while the
+ * result was still worked out from the previous date, and on blur the draft
+ * quietly snapped back with no explanation. Nothing marked the field invalid
+ * for assistive tech either, so a screen-reader user was never told — WCAG 2.2
+ * SC 3.3.1 Error Identification (A).
+ *
+ * The message **clears on blur**, along with `aria-invalid`, rather than
+ * lingering to explain the snap-back. The snap-back restores a valid date, so
+ * a message left behind would be describing a value no longer on screen —
+ * worse than none. While the field has focus the message stays put, which is
+ * where it is needed, and the field is only ever left by blurring.
  */
 export function MonthYearInput({ id, months, minMonths, accentColor, onChange }: MonthYearInputProps) {
   const [draft, setDraft] = useState(() => monthYearFromMonths(months))
   const [focused, setFocused] = useState(false)
+  const errorId = useId()
 
   // Stay in sync with external changes (e.g. "Start over") but only while
   // the user isn't actively typing, so we don't clobber an in-progress edit.
@@ -35,6 +49,8 @@ export function MonthYearInput({ id, months, minMonths, accentColor, onChange }:
     setSyncedMonths(months)
     setDraft(monthYearFromMonths(months))
   }
+
+  const error = monthYearError(draft, minMonths)
 
   const commitIfValid = (value: string) => {
     const parsed = monthsFromMonthYear(value)
@@ -56,7 +72,8 @@ export function MonthYearInput({ id, months, minMonths, accentColor, onChange }:
   const handleBlur = () => {
     setFocused(false)
     // Snap back to the last valid committed value if what's left isn't one —
-    // e.g. the field was left cleared or mid-edit.
+    // e.g. the field was left cleared or mid-edit. This also clears any error,
+    // since the message is derived from the draft.
     setDraft(monthYearFromMonths(months))
   }
 
@@ -65,30 +82,63 @@ export function MonthYearInput({ id, months, minMonths, accentColor, onChange }:
   }
 
   return (
-    <input
-      id={id}
-      type="text"
-      inputMode="numeric"
-      placeholder="MM-YYYY"
-      maxLength={7}
-      value={draft}
-      onChange={(e) => handleChange(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-      style={{
-        width: '100%',
-        boxSizing: 'border-box',
-        padding: '12px 14px',
-        fontSize: 16,
-        fontWeight: 600,
-        border: `var(--border-width-card) solid ${focused ? accentColor : 'var(--input-underline)'}`,
-        borderRadius: 10,
-        background: 'var(--tile-bg)',
-        color: 'var(--text-primary)',
-        fontFamily: 'inherit',
-        outline: 'none',
-      }}
-    />
+    <>
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        placeholder="MM-YYYY"
+        maxLength={7}
+        value={draft}
+        // Absent rather than "false" while valid: assistive tech handles a
+        // missing attribute uniformly, which is the same choice ProgressRail
+        // makes for aria-current.
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        style={{
+          width: '100%',
+          boxSizing: 'border-box',
+          padding: '12px 14px',
+          fontSize: 16,
+          fontWeight: 600,
+          border: `var(--border-width-card) solid ${focused ? accentColor : 'var(--input-underline)'}`,
+          borderRadius: 10,
+          background: 'var(--tile-bg)',
+          color: 'var(--text-primary)',
+          fontFamily: 'inherit',
+          outline: 'none',
+        }}
+      />
+      {/*
+       * The live region is always in the DOM, with only its text appearing and
+       * disappearing. A region added to the page at the same moment it gains
+       * content is unreliably announced; one that is already there is not.
+       *
+       * `--text-secondary` rather than the dimmer `--text-tertiary` the plain
+       * captions use: this is the one caption a user has to be able to read.
+       * It is an existing token, so no new colour is introduced.
+       */}
+      <div
+        id={errorId}
+        // `role="status"` implies a polite live region; `aria-live` is stated
+        // alongside it because older assistive tech honours one or the other.
+        role="status"
+        aria-live="polite"
+        style={{
+          marginTop: 8,
+          minHeight: error ? undefined : 0,
+          fontSize: 'var(--fs-label)',
+          fontWeight: 600,
+          lineHeight: 1.45,
+          color: 'var(--text-secondary)',
+        }}
+      >
+        {error}
+      </div>
+    </>
   )
 }

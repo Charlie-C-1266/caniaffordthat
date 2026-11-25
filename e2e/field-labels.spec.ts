@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { goToPlan } from './helpers'
+import { goToPlan, goToResult } from './helpers'
 
 // FieldLabel used to render a bare <label> with no htmlFor, and none of its
 // consumers gave the paired <input> an id — so the label and input were only
@@ -163,5 +163,69 @@ test.describe('a hinted field names itself without the hint', () => {
     await expect(hint).toBeVisible()
     await hint.hover()
     await expect(page.getByRole('tooltip')).toBeVisible()
+  })
+})
+
+// #282: SegmentedControl wrapped its buttons in a plain <div> with no role and
+// no accessible name, so a screen reader announced "Save up for it, toggle
+// button, pressed" with nothing to say what the choice was about. The groups
+// are named by role and name in the unit tests; this is the real-browser check
+// that the names resolve the way assistive tech computes them — in particular
+// the two that come from visible text via aria-labelledby.
+test.describe('segmented control group names', () => {
+  test('the pay-mode group is named by the question on screen, and the result view group by its own label', async ({ page }) => {
+    await page.goto('/?goalId=big')
+    await page.getByRole('button', { name: 'Get started with Big purchase', exact: true }).click()
+
+    // Named from the visible "How do you plan to pay?" text, not a duplicate.
+    const payMode = page.getByRole('group', { name: 'How do you plan to pay?' })
+    await expect(payMode).toHaveCount(1)
+    await expect(payMode.getByRole('button', { name: 'Save up for it' })).toHaveAttribute('aria-pressed', 'true')
+
+    // The name survives changing the selection.
+    await payMode.getByRole('button', { name: 'Pay monthly' }).click()
+    await expect(page.getByRole('group', { name: 'How do you plan to pay?' })).toHaveCount(1)
+  })
+
+  test("the balloon-mode group is named by its heading, with the hint's text left out", async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Go to Vehicle' }).click()
+    await page.getByRole('button', { name: 'Get started with Vehicle', exact: true }).click()
+    await page.getByPlaceholder('e.g. Volkswagen Golf').fill('VW Golf')
+    await page.locator('input[type="number"]').nth(0).fill('22000')
+
+    // PCP is the default method, so the balloon group is on screen. The exact
+    // name is the assertion: the InfoHint's "?" button carries the whole hint
+    // as its aria-label, and #201 showed how easily that lands in the name.
+    const balloon = page.getByRole('group', { name: 'The final payment (balloon / GMFV)' })
+    await expect(balloon).toHaveCount(1)
+    await expect(balloon.getByRole('button', { name: 'I have a quote' })).toBeVisible()
+
+    // The hint is still there to have been excluded.
+    await expect(page.getByRole('button', { name: /the lender guarantees the car/ })).toBeVisible()
+  })
+
+  test('every segmented group the main flow renders has an accessible name', async ({ page }) => {
+    await goToPlan(page)
+    await goToResult(page)
+
+    // Walk every group on the page and require a name — an unnamed one is
+    // exactly the bug, and it would otherwise only show up in a screen reader.
+    const unnamed = await page.getByRole('group').evaluateAll((groups) =>
+      groups
+        .filter((group) => {
+          const labelledBy = (group.getAttribute('aria-labelledby') ?? '')
+            .split(/\s+/)
+            .filter(Boolean)
+            .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+            .join(' ')
+            .trim()
+          return !(group.getAttribute('aria-label') ?? '').trim() && !labelledBy
+        })
+        .map((group) => group.outerHTML.slice(0, 120)),
+    )
+    expect(unnamed).toEqual([])
+
+    await expect(page.getByRole('group', { name: 'Result view' })).toHaveCount(1)
   })
 })

@@ -38,7 +38,13 @@ interface MoneyInputProps {
   /** Nudges the "£" glyph to align with the input's baseline — varies per field size. */
   prefixTop: number
   paddingBottom: number
-  paddingLeft: number
+  /**
+   * Room on the left for the "£" prefix. A number is pixels; a string is any
+   * CSS length, which is how the headline fields pass a token that scales with
+   * their font size, so the room kept for the "£" can't fall out of step with
+   * the digits beside it and let the two overlap (#298).
+   */
+  paddingLeft: number | string
 }
 
 /**
@@ -100,7 +106,13 @@ export function MoneyInput({
         style={{
           width: '100%',
           boxSizing: 'border-box',
-          padding: `0 0 ${paddingBottom}px ${paddingLeft}px`,
+          // Longhands rather than the `padding` shorthand: `paddingLeft` may
+          // be a `var(...)` token, and React applies a number as pixels for
+          // either property, so neither needs converting here.
+          paddingTop: 0,
+          paddingRight: 0,
+          paddingBottom,
+          paddingLeft,
           fontSize,
           fontWeight,
           border: 'none',

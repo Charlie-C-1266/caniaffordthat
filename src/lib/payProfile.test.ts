@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { fmtPence } from './calculations'
 import {
   OFFERED_PENSION_ARRANGEMENTS,
   PENSION_ARRANGEMENT_BLURBS,
@@ -9,13 +10,14 @@ import {
   deductionsTakeAllPay,
   hasDeductions,
   payProfileOf,
+  takeHomeFor,
   type PayProfileState,
 } from './payProfile'
+import { monthlyTakeHomeFromGross } from './salary'
 import { NO_DEDUCTIONS, type PayProfile } from './deductions'
 import { DEFAULT_STATE } from '../state/defaults'
 import type { CalculatorState } from '../state/types'
 import { CURRENT_TAX_YEAR } from './taxYears'
-import { monthlyTakeHomeFromGross } from './salary'
 
 /** The default pay-profile state with some fields changed. */
 const stateWith = (patch: Partial<PayProfileState>): PayProfileState => ({ ...DEFAULT_STATE, ...patch })
@@ -218,6 +220,10 @@ describe('deductionsTakeAllPay', () => {
   })
 })
 
+/** The caption for an amount-mode pension of `amount` a month, under `arrangement`, with an optional loan. */
+const caption = (amount: number, arrangement: 'sacrifice' | 'netpay' = 'netpay', patch: Partial<PayProfile> = {}) =>
+  describePayProfile(profile({ ...patch, pension: { arrangement, mode: 'amount', percent: 5, monthlyAmount: amount } }))
+
 describe('describePayProfile', () => {
   it("keeps today's wording with no deductions", () => {
     expect(describePayProfile(NO_DEDUCTIONS)).toBe('no student loan or pension')
@@ -238,5 +244,130 @@ describe('describePayProfile', () => {
         profile({ studentPlan: 'plan1', pension: { arrangement: 'sacrifice', mode: 'amount', percent: 5, monthlyAmount: 150 } }),
       ),
     ).toBe('Plan 1 student loan, £150/month salary sacrifice pension')
+  })
+
+  // #318: the amount was formatted with `fmt`, which rounds to whole pounds,
+  // so the caption could name a figure the PENSION line above it contradicts:
+  // £150.50 read "£151/month", and 40p read "£0/month" — a £0 pension beside
+  // a line taking 40p. Every clause is meant to say what *was* applied.
+  describe('a pension given as a monthly amount', () => {
+    it('shows the pence when the amount has any', () => {
+      expect(caption(150.5)).toBe('no student loan, £150.50/month net pay pension')
+      expect(caption(99.5)).toBe('no student loan, £99.50/month net pay pension')
+    })
+
+    it('keeps one trailing zero rather than reading as £150.5', () => {
+      expect(caption(150.5)).toContain('£150.50/month')
+      expect(caption(150.5)).not.toContain('£150.5/month')
+    })
+
+    it('never calls a small amount a £0 pension', () => {
+      // payProfileOf treats any amount above 0 as a pension, so this clause
+      // has to name it rather than round it away.
+      expect(caption(0.4)).toBe('no student loan, £0.40/month net pay pension')
+      expect(caption(0.01)).toBe('no student loan, £0.01/month net pay pension')
+      for (const tiny of [0.01, 0.4, 0.99]) expect(caption(tiny)).not.toContain('£0/month')
+    })
+
+    it('keeps the thousands separator', () => {
+      expect(caption(1234.56)).toBe('no student loan, £1,234.56/month net pay pension')
+    })
+
+    it("keeps today's wording for a whole-pound amount", () => {
+      expect(caption(150)).toBe('no student loan, £150/month net pay pension')
+      expect(caption(150.0)).toBe('no student loan, £150/month net pay pension')
+      expect(caption(1200)).toBe('no student loan, £1,200/month net pay pension')
+    })
+
+    it('agrees with the payslip for an amount carrying more decimals than a penny', () => {
+      // A share link can carry `pensionMonthlyAmount=150.505`. Whatever the
+      // caption shows has to be what the PENSION line shows, so both are
+      // formatted by fmtPence — here, £150.51.
+      expect(caption(150.505)).toContain(`${fmtPence(150.505)}/month`)
+      expect(caption(150.505)).toContain('£150.51/month')
+    })
+
+    it('covers every clause shape, under both arrangements and each loan', () => {
+      for (const arrangement of ['sacrifice', 'netpay'] as const) {
+        const named = arrangement === 'sacrifice' ? 'salary sacrifice' : 'net pay'
+        expect(caption(150.5, arrangement)).toBe(`no student loan, £150.50/month ${named} pension`)
+        expect(caption(150.5, arrangement, { studentPlan: 'plan2' })).toBe(`Plan 2 student loan, £150.50/month ${named} pension`)
+        expect(caption(150.5, arrangement, { postgradLoan: true })).toBe(`Postgraduate Loan, £150.50/month ${named} pension`)
+        expect(caption(150.5, arrangement, { studentPlan: 'plan4', postgradLoan: true })).toBe(
+          `Plan 4 and Postgraduate Loan, £150.50/month ${named} pension`,
+        )
+        // And the whole-pound wording is unchanged in every one of them.
+        expect(caption(150, arrangement, { studentPlan: 'plan2' })).toBe(`Plan 2 student loan, £150/month ${named} pension`)
+      }
+    })
+
+    it('leaves percent mode alone, which already shows what was typed', () => {
+      expect(describePayProfile(profile({ pension: { arrangement: 'netpay', mode: 'percent', percent: 7.5, monthlyAmount: 0 } }))).toBe(
+        'no student loan, 7.5% net pay pension',
+      )
+    })
+  })
+})
+
+// The one derivation of salary-mode take-home, shared by BudgetStep and
+// hydrateStateFromUrl so the two can't disagree (#292). Before it moved here,
+// a shared link copied `takeHome` verbatim while the Budget step recomputed
+// it, so the same link could show one figure on the payslip and work the
+// result out on another.
+describe('takeHomeFor', () => {
+  it('derives the monthly take-home for a typed salary under a profile', () => {
+    // Computed with the same engine rather than hard-coded, so a tax-table
+    // change updates both sides together.
+    const plan2NetPay = payProfileOf(
+      stateWith({ studentPlan: 'plan2', pensionArrangement: 'netpay', pensionMode: 'percent', pensionPercent: 5 }),
+    )
+    const expected = monthlyTakeHomeFromGross(35000, CURRENT_TAX_YEAR, plan2NetPay)
+
+    expect(takeHomeFor('35000', plan2NetPay)).toBe(String(Math.round(expected * 100) / 100))
+    // And it is the figure the issue quotes, to the penny.
+    expect(takeHomeFor('35000', plan2NetPay)).toBe('2234.52')
+  })
+
+  it.each([
+    ['missing', ''],
+    ['zero', '0'],
+    ['a zero with pence', '0.00'],
+    ['negative', '-5000'],
+    ['junk', 'abc'],
+  ])('returns an empty string for %s pay, as the UI does with no salary typed', (_case, grossSalary) => {
+    expect(takeHomeFor(grossSalary, NO_DEDUCTIONS)).toBe('')
+  })
+
+  it('rounds to whole pence, including a figure ending in half a penny', () => {
+    // Math.round takes a half-penny upward; what matters is that the stored
+    // string is pence, never a long float.
+    const stored = takeHomeFor('35000', NO_DEDUCTIONS)
+    expect(stored).toMatch(/^\d+(\.\d{1,2})?$/)
+
+    // A salary chosen so the unrounded monthly figure carries more than two
+    // decimal places: the stored value must be the rounded one.
+    const raw = monthlyTakeHomeFromGross(35000, CURRENT_TAX_YEAR, NO_DEDUCTIONS)
+    expect(raw).not.toBe(Math.round(raw * 100) / 100)
+    expect(stored).toBe(String(Math.round(raw * 100) / 100))
+  })
+
+  it('floors at zero when the pension takes more than the pay', () => {
+    // No field in the UI can produce a negative take-home, so neither may
+    // this: a £5,000-a-month pension on a £12,000 salary.
+    const bigPension = payProfileOf(stateWith({ pensionArrangement: 'netpay', pensionMode: 'amount', pensionMonthlyAmount: '5000' }))
+    const stored = takeHomeFor('12000', bigPension)
+
+    expect(Number(stored)).toBeGreaterThanOrEqual(0)
+    expect(stored).toBe('0')
+  })
+
+  it('gives a bigger take-home for salary sacrifice than for net pay, at the same percentage', () => {
+    // The engine's own ordering, pinned through the helper so a wiring mistake
+    // (passing the profile through wrong, say) shows up here.
+    const base = { pensionMode: 'percent', pensionPercent: 5 } as const
+    const sacrifice = takeHomeFor('35000', payProfileOf(stateWith({ ...base, pensionArrangement: 'sacrifice' })))
+    const netpay = takeHomeFor('35000', payProfileOf(stateWith({ ...base, pensionArrangement: 'netpay' })))
+
+    expect(Number(sacrifice)).toBeGreaterThan(Number(netpay))
   })
 })

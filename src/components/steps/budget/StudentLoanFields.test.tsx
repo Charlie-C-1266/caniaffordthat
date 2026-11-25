@@ -40,7 +40,10 @@ describe('StudentLoanFields', () => {
 
   it('explains which plan applies, and links to GOV.UK to check', () => {
     renderFields()
-    expect(within(planGroup()).getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
+    // The "?" hint sits beside the label, outside the group of option buttons
+    // (#282 moved the group onto the segmented control itself). Its accessible
+    // name is the whole hint, which is unique on the page.
+    expect(screen.getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
     const link = screen.getByRole('link', { name: /Check which plan you/ })
     expect(link.getAttribute('href')).toBe(SOURCES.studentLoanPlans.url)
     expect(link.getAttribute('target')).toBe('_blank')
@@ -49,7 +52,7 @@ describe('StudentLoanFields', () => {
   it('asks about a Postgraduate Loan as a yes or no, with its rate and threshold from the table', () => {
     const onChange = renderFields()
     expect(within(postgradGroup()).getByRole('button', { name: 'No' }).getAttribute('aria-pressed')).toBe('true')
-    expect(within(postgradGroup()).getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'Yes' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: true })
   })

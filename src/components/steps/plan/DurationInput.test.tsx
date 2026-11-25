@@ -261,4 +261,20 @@ describe('DurationInput', () => {
       expect(fixedAmountButton().style.background).toBe(ACCENT)
     })
   })
+  // #282: the % / fixed-amount toggle had no name at all — nothing on screen
+  // said what the two buttons were choosing between.
+  describe('the rate-mode group (#282)', () => {
+    it.each([
+      ['the percentage slider', 'percent'],
+      ['a fixed amount', 'amount'],
+    ] as const)('names the group with %s showing', (_case, rateMode) => {
+      renderDuration({ rateMode })
+
+      const group = screen.getByRole('group', { name: "How you'll set the amount you save" })
+      expect(group.querySelectorAll('button')).toHaveLength(2)
+      expect(
+        screen.getByRole('button', { name: rateMode === 'percent' ? '% of spare cash' : 'Fixed amount' }).getAttribute('aria-pressed'),
+      ).toBe('true')
+    })
+  })
 })

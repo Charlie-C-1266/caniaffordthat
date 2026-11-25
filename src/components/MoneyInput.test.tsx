@@ -134,4 +134,32 @@ describe('MoneyInput', () => {
       expect(getInput().style.borderBottom).toContain(IDLE)
     })
   })
+  // #298: the headline price and salary fields pass a token that scales with
+  // their font size, so the room kept for the "£" can't fall out of step with
+  // the digits beside it. The six smaller budget fields still pass pixels.
+  describe('paddingLeft', () => {
+    it('treats a number as pixels', () => {
+      render(<MoneyInput value="" onChange={() => {}} {...SIZING} paddingLeft={18} accentColor={ACCENT} />)
+      expect(getInput().style.paddingLeft).toBe('18px')
+    })
+
+    it('passes a CSS length string through untouched, with no "px" appended', () => {
+      render(<MoneyInput value="" onChange={() => {}} {...SIZING} paddingLeft="var(--pad-price-left)" accentColor={ACCENT} />)
+      expect(getInput().style.paddingLeft).toBe('var(--pad-price-left)')
+    })
+
+    it('leaves the other padding alone either way', () => {
+      // paddingBottom is still a plain number: only the left side needed to
+      // become a length, and the shorthand must not mangle the rest.
+      render(<MoneyInput value="" onChange={() => {}} {...SIZING} paddingLeft="var(--pad-price-left)" accentColor={ACCENT} />)
+      expect(getInput().style.paddingBottom).toBe(`${SIZING.paddingBottom}px`)
+      expect(getInput().style.paddingTop).toBe('0px')
+      expect(getInput().style.paddingRight).toBe('0px')
+    })
+
+    it('handles a zero padding rather than dropping it', () => {
+      render(<MoneyInput value="" onChange={() => {}} {...SIZING} paddingLeft={0} accentColor={ACCENT} />)
+      expect(getInput().style.paddingLeft).toBe('0px')
+    })
+  })
 })
