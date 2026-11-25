@@ -1,3 +1,4 @@
+import type { PensionInput } from './deductions'
 import type { TakeHomeBreakdown } from './salary'
 
 // One month of the salary engine's breakdown, in whole pence, for the Budget
@@ -69,4 +70,68 @@ export function monthlyPayslipLines(breakdown: TakeHomeBreakdown): MonthlyPaysli
 
   const [incomeTax, nationalInsurance, studentLoan, postgraduateLoan, pension] = lines
   return { gross, incomeTax, nationalInsurance, studentLoan, postgraduateLoan, pension, takeHome }
+}
+
+/**
+ * What goes into the pension pot in one month, in whole pence, taken from the
+ * payslip rather than from the engine's unrounded annual figures.
+ *
+ * `monthlyPayslipLines` caps the PENSION line at whatever the payslip has
+ * left and moves leftover pennies between the deductions, so the pay figure
+ * on the panel is the only one a reader can check against a real payslip.
+ * Under salary sacrifice and net pay the money that leaves pay is the money
+ * that lands in the pot, so the two have to agree to the penny — working the
+ * note out from `intoPension / 12` instead left it a penny off for about 17%
+ * of salaries, and overstated it outright whenever the payslip cut the
+ * pension short (#315).
+ */
+export function payslipIntoPension(breakdown: TakeHomeBreakdown, payslip: MonthlyPayslip): number {
+  // Salary sacrifice and net pay — and no pension at all, where both are 0.
+  // Compared rather than assumed, so relief at source can't fall through to
+  // it and report the pot as the smaller pay figure.
+  if (breakdown.intoPension === breakdown.pension) return payslip.pension
+
+  // Relief at source (not offered yet; it arrives with the design doc's PR
+  // 3): the provider adds its 20% on top, so the pot is bigger than the pay
+  // line. Scaled from what the payslip actually took, never from the
+  // uncapped `intoPension`.
+  return Math.round(payslip.pension * (breakdown.intoPension / breakdown.pension))
+}
+
+/**
+ * True when the pension asked for more than the salary had left, so the
+ * payslip could only take part of it.
+ *
+ * The same arithmetic `takeHomeBreakdown`'s own `Math.max(0, …)` floor does,
+ * on the annual figures and before any rounding — so this is exact, and can't
+ * mistake a line that rounding moved a penny for a pension that was cut
+ * short. Tax, NI and the loans never take all of a salary between them, so
+ * the pension is the only line this can be true of.
+ */
+export function pensionWasCutShort(breakdown: TakeHomeBreakdown): boolean {
+  const { gross, incomeTax, nationalInsurance, studentLoan, postgraduateLoan, pension } = breakdown
+  return gross - incomeTax - nationalInsurance - studentLoan - postgraduateLoan - pension < 0
+}
+
+/**
+ * True when less of an amount-mode pension reached the payslip than the user
+ * typed. Two things can do that, and the caption has to own up to either:
+ *
+ *  - `pensionAt` caps the pot at the salary itself, so £5,000 a month against
+ *    a £35,000 salary applies £2,916.67;
+ *  - the payslip had less than that left once tax, NI and the loans had taken
+ *    theirs, which `pensionWasCutShort` is.
+ *
+ * Compared in whole pence and worked out from `monthlyAmount` on both sides,
+ * so an uncapped pension always reads as equal — including under relief at
+ * source, where the pot is the typed figure divided by 0.8 and multiplying it
+ * back need not land on the same double.
+ *
+ * Percent mode is never capped this way: its slider stops at 50%.
+ */
+export function pensionWasCapped(breakdown: TakeHomeBreakdown, pension: PensionInput | null): boolean {
+  if (pension === null || pension.mode !== 'amount') return false
+  const typedPence = Math.round(Math.max(0, pension.monthlyAmount) * 100)
+  const appliedPence = Math.round((breakdown.pension / 12) * 100)
+  return appliedPence < typedPence || pensionWasCutShort(breakdown)
 }

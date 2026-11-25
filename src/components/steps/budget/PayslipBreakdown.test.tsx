@@ -40,6 +40,19 @@ function shownSums(): { linesComeTo: number; takeHome: number } {
   return { linesComeTo: shownPence('SALARY') - deducted, takeHome: shownPence('TAKE-HOME') }
 }
 
+/** A profile whose only deduction is a £-a-month pension. */
+const amountPension = (arrangement: 'sacrifice' | 'netpay', monthlyAmount: number): PayProfile => ({
+  studentPlan: 'none',
+  postgradLoan: false,
+  pension: { arrangement, mode: 'amount', percent: 0, monthlyAmount },
+})
+
+/** The "Going into your pension" figure, as it reads on screen. */
+const noteFigure = () => (screen.getByText(/Going into your pension/).textContent ?? '').match(/£[\d,.]+/)?.[0] ?? ''
+
+/** The caption under the payslip, as it reads on screen. */
+const caption = () => screen.getByText(/single PAYE salary/).textContent ?? ''
+
 /** Expects the lines on screen to add up to the take-home on screen, to the penny. */
 function expectLinesToAddUp() {
   const { linesComeTo, takeHome } = shownSums()
@@ -100,8 +113,7 @@ describe('PayslipBreakdown', () => {
   it('shows a pension bigger than the payslip as what the payslip had left for it', () => {
     // £30,000 with £3,000 a month under net pay, Plan 5 and a Postgraduate
     // Loan: NI and both loans still come off the full £2,500.00, so £2,301.30
-    // is left for the pension and take-home is £0.00. What the pension asked
-    // for still shows underneath.
+    // is left for the pension and take-home is £0.00.
     const profile: PayProfile = {
       studentPlan: 'plan5',
       postgradLoan: true,
@@ -110,7 +122,9 @@ describe('PayslipBreakdown', () => {
     render(<PayslipBreakdown grossAnnual={30000} profile={profile} />)
     expect(rowValue('PENSION')).toBe(`${MINUS}£2,301.30`)
     expect(rowValue('TAKE-HOME')).toBe('£0.00')
-    expect(screen.getByText(/Going into your pension/).textContent).toContain('£2,500.00 a month')
+    // #315: the note used to report the engine's uncapped £2,500.00 here,
+    // contradicting the line right above it. It now says what went in.
+    expect(screen.getByText(/Going into your pension/).textContent).toContain('£2,301.30 a month')
     expectLinesToAddUp()
   })
 
@@ -151,9 +165,8 @@ describe('PayslipBreakdown', () => {
     render(<PayslipBreakdown grossAnnual={35000} profile={profile} />)
 
     expect(rowValue('PENSION')).toBe(`${MINUS}£0.40`)
-    const caption = screen.getByText(/single PAYE salary/).textContent ?? ''
-    expect(caption).toContain('£0.40/month net pay pension')
-    expect(caption).not.toContain('£0/month')
+    expect(caption()).toContain('£0.40/month net pay pension')
+    expect(caption()).not.toContain('£0/month')
   })
 
   it('keeps the whole-pound caption wording a whole-pound amount already had', () => {
@@ -174,5 +187,103 @@ describe('PayslipBreakdown', () => {
     cleanup()
     render(<PayslipBreakdown grossAnnual={35000} profile={NO_DEDUCTIONS} />)
     expect(screen.getByText(/single PAYE salary, no student loan or pension\./)).toBeTruthy()
+  })
+})
+
+// #315: the note and the caption still worked from the engine's unrounded,
+// uncapped annual figures, so the panel built to be checked against a real
+// payslip could show two different figures for the same pension one line
+// apart. The arithmetic is covered in payslip.test.ts; these check what the
+// panel actually says.
+describe('PayslipBreakdown — the pension figures agree with the PENSION line', () => {
+  afterEach(cleanup)
+
+  it('says the same figure in the note as on the PENSION line, at the salaries the old note got wrong', () => {
+    // £25,000 at the default 5% net pay: the note said £104.17 above a
+    // −£104.16 line. Asserted as the rule rather than the figure, so a
+    // tax-table change moves both together.
+    for (const gross of [25000, 26000, 32000]) {
+      render(<PayslipBreakdown grossAnnual={gross} profile={PLAN_2_NET_PAY} />)
+      expect(noteFigure(), `£${gross}`).toBe((rowValue('PENSION') ?? '').replace(MINUS, ''))
+      cleanup()
+    }
+  })
+
+  it('adds no "capped" clause to a pension the payslip pays in full', () => {
+    render(<PayslipBreakdown grossAnnual={35000} profile={amountPension('netpay', 150)} />)
+    expect(rowValue('PENSION')).toBe(`${MINUS}£150.00`)
+    expect(noteFigure()).toBe('£150.00')
+    expect(caption()).not.toContain('capped')
+  })
+
+  it('says a pension capped at the salary was capped, and to what', () => {
+    // The issue's case: £5,000 a month against £35,000 applies £2,916.67.
+    render(<PayslipBreakdown grossAnnual={35000} profile={amountPension('sacrifice', 5000)} />)
+
+    expect(rowValue('PENSION')).toBe(`${MINUS}£2,916.67`)
+    expect(noteFigure()).toBe('£2,916.67')
+    // The caption no longer states a figure larger than the payslip takes
+    // without saying what became of it.
+    expect(caption()).toContain("(capped at £2,916.67 — all that's left of your pay)")
+    expectLinesToAddUp()
+  })
+
+  it('says a pension the payslip cut short was capped, and to what', () => {
+    const profile: PayProfile = {
+      studentPlan: 'plan2',
+      postgradLoan: true,
+      pension: { arrangement: 'netpay', mode: 'amount', percent: 0, monthlyAmount: 2800 },
+    }
+    render(<PayslipBreakdown grossAnnual={35000} profile={profile} />)
+
+    expect(rowValue('PENSION')).toBe(`${MINUS}£2,655.02`)
+    expect(noteFigure()).toBe('£2,655.02')
+    expect(caption()).toContain("(capped at £2,655.02 — all that's left of your pay)")
+    expect(rowValue('TAKE-HOME')).toBe('£0.00')
+    expectLinesToAddUp()
+  })
+
+  it('adds no clause to a percentage pension, which can never be capped', () => {
+    render(<PayslipBreakdown grossAnnual={35000} profile={PLAN_2_NET_PAY} />)
+    expect(caption()).not.toContain('capped')
+    cleanup()
+
+    // Even at the slider's 50% maximum.
+    const half: PayProfile = {
+      studentPlan: 'none',
+      postgradLoan: false,
+      pension: { arrangement: 'netpay', mode: 'percent', percent: 50, monthlyAmount: 0 },
+    }
+    render(<PayslipBreakdown grossAnnual={35000} profile={half} />)
+    expect(caption()).not.toContain('capped')
+  })
+
+  it('shows no note at all with no pension', () => {
+    render(<PayslipBreakdown grossAnnual={35000} profile={NO_DEDUCTIONS} />)
+    expect(screen.queryByText(/Going into your pension/)).toBeNull()
+    expect(caption()).not.toContain('capped')
+  })
+
+  it('keeps the note and the line together under every loan combination', () => {
+    // Each clause shape: no loan, one plan, and a plan plus a Postgraduate
+    // Loan — all with the same pension, so only the loans move.
+    const loans: Pick<PayProfile, 'studentPlan' | 'postgradLoan'>[] = [
+      { studentPlan: 'none', postgradLoan: false },
+      { studentPlan: 'plan2', postgradLoan: false },
+      { studentPlan: 'plan2', postgradLoan: true },
+    ]
+    for (const loan of loans) {
+      for (const arrangement of ['sacrifice', 'netpay'] as const) {
+        render(
+          <PayslipBreakdown
+            grossAnnual={35000}
+            profile={{ ...loan, pension: { arrangement, mode: 'percent', percent: 5, monthlyAmount: 0 } }}
+          />,
+        )
+        expect(noteFigure(), `${arrangement} ${loan.studentPlan}`).toBe((rowValue('PENSION') ?? '').replace(MINUS, ''))
+        expectLinesToAddUp()
+        cleanup()
+      }
+    }
   })
 })

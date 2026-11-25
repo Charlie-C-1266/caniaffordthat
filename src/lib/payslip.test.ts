@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { PAYSLIP_DEDUCTIONS, monthlyPayslipLines, type MonthlyPayslip } from './payslip'
+import {
+  PAYSLIP_DEDUCTIONS,
+  monthlyPayslipLines,
+  payslipIntoPension,
+  pensionWasCapped,
+  pensionWasCutShort,
+  type MonthlyPayslip,
+} from './payslip'
 import { monthlyTakeHomeFromGross, takeHomeBreakdown, type TakeHomeBreakdown } from './salary'
 import { NO_DEDUCTIONS, type PayProfile, type PensionInput } from './deductions'
 import { CURRENT_TAX_YEAR } from './taxYears'
@@ -239,3 +246,223 @@ function syntheticBreakdown(lines: Pick<TakeHomeBreakdown, 'gross' | 'incomeTax'
     takeHome: lines.gross - lines.incomeTax - lines.nationalInsurance,
   }
 }
+
+// #315: the two lines of text under the payslip still worked from the
+// engine's unrounded, uncapped annual figures. "Going into your pension" was
+// a penny off the PENSION line for about 17% of salaries, and overstated the
+// pension outright whenever the payslip cut it short — on the one panel whose
+// job is to be checked against a real payslip.
+/** The pension pot and the PENSION line, in pence, for a salary under a profile. */
+function potAndLine(gross: number, profile: PayProfile): { pot: number; line: number } {
+  const breakdown = takeHomeBreakdown(gross, CURRENT_TAX_YEAR, profile)
+  const payslip = monthlyPayslipLines(breakdown)
+  return { pot: payslipIntoPension(breakdown, payslip), line: payslip.pension }
+}
+
+/** Whether the payslip had less left than the pension asked for, at a salary under a profile. */
+const cutShort = (gross: number, profile: PayProfile) => pensionWasCutShort(takeHomeBreakdown(gross, CURRENT_TAX_YEAR, profile))
+
+/** Whether less of an amount-mode pension reached the payslip than was typed, at a salary under a profile. */
+const capped = (gross: number, profile: PayProfile) =>
+  pensionWasCapped(takeHomeBreakdown(gross, CURRENT_TAX_YEAR, profile), profile.pension)
+
+/** £35,000 in salary mode with a net pay pension of `pence` a month, for walking up to the amount that empties the payslip. */
+const netPayProfileAt = (pence: number): PayProfile => ({
+  studentPlan: 'none',
+  postgradLoan: false,
+  pension: monthlyPension('netpay', pence / 100),
+})
+
+describe('payslipIntoPension', () => {
+  it('equals the PENSION line exactly for salary sacrifice and net pay, across the range', () => {
+    // The sweep from the issue: £5,000-£150,000 in £37 steps x {3, 5, 8, 10}%
+    // x {sacrifice, net pay}, with and without each loan. Working the note
+    // out from `intoPension / 12` instead disagreed on 5,379 of these.
+    const loans: Partial<PayProfile>[] = [
+      { studentPlan: 'none', postgradLoan: false },
+      { studentPlan: 'none', postgradLoan: true },
+      ...PLANS.flatMap((studentPlan): Partial<PayProfile>[] => [
+        { studentPlan, postgradLoan: false },
+        { studentPlan, postgradLoan: true },
+      ]),
+    ]
+
+    for (const arrangement of ['sacrifice', 'netpay'] as const) {
+      for (const percent of [3, 5, 8, 10]) {
+        for (const loan of loans) {
+          for (let gross = 5000; gross <= 150_000; gross += 37) {
+            const profile = { ...loan, pension: percentPension(arrangement, percent) } as PayProfile
+            const { pot, line } = potAndLine(gross, profile)
+            expect(pot, `£${gross}, ${percent}% ${arrangement}, ${String(loan.studentPlan)}`).toBe(line)
+          }
+        }
+      }
+    }
+  })
+
+  it('agrees on the cases the old note got wrong', () => {
+    // The three the issue names, with the figure the PENSION line shows.
+    for (const gross of [25_000, 26_000, 32_000]) {
+      const profile: PayProfile = { studentPlan: 'none', postgradLoan: false, pension: percentPension('netpay', 5) }
+      const { pot, line } = potAndLine(gross, profile)
+      expect(pot, `£${gross}`).toBe(line)
+      // And it really is the penny the old note missed.
+      const breakdown = takeHomeBreakdown(gross, CURRENT_TAX_YEAR, profile)
+      expect(Math.abs(Math.round((breakdown.intoPension / 12) * 100) - line)).toBe(1)
+    }
+  })
+
+  it('reports the cut-short figure, not the one the pension asked for', () => {
+    // £35,000 with Plan 2, a Postgraduate Loan and £2,800 a month under net
+    // pay: the payslip has £2,655.02 left for it, and take-home is £0.00.
+    const profile: PayProfile = { studentPlan: 'plan2', postgradLoan: true, pension: monthlyPension('netpay', 2800) }
+    const { pot, line } = potAndLine(35_000, profile)
+    expect(line).toBe(265_502)
+    expect(pot).toBe(line)
+    // The engine's own figure, which the note used to print.
+    expect(takeHomeBreakdown(35_000, CURRENT_TAX_YEAR, profile).intoPension / 12).toBe(2800)
+  })
+
+  it('is £0 with no pension at all', () => {
+    const { pot, line } = potAndLine(35_000, NO_DEDUCTIONS)
+    expect(pot).toBe(0)
+    expect(line).toBe(0)
+  })
+
+  it('scales the pot above the pay line under relief at source', () => {
+    // Not offered in the UI yet, but the engine models it: each £1 in the pot
+    // costs 80p of pay, so the pot must not simply be the PENSION line.
+    const profile: PayProfile = { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('ras', 150) }
+    const { pot, line } = potAndLine(35_000, profile)
+    expect(line).toBe(15_000)
+    expect(pot).toBe(18_750)
+  })
+
+  it('scales a capped relief-at-source pot from what the payslip took, not the uncapped figure', () => {
+    const profile: PayProfile = { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('ras', 3000) }
+    const breakdown = takeHomeBreakdown(35_000, CURRENT_TAX_YEAR, profile)
+    const payslip = monthlyPayslipLines(breakdown)
+    const pot = payslipIntoPension(breakdown, payslip)
+
+    // The uncapped pot would be the salary itself, £2,916.67 a month.
+    expect(Math.round((breakdown.intoPension / 12) * 100)).toBe(291_667)
+    // Scaled from what the payslip actually took, it is less than that.
+    expect(payslip.pension).toBeLessThan(291_667)
+    expect(pot).toBe(Math.round(payslip.pension / (1 - CURRENT_TAX_YEAR.reliefAtSourceRate)))
+    // Still more than the pay line, which is the point of the arrangement.
+    expect(pot).toBeGreaterThan(payslip.pension)
+  })
+
+  it('is £0 for a pension that rounds away to nothing', () => {
+    // A penny a year: real to the engine, £0.00 on a monthly payslip.
+    const profile: PayProfile = { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', 0.0001) }
+    const { pot, line } = potAndLine(35_000, profile)
+    expect(line).toBe(0)
+    expect(pot).toBe(0)
+  })
+
+  it('is £0 on a salary of £0', () => {
+    const { pot, line } = potAndLine(0, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', 150) })
+    expect(pot).toBe(0)
+    expect(line).toBe(0)
+  })
+})
+
+/** A net pay pension of `pounds` a month with no student loans. */
+const noLoans = (pounds: number): PayProfile => ({ studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', pounds) })
+
+describe('pensionWasCutShort', () => {
+  it('is true when the payslip had less left than the pension asked for', () => {
+    expect(cutShort(35_000, { studentPlan: 'plan2', postgradLoan: true, pension: monthlyPension('netpay', 2800) })).toBe(true)
+  })
+
+  it('is false for a pension the payslip can afford', () => {
+    expect(cutShort(35_000, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', 150) })).toBe(false)
+    expect(cutShort(35_000, { studentPlan: 'none', postgradLoan: false, pension: percentPension('netpay', 50) })).toBe(false)
+    expect(cutShort(35_000, NO_DEDUCTIONS)).toBe(false)
+  })
+
+  it('counts the student loans in what the payslip had left', () => {
+    // The largest whole-pound net pay pension £35,000 covers with no loans,
+    // walked up to rather than hard-coded so a tax-table change moves it.
+    let fits = 1
+    while (!cutShort(35_000, noLoans(fits + 1))) fits += 1
+    expect(cutShort(35_000, noLoans(fits))).toBe(false)
+
+    // The same pension on top of Plan 2 and a Postgraduate Loan no longer fits:
+    // the loans take their share first, so the payslip has less left for it.
+    expect(cutShort(35_000, { ...noLoans(fits), studentPlan: 'plan2', postgradLoan: true })).toBe(true)
+  })
+
+  it('is never true of tax, NI and the loans alone, at any salary', () => {
+    for (const [name, profile] of PROFILES.filter(([, p]) => p.pension === null)) {
+      for (let gross = 5000; gross <= 150_000; gross += 971) {
+        expect(cutShort(gross, profile), `£${gross}, ${name}`).toBe(false)
+      }
+    }
+  })
+})
+
+describe('pensionWasCapped', () => {
+  it('is false with no pension, and for a percentage at its 50% maximum', () => {
+    expect(capped(35_000, NO_DEDUCTIONS)).toBe(false)
+    for (const arrangement of ARRANGEMENTS) {
+      expect(capped(35_000, { studentPlan: 'none', postgradLoan: false, pension: percentPension(arrangement, 50) })).toBe(false)
+    }
+  })
+
+  it('is false for an amount the payslip pays in full, to the penny', () => {
+    for (const amount of [150, 150.5, 0.4, 1234.56]) {
+      expect(capped(35_000, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', amount) }), `£${amount}`).toBe(
+        false,
+      )
+    }
+  })
+
+  it('is true when the pot was capped at the salary itself', () => {
+    // £5,000 a month against a £35,000 salary: £2,916.67 is applied.
+    expect(capped(35_000, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('sacrifice', 5000) })).toBe(true)
+  })
+
+  it('is true when the payslip cut the pension short', () => {
+    expect(capped(35_000, { studentPlan: 'plan2', postgradLoan: true, pension: monthlyPension('netpay', 2800) })).toBe(true)
+  })
+
+  it('flips on the exact penny the payslip runs out of room', () => {
+    // The boundary is found by bisection rather than hard-coded: it is not
+    // the no-pension take-home, because a net pay pension lowers the tax on
+    // the pay it comes out of.
+    const profileAt = netPayProfileAt
+
+    let affordable = 1
+    let tooMuch = 1_000_000
+    expect(capped(35_000, profileAt(affordable))).toBe(false)
+    expect(capped(35_000, profileAt(tooMuch))).toBe(true)
+
+    while (tooMuch - affordable > 1) {
+      const mid = Math.floor((affordable + tooMuch) / 2)
+      if (capped(35_000, profileAt(mid))) tooMuch = mid
+      else affordable = mid
+    }
+
+    expect(tooMuch - affordable).toBe(1)
+    // Exactly what's left: paid in full, so no cap. One penny more: capped.
+    expect(capped(35_000, profileAt(affordable))).toBe(false)
+    expect(capped(35_000, profileAt(tooMuch))).toBe(true)
+    // And the payslip really does have nothing left at the boundary.
+    const payslip = monthlyPayslipLines(takeHomeBreakdown(35_000, CURRENT_TAX_YEAR, profileAt(affordable)))
+    expect(payslip.takeHome).toBe(0)
+  })
+
+  it('is true on a salary of £0, where nothing of the amount can be taken', () => {
+    expect(capped(0, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('netpay', 150) })).toBe(true)
+  })
+
+  it('is false for an uncapped relief-at-source amount, whose pot is the typed figure over 0.8', () => {
+    // The float round-trip (x / 0.8 * 0.8) need not land back on x, which is
+    // why the comparison is made in whole pence.
+    for (const amount of [150, 150.5, 99.99, 1234.56]) {
+      expect(capped(35_000, { studentPlan: 'none', postgradLoan: false, pension: monthlyPension('ras', amount) }), `£${amount}`).toBe(false)
+    }
+  })
+})
