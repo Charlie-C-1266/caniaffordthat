@@ -15,7 +15,7 @@ import { DocPage } from './DocPage'
 import { MethodologySources } from './MethodologySources'
 import { ModelLimitations } from './ModelLimitations'
 import { CONTACT_EMAIL } from '../../lib/contact'
-import { installResizeObserver, resizeObserved } from '../../test/resizeObserver'
+import { installResizeObserver, observedElementCount, resizeObserved } from '../../test/resizeObserver'
 
 afterEach(cleanup)
 
@@ -413,6 +413,22 @@ describe('the docs scroll containers', () => {
     expect(screen.queryByRole('region')).toBeNull()
     expect(tableScroller()?.hasAttribute('tabindex')).toBe(false)
     expect(tableScroller()?.hasAttribute('aria-label')).toBe(false)
+  })
+
+  it('adds no tab stop to a table that exactly fits, with nothing hidden to scroll to', () => {
+    restore = stubWidths(480, 480)
+    render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+
+    expect(screen.queryByRole('region')).toBeNull()
+  })
+
+  it('stops watching the scroller once it unmounts', () => {
+    restore = fitting()
+    const { unmount } = render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+    expect(observedElementCount()).toBe(1)
+
+    unmount()
+    expect(observedElementCount()).toBe(0)
   })
 
   it('becomes reachable when a resize makes it overflow, and stops when it fits again', () => {

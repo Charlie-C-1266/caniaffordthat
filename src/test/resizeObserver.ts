@@ -31,8 +31,18 @@ class FakeResizeObserver implements ResizeObserver {
     this.targets = []
   }
 
-  /** Reports every observed element as resized, as a viewport change or a web font loading would. */
+  /** How many elements this observer is watching right now. */
+  observedCount(): number {
+    return this.targets.length
+  }
+
+  /**
+   * Reports every observed element as resized, as a viewport change or a web
+   * font loading would. Like a real ResizeObserver, one watching nothing never
+   * calls back, so a hook that forgets to `observe()` can't pass on the stub.
+   */
   fire() {
+    if (this.targets.length === 0) return
     this.callback(
       this.targets.map((target) => ({ target }) as ResizeObserverEntry),
       this,
@@ -52,4 +62,9 @@ export function installResizeObserver() {
 /** Fires every observer created since the last `installResizeObserver()`, so a re-measure happens. */
 export function resizeObserved() {
   for (const observer of FakeResizeObserver.instances) observer.fire()
+}
+
+/** How many elements the live observers are watching, so a test can check a scroller is let go once it unmounts. */
+export function observedElementCount(): number {
+  return FakeResizeObserver.instances.reduce((count, observer) => count + observer.observedCount(), 0)
 }
