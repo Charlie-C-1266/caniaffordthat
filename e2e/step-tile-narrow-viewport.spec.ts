@@ -57,9 +57,11 @@ async function tileMetrics(page: Page) {
     const borderX = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth)
     const padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
 
-    // Where the rail's dots start, and how far right anything focusable in
-    // the tile reaches.
-    const dots = [...document.querySelectorAll('nav[aria-label="Step progress"] span')].map((dot) => dot.getBoundingClientRect())
+    // Where the rail's hit targets start, and how far right anything
+    // focusable in the tile reaches. The 24x24px buttons round each dot (#286)
+    // are the area a tap lands on, so they are what a control must stay clear
+    // of, not the smaller dot drawn inside.
+    const dots = [...document.querySelectorAll('nav[aria-label="Step progress"] button')].map((dot) => dot.getBoundingClientRect())
     const controls = [...tile.querySelectorAll('button, input, a, select, textarea')]
       .map((control) => control.getBoundingClientRect())
       .filter((box) => box.width > 0 && box.height > 0)

@@ -65,10 +65,10 @@
  *
  * The gutters are asymmetric on purpose: ProgressRail is `position: fixed` on
  * the right edge, so the room it needs can't be shared with the tile. A
- * 32px end gutter plus the tile's own 22px padding keeps every control 6px
- * clear of the rail even at the 24x24px hit target WCAG 2.5.8 asks for and
- * #286 moves the dots to — and 23px clear of today's 7px dots. The start
- * gutter is free to be tight, so it is.
+ * 32px end gutter plus the tile's own 22px padding keeps every control 14px
+ * clear of the rail's 24x24px hit targets (WCAG 2.5.8, #286) and 21px clear
+ * of the dots inside them, measured at 320-414px. The start gutter is free
+ * to be tight, so it is.
  *
  * Together these leave the content exactly `width - 90px`: 230px at 320px
  * (up from 140px) and 270px at 360px.
