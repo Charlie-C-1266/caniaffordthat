@@ -23,6 +23,22 @@ export function fmtPence(n: number): string {
   })
 }
 
+/**
+ * Formats a sum to the penny, but drops a trailing `.00` so a whole-pound
+ * figure reads as `£150` rather than `£150.00`.
+ *
+ * For a figure that sits beside a payslip line. The digits come straight from
+ * `fmtPence`, so the two can never show different amounts for the same money
+ * — which is what went wrong in #318, where `fmt`'s whole-pound rounding made
+ * a caption read `£151/month` above a `−£150.50` PENSION line, and `£0/month`
+ * above one taking 40p. Whole pounds keep the shorter wording the captions
+ * already used. NaN reads as `£0`.
+ */
+export function fmtPenceIfAny(n: number): string {
+  const withPence = fmtPence(n)
+  return withPence.endsWith('.00') ? withPence.slice(0, -'.00'.length) : withPence
+}
+
 /** Parses a form field's value, treating anything non-positive or non-finite as 0. */
 export function num(v: number | string): number {
   const n = Number(v)

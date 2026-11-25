@@ -1,4 +1,4 @@
-import { num, fmt } from './calculations'
+import { num, fmtPenceIfAny } from './calculations'
 import type { PayProfile } from './deductions'
 import { monthlyTakeHomeFromGross } from './salary'
 import { CURRENT_TAX_YEAR } from './taxYears'
@@ -115,6 +115,9 @@ export function describePayProfile(profile: PayProfile): string {
 
   const { pension } = profile
   if (pension === null) return `${loans}, no pension`
-  const size = pension.mode === 'percent' ? `${pension.percent}%` : `${fmt(pension.monthlyAmount)}/month`
+  // The amount is shown to the penny when it has any, so the caption can never
+  // name a figure the PENSION line above it contradicts (#318). A whole-pound
+  // amount keeps its existing shorter wording.
+  const size = pension.mode === 'percent' ? `${pension.percent}%` : `${fmtPenceIfAny(pension.monthlyAmount)}/month`
   return `${loans}, ${size} ${PENSION_ARRANGEMENT_LABELS[pension.arrangement].toLowerCase()} pension`
 }
