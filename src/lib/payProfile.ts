@@ -89,6 +89,32 @@ export function takeHomeFor(grossSalary: string, profile: PayProfile): string {
   return String(Math.max(0, roundPence(monthlyTakeHomeFromGross(gross, CURRENT_TAX_YEAR, profile))))
 }
 
+/** The state fields that decide whether a salary leaves any take-home: the pay profile, plus the income mode and salary it applies to. */
+export type TakeHomeState = PayProfileState & Pick<CalculatorState, 'takeHomeMode' | 'grossSalary'>
+
+/**
+ * True when "About your pay" leaves nothing of the salary to plan with:
+ * salary mode, a salary typed, and a payslip whose take-home comes to £0.00.
+ *
+ * `monthlyPayslipLines` caps the PENSION line at whatever the payslip has
+ * left, so a £-a-month pension can take everything. The Budget step then
+ * won't advance and both result engines return `null` — and without knowing
+ * why, the page blames a missing price and take-home the user has already
+ * given (#317). A percentage pension can't get here: its slider stops at 50%,
+ * and the loans are a share of pay above a threshold, so neither can take
+ * everything on its own.
+ *
+ * Worked out through `takeHomeFor`, the one derivation the Budget step and
+ * hydration both store (#292), rather than read from `state.takeHome`, so a
+ * stale stored figure can neither raise nor hide the note. Its whole-pence
+ * rounding is what the payslip shows, so this is true exactly when the step
+ * really stalls.
+ */
+export function deductionsTakeAllPay(state: TakeHomeState): boolean {
+  if (state.takeHomeMode !== 'salary' || num(state.grossSalary) <= 0) return false
+  return num(takeHomeFor(state.grossSalary, payProfileOf(state))) <= 0
+}
+
 /** True when a profile takes anything at all besides income tax and NI. */
 export function hasDeductions(profile: PayProfile): boolean {
   return profile.studentPlan !== 'none' || profile.postgradLoan || profile.pension !== null
