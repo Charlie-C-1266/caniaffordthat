@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, act } from '@testing-library/react'
 import { ExternalLink } from './ExternalLink'
 import { DataTable } from './DataTable'
 import { PageHeader } from './PageHeader'
@@ -15,8 +15,41 @@ import { DocPage } from './DocPage'
 import { MethodologySources } from './MethodologySources'
 import { ModelLimitations } from './ModelLimitations'
 import { CONTACT_EMAIL } from '../../lib/contact'
+import { installResizeObserver, observedElementCount, resizeObserved } from '../../test/resizeObserver'
 
 afterEach(cleanup)
+
+// The two scroll containers below observe their own width to decide whether
+// they currently overflow (#314), and jsdom has no ResizeObserver.
+beforeEach(installResizeObserver)
+
+/**
+ * Makes every element report these widths for the rest of the test, so the
+ * overflow check can be driven from here — jsdom lays nothing out and reports
+ * 0 for both, which reads as "fits". Returns the undo.
+ */
+function stubWidths(scrollWidth: number, clientWidth: number): () => void {
+  const originals = (['scrollWidth', 'clientWidth'] as const).map(
+    (name) => [name, Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)] as const,
+  )
+  Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => scrollWidth })
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => clientWidth })
+
+  return () => {
+    for (const [name, descriptor] of originals) {
+      if (descriptor === undefined) delete (HTMLElement.prototype as unknown as Record<string, unknown>)[name]
+      else Object.defineProperty(HTMLElement.prototype, name, descriptor)
+    }
+  }
+}
+
+/** The scroll box a DataTable renders its table inside. */
+const tableScroller = () => screen.getByRole('table').parentElement
+
+/** A table wider than its box, as every docs table is on a phone: 480px of content in a 304px card. */
+const overflowing = () => stubWidths(480, 304)
+/** The same table on a desktop, where it fits. */
+const fitting = () => stubWidths(480, 640)
 
 describe('ExternalLink', () => {
   it('opens in a new tab with the full noopener/noreferrer guard', () => {
@@ -223,7 +256,8 @@ describe('inline helpers', () => {
     const { container } = render(<Formula>{'monthly = target / months'}</Formula>)
     const pre = container.querySelector('pre')
     expect(pre?.textContent).toBe('monthly = target / months')
-    expect(pre?.className).toBe('mono')
+    // Plus the shared scroll-container class the focus ring hangs off (#314).
+    expect(pre?.className).toBe('mono doc-scroller')
     expect(pre?.getAttribute('style')).toContain('white-space: pre')
   })
 
@@ -329,5 +363,127 @@ describe('ModelLimitations', () => {
     // consequence beside it is the cell.
     expect(screen.getAllByRole('rowheader').map((th) => th.textContent)).toEqual(['Scottish tax'])
     expect(screen.getAllByRole('cell').map((td) => td.textContent)).toEqual(['Scotland has its own bands.'])
+  })
+})
+
+// #314: every DataTable and Formula on the three docs pages is a
+// `overflowX: auto` box whose hidden columns contain nothing focusable, and
+// none of them had a tabIndex, a role or a name. Safari and older Chromium
+// don't make scrollers focusable on their own, so the rate and threshold
+// columns of the tax-band and student-loan tables were simply out of keyboard
+// reach — WCAG 2.1.1, and axe's `scrollable-region-focusable`.
+describe('the docs scroll containers', () => {
+  // Null rather than a no-op, so each test's width stub is undone exactly once.
+  let restore: (() => void) | null = null
+
+  afterEach(() => {
+    restore?.()
+    restore = null
+  })
+
+  it('names an overflowing table as a region a keyboard can reach', () => {
+    restore = overflowing()
+    render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+
+    const region = screen.getByRole('region', { name: 'Income tax bands and rates' })
+    expect(region.getAttribute('tabindex')).toBe('0')
+    // The focus ring comes from the shared .doc-scroller rule in index.css.
+    expect(region.className).toContain('doc-scroller')
+  })
+
+  it('falls back to the first column heading when given no label', () => {
+    restore = overflowing()
+    render(<DataTable head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+
+    // "Band" names what each row is about, which is the best name available.
+    expect(screen.getByRole('region', { name: 'Band' })).toBeTruthy()
+  })
+
+  it('falls back again to a plain name when there are no headings at all', () => {
+    restore = overflowing()
+    render(<DataTable head={[]} rows={[['Basic rate']]} />)
+
+    expect(screen.getByRole('region', { name: 'Table' })).toBeTruthy()
+  })
+
+  it('adds no tab stop to a table that fits, so desktop gains no extra stops', () => {
+    restore = fitting()
+    render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+
+    expect(screen.queryByRole('region')).toBeNull()
+    expect(tableScroller()?.hasAttribute('tabindex')).toBe(false)
+    expect(tableScroller()?.hasAttribute('aria-label')).toBe(false)
+  })
+
+  it('adds no tab stop to a table that exactly fits, with nothing hidden to scroll to', () => {
+    restore = stubWidths(480, 480)
+    render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+
+    expect(screen.queryByRole('region')).toBeNull()
+  })
+
+  it('stops watching the scroller once it unmounts', () => {
+    restore = fitting()
+    const { unmount } = render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+    expect(observedElementCount()).toBe(1)
+
+    unmount()
+    expect(observedElementCount()).toBe(0)
+  })
+
+  it('becomes reachable when a resize makes it overflow, and stops when it fits again', () => {
+    // The viewport narrowing, or a web font loading — both resize the element
+    // with no React render to hang a re-measure off.
+    restore = fitting()
+    render(<DataTable label="Income tax bands and rates" head={['Band', 'Rate']} rows={[['Basic rate', '20%']]} />)
+    expect(screen.queryByRole('region')).toBeNull()
+
+    restore()
+    restore = overflowing()
+    act(resizeObserved)
+    expect(screen.getByRole('region', { name: 'Income tax bands and rates' })).toBeTruthy()
+
+    restore()
+    restore = fitting()
+    act(resizeObserved)
+    expect(screen.queryByRole('region')).toBeNull()
+  })
+
+  it('names an overflowing formula by what it works out', () => {
+    restore = overflowing()
+    render(<Formula label="take-home">{'take-home = gross − tax'}</Formula>)
+
+    const region = screen.getByRole('region', { name: 'Formula: take-home' })
+    expect(region.tagName).toBe('PRE')
+    expect(region.getAttribute('tabindex')).toBe('0')
+    expect(region.className).toContain('doc-scroller')
+  })
+
+  it('names an unlabelled formula plainly rather than leaving it unnamed', () => {
+    restore = overflowing()
+    render(<Formula>{'take-home = gross − tax'}</Formula>)
+
+    expect(screen.getByRole('region', { name: 'Formula' })).toBeTruthy()
+  })
+
+  it('adds no tab stop to a formula that fits', () => {
+    restore = fitting()
+    const { container } = render(<Formula label="take-home">{'take-home = gross − tax'}</Formula>)
+
+    expect(screen.queryByRole('region')).toBeNull()
+    expect(container.querySelector('pre')?.hasAttribute('tabindex')).toBe(false)
+  })
+
+  it('still renders an empty or single-row table', () => {
+    restore = overflowing()
+    render(<DataTable label="Empty" head={['Band', 'Rate']} rows={[]} />)
+    expect(screen.getByRole('region', { name: 'Empty' })).toBeTruthy()
+    expect(screen.queryAllByRole('cell')).toEqual([])
+    cleanup()
+
+    render(<DataTable label="One row" head={['Band']} rows={[['Basic rate']]} />)
+    expect(screen.getByRole('region', { name: 'One row' })).toBeTruthy()
+    // A one-column row is all row header since #285, so its one cell is a rowheader.
+    expect(screen.getAllByRole('rowheader')).toHaveLength(1)
   })
 })

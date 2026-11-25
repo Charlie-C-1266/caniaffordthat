@@ -299,3 +299,65 @@ test.describe('salary methodology page: student loans and pensions', () => {
     await expect(page.getByText(longDate(TY.verifiedOn)).first()).toBeVisible()
   })
 })
+
+// #314: every wide table and formula on the docs pages is an `overflowX: auto`
+// box, and none of them had a tabIndex, a role or a name. Most contain nothing
+// focusable, so in browsers that don't make scrollers focusable on their own
+// (Safari, older Chromium) the hidden rate and threshold columns were out of
+// keyboard reach entirely — WCAG 2.1.1, and axe's
+// `scrollable-region-focusable`.
+test.describe('the docs pages at a phone width', () => {
+  const PHONE = { width: 360, height: 780 }
+
+  /** The pages, with a region each one has that is wide enough to scroll at 360px. */
+  const PAGES = [
+    { path: '/methodology/salary/', region: 'Income tax bands and rates' },
+    { path: '/methodology/vehicle/', region: 'Road tax charges, the rates used and when each applies' },
+    { path: '/sources/', region: 'Every source behind the numbers, and what each one backs' },
+  ] as const
+
+  for (const { path, region } of PAGES) {
+    test(`a wide table on ${path} is reachable by keyboard and scrolls with the arrow keys`, async ({ page }) => {
+      await page.setViewportSize(PHONE)
+      await page.goto(path)
+
+      const scroller = page.getByRole('region', { name: region })
+      await expect(scroller).toBeVisible()
+
+      // It really does overflow here — otherwise the rest proves nothing.
+      const overflow = await scroller.evaluate((el) => el.scrollWidth - el.clientWidth)
+      expect(overflow).toBeGreaterThan(0)
+
+      // Reachable with the keyboard, and showing a focus ring once there.
+      await scroller.focus()
+      await expect(scroller).toBeFocused()
+      const outlineWidth = await scroller.evaluate((el) => getComputedStyle(el).outlineWidth)
+      expect(outlineWidth).not.toBe('0px')
+
+      // And the arrow keys bring the hidden columns into view.
+      expect(await scroller.evaluate((el) => el.scrollLeft)).toBe(0)
+      await page.keyboard.press('ArrowRight')
+      await expect.poll(async () => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+    })
+  }
+
+  test('a table that fits adds no extra tab stop on a desktop', async ({ page }) => {
+    // The conditional half of the rule: at 1280px the same tables fit, so a
+    // reader tabbing through the page should not meet them at all.
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/methodology/salary/')
+
+    const measured = await page.evaluate(() =>
+      [...document.querySelectorAll('.doc-scroller')].map((el) => ({
+        overflow: el.scrollWidth - el.clientWidth,
+        tabIndex: el.getAttribute('tabindex'),
+      })),
+    )
+    expect(measured.length).toBeGreaterThan(0)
+
+    // Focusable exactly when it has something hidden to scroll to, and at
+    // this width that is none of them.
+    expect(measured.filter(({ overflow }) => overflow > 0)).toEqual([])
+    expect(measured.map(({ tabIndex }) => tabIndex)).toEqual(measured.map(() => null))
+  })
+})

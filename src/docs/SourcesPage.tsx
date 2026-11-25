@@ -55,6 +55,7 @@ export function SourcesPage() {
 
       <Section title="How we work">
         <DataTable
+          label="The principles the site is built on, and what each means in practice"
           head={['Principle', 'What it means in practice']}
           rows={[
             [
@@ -94,6 +95,7 @@ export function SourcesPage() {
           button in the app, with what each one actually backs:
         </P>
         <DataTable
+          label="Every source behind the numbers, and what each one backs"
           head={['Source', 'What we use it for']}
           rows={SOURCE_LIST.map((source) => [
             <ExternalLink key="l" href={source.url}>
@@ -122,6 +124,7 @@ export function SourcesPage() {
           right tool:
         </P>
         <DataTable
+          label="Further UK money-guidance resources"
           head={['Resource', "Why it's worth a look"]}
           rows={HELPFUL_LINKS.map((link) => [
             <ExternalLink key="l" href={link.url}>
