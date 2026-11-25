@@ -206,7 +206,7 @@ export function DetailsStep({ index, panelRef, wrapperRef, scrollToIndex }: Deta
                     prefixFontSize="var(--fs-prefix-lg)"
                     prefixTop={6}
                     paddingBottom={14}
-                    paddingLeft={38}
+                    paddingLeft="var(--pad-price-left)"
                   />
                   {goal.kind === 'vehicle' && (
                     <div style={{ marginTop: 30 }}>
