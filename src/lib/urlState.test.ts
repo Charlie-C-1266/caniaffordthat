@@ -267,9 +267,10 @@ describe("hydrateStateFromUrl — each slider's steps", () => {
   })
 
   it('snaps without leaving floating-point artefacts behind', () => {
-    // `0.5 * 11` is 5.500000000000001 in binary floating point, which would
-    // reach the caption and the result as such. toBe, not toBeCloseTo, is the
-    // point of these assertions.
+    // A decimal step can drift in binary floating point (`0.1 * 3` is
+    // 0.30000000000000004), and an artefact would reach the caption and the
+    // result as such. Today's 0.5 steps are exact, so this pins the outcome
+    // rather than the rounding: toBe, not toBeCloseTo, is the point.
     expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=5.4').pensionPercent).toBe(5.5)
     expect(hydrateStateFromUrl('?goalId=big&mode=save&itemPrice=900&pensionPercent=0.4').pensionPercent).toBe(0.5)
     expect(hydrateStateFromUrl('?goalId=big&mode=monthly&itemPrice=900&growth=10.3').growth).toBe(10.5)

@@ -98,9 +98,10 @@ const clampTo = (value: number, { min, max }: Pick<SliderRange, 'min' | 'max'>) 
 
 /**
  * How many decimal places a step is written to. Snapping multiplies the step,
- * which in binary floating point drifts (`0.5 * 11` is 5.500000000000001), so
- * the result is rounded back to the step's own precision — every step here is
- * a short decimal, so this is exact for all of them.
+ * and a decimal step such as 0.1 drifts in binary floating point (`0.1 * 3` is
+ * 0.30000000000000004), so the result is rounded back to the step's own
+ * precision. Today's steps, 0.5 and 1, are exact in binary and never drift;
+ * this keeps a future decimal step from leaking an artefact into the caption.
  */
 function stepDecimals(step: number): number {
   const text = String(step)
