@@ -103,16 +103,15 @@ const asNumber = (text: string) => Number(text.replace(/[^\d.]/g, '')) * (/[−-
  * this holds to the penny.
  */
 async function expectPayslipAddsUp(box: Locator) {
-  const rows = await box.locator('> div').all()
-  const lines: { label: string; value: number }[] = []
-  for (const row of rows) {
-    const spans = row.locator('> span')
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one settled row at a time; the box is already rendered
-    if ((await spans.count()) !== 2) continue
-    // oxlint-disable-next-line eslint/no-await-in-loop -- as above
-    const [label, value] = await Promise.all([spans.nth(0).textContent(), spans.nth(1).textContent()])
-    lines.push({ label: label ?? '', value: asNumber(value ?? '') })
-  }
+  // One read of the settled box rather than a round trip per row. Only
+  // label/value pairs count, which skips the box's own heading.
+  const pairs = await box.locator('> div').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const spans = row.querySelectorAll(':scope > span')
+      return spans.length === 2 ? [[spans[0].textContent ?? '', spans[1].textContent ?? '']] : []
+    }),
+  )
+  const lines = pairs.map(([label, value]) => ({ label, value: asNumber(value) }))
 
   expect(lines.length, 'the payslip has lines to add up').toBeGreaterThanOrEqual(2)
   const total = lines.at(-1)
