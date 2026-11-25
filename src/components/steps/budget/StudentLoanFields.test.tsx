@@ -40,7 +40,10 @@ describe('StudentLoanFields', () => {
 
   it('explains which plan applies, and links to GOV.UK to check', () => {
     renderFields()
-    expect(within(planGroup()).getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
+    // The "?" hint sits beside the label, outside the group of option buttons
+    // (#282 moved the group onto the segmented control itself). Its accessible
+    // name is the whole hint, which is unique on the page.
+    expect(screen.getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
     const link = screen.getByRole('link', { name: /Check which plan you/ })
     expect(link.getAttribute('href')).toBe(SOURCES.studentLoanPlans.url)
     expect(link.getAttribute('target')).toBe('_blank')
@@ -49,7 +52,7 @@ describe('StudentLoanFields', () => {
   it('asks about a Postgraduate Loan as a yes or no, with its rate and threshold from the table', () => {
     const onChange = renderFields()
     expect(within(postgradGroup()).getByRole('button', { name: 'No' }).getAttribute('aria-pressed')).toBe('true')
-    expect(within(postgradGroup()).getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'Yes' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: true })
   })
@@ -59,5 +62,17 @@ describe('StudentLoanFields', () => {
     expect(within(postgradGroup()).getByRole('button', { name: 'Yes' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'No' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: false })
+  })
+
+  // #313 made wrapping opt-in. The plan row is the one control that needs it:
+  // six options is the only compact control wide enough to want a second row
+  // on a phone, which is what #291 added wrapping for. The Yes/No beside it
+  // must not take one, or it stops reading as either/or.
+  it('lets the six-option plan row take a second row, but not the Yes/No beside it', () => {
+    renderFields()
+
+    // Since #282 each named group is the pill itself.
+    expect(planGroup().style.flexWrap).toBe('wrap')
+    expect(postgradGroup().style.flexWrap).toBe('')
   })
 })

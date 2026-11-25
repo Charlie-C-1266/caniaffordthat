@@ -98,6 +98,40 @@
 }
 
 /*
+ * Compact (`size="sm"`) segmented-control chrome. #291 made every compact
+ * control wrap so the five student-loan plans could fit on a phone, and two
+ * two- and three-option toggles broke with it: "Monthly take-home / Annual
+ * salary" split onto two rows at every width up to about 430px, and the
+ * result's "Balance / Budget / Table" at 390px and below (#313). Wrapping is
+ * now opt-in, so those stay on one row — and these are the sizes that keep
+ * their labels on one line while they do.
+ */
+:root {
+  --segmented-sm-gap: 5px;
+  --segmented-sm-font-size: 13px;
+  --segmented-sm-padding-block: 8px;
+  --segmented-sm-padding-inline: 14px;
+}
+
+/*
+ * The same 600px breakpoint the header uses. "Monthly take-home" needs 123px
+ * of text at 13px and its toggle has 234px to play with at 414px, which the
+ * desktop padding above spends 69px of; trimming the chrome is what buys the
+ * two labels a single line. Narrower still, the segments share out whatever
+ * the tile leaves them (see SegmentedControl's maxWidth/minWidth) rather than
+ * pushing the page sideways — #316 is the one that gives them back the room
+ * the step tiles currently spend on padding.
+ */
+@media (max-width: 600px) {
+  :root {
+    --segmented-sm-gap: 3px;
+    --segmented-sm-font-size: 12px;
+    --segmented-sm-padding-block: 7px;
+    --segmented-sm-padding-inline: 8px;
+  }
+}
+
+/*
  * Goal-carousel geometry. The design's cover-flow spec is a 250px card stepped
  * 268px from its neighbours, which needs roughly 1100px to show the focused
  * card plus one card each side. Below that the cards have to shrink and close
@@ -190,6 +224,22 @@ body {
 :focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
+}
+
+/*
+ * The docs' sideways-scrolling tables and formulas (#314). They are put in the
+ * tab order only while their content overflows, so the arrow keys can bring
+ * the hidden columns into view — on /methodology/salary/ at 360px that is six
+ * tables of 480px content in a 304px box, and two formulas up to 679px wide.
+ *
+ * The global ring above sits 3px outside the element, where the card's own
+ * rounded edge and the scroller's clipping would cut it off, so it is drawn
+ * just inside instead and follows the same corner radius as the card.
+ */
+.doc-scroller:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+  border-radius: var(--radius-glass-sm);
 }
 
 /*

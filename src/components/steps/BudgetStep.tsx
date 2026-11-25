@@ -12,10 +12,7 @@ import { AboutYourPay } from './budget/AboutYourPay'
 import { PayslipBreakdown } from './budget/PayslipBreakdown'
 import { useCalculator } from '../../state/calculatorContext'
 import { num } from '../../lib/calculations'
-import type { PayProfile } from '../../lib/deductions'
-import { payProfileOf, type PayProfileState } from '../../lib/payProfile'
-import { monthlyTakeHomeFromGross } from '../../lib/salary'
-import { CURRENT_TAX_YEAR } from '../../lib/taxYears'
+import { deductionsTakeAllPay, payProfileOf, takeHomeFor, type PayProfileState } from '../../lib/payProfile'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS, REGULAR_SAVING_LABEL, type OutgoingFieldKey } from '../../lib/budget'
 import { goalById, presentationFor } from '../../lib/goals'
 import { accentColorFor } from '../../lib/mode'
@@ -28,12 +25,16 @@ const TAKE_HOME_MODE_OPTIONS: readonly SegmentedOption<TakeHomeMode>[] = [
   { value: 'salary', label: 'Annual salary', activeBackground: 'var(--surface-selected)', activeColor: 'var(--text-primary)' },
 ]
 
-/** Rounds a computed take-home to whole pence, so the stored value isn't a long float. */
-const roundPence = (n: number): number => Math.round(n * 100) / 100
-
-/** The take-home field salary mode stores for a typed salary under a pay profile: pence, or blank for no salary. */
-const takeHomeFor = (grossSalary: string, profile: PayProfile): string =>
-  num(grossSalary) > 0 ? String(roundPence(monthlyTakeHomeFromGross(num(grossSalary), CURRENT_TAX_YEAR, profile))) : ''
+/**
+ * Said under the payslip when "About your pay" leaves no take-home at all
+ * (#317). Before this, Enter simply did nothing on the step and the payslip
+ * showed a bare `TAKE-HOME £0.00` with no explanation. Worded for whichever
+ * deductions are on, since the pension is what the user has to lower either
+ * way: the loans are a percentage over a threshold and can never take
+ * everything.
+ */
+export const DEDUCTIONS_TAKE_ALL_PAY_NOTE =
+  'These deductions take all of this salary, so there\u2019s nothing left to plan with. Lower the pension contribution in \u201cAbout your pay\u201d to see a result.'
 
 interface BudgetStepProps {
   /** Position in the active flow — the eyebrow number and the Enter-advance target follow it. */
@@ -75,6 +76,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
   // salary or the profile re-works it.
   const salaryMode = state.takeHomeMode === 'salary'
   const profile = payProfileOf(state)
+  const deductionsTakeAll = deductionsTakeAllPay(state)
 
   const handleSalaryChange = (value: string) => {
     setFields({ grossSalary: value, takeHome: takeHomeFor(value, profile) })
@@ -184,7 +186,13 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
 
           <div style={{ marginBottom: 24 }}>
             <div style={{ marginBottom: 14 }}>
-              <SegmentedControl options={TAKE_HOME_MODE_OPTIONS} value={state.takeHomeMode} onChange={handleTakeHomeModeChange} size="sm" />
+              <SegmentedControl
+                options={TAKE_HOME_MODE_OPTIONS}
+                value={state.takeHomeMode}
+                onChange={handleTakeHomeModeChange}
+                size="sm"
+                ariaLabel="How you'll enter your income"
+              />
             </div>
             <FieldLabel htmlFor={incomeInputId}>{salaryMode ? 'Annual salary (before tax)' : 'Take-home pay / month'}</FieldLabel>
             {salaryMode ? (
@@ -199,9 +207,32 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                   prefixFontSize="var(--fs-prefix-md)"
                   prefixTop={4}
                   paddingBottom={10}
-                  paddingLeft={30}
+                  paddingLeft="var(--pad-price-md-left)"
                 />
                 {num(state.grossSalary) > 0 && <PayslipBreakdown grossAnnual={num(state.grossSalary)} profile={profile} />}
+                {/*
+                 * The live region is mounted for the whole of salary mode and
+                 * left empty until it has something to say: a region inserted
+                 * into the DOM at the same moment its text appears is not
+                 * reliably announced — it has to already be there for the
+                 * change to be noticed. Same reasoning as ResultActions'
+                 * copy announcement.
+                 */}
+                <div role="status">
+                  {deductionsTakeAll && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        fontSize: 'var(--fs-helper)',
+                        fontWeight: 600,
+                        lineHeight: 1.45,
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {DEDUCTIONS_TAKE_ALL_PAY_NOTE}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <MoneyInput
@@ -214,7 +245,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
                 prefixFontSize="var(--fs-prefix-md)"
                 prefixTop={4}
                 paddingBottom={10}
-                paddingLeft={30}
+                paddingLeft="var(--pad-price-md-left)"
               />
             )}
           </div>

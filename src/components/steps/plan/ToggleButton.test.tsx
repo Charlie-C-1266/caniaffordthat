@@ -83,7 +83,8 @@ describe('ToggleButton', () => {
 
     expect(button.getAttribute('aria-pressed')).toBe('false')
     expect(button.style.border).toBe('var(--border-width-card) solid var(--input-underline)')
-    expect(button.style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(button.style.backgroundColor).toBe('transparent')
   })
 
   it('reports the same state whatever the accent, so the state is never carried by colour alone', () => {

@@ -363,6 +363,18 @@ describe('PlanStep finance mode', () => {
     expect(calculator().state.growth).toBe(0)
     expect(slider('Interest rate (APR)').getAttribute('aria-valuetext')).toBe('0%')
   })
+  it('leaves no group on the step unnamed (#282)', () => {
+    // The step hosts DurationInput's rate-mode toggle; an unnamed group here
+    // is the bug #282 fixed.
+    renderPlanStep({ mode: 'save', saveFlavor: 'duration' })
+
+    const groups = screen.getAllByRole('group')
+    expect(groups.length).toBeGreaterThan(0)
+    for (const group of groups) {
+      expect(group.hasAttribute('aria-label') || group.hasAttribute('aria-labelledby')).toBe(true)
+    }
+    expect(screen.getByRole('group', { name: "How you'll set the amount you save" })).toBeTruthy()
+  })
 })
 
 it('takes its tile padding from the properties that tighten on a phone (#316)', () => {

@@ -116,7 +116,8 @@ describe('MethodChip', () => {
     const button = screen.getByRole('button')
 
     expect(button.style.border).toBe('var(--border-width-card) solid var(--input-underline)')
-    expect(button.style.background).toBe('transparent')
+    // The longhand, not `background`: jsdom 31 reads an all-default `background: transparent` back as `none`.
+    expect(button.style.backgroundColor).toBe('transparent')
   })
 
   it('passes the accent through, rather than assuming the finance violet', () => {

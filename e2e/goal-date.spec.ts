@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { goToPlan } from './helpers'
+import { goToPlan, goToResult } from './helpers'
 
 // Regression coverage for the bug where the native <input type="month">
 // couldn't be cleared — typing into it reverted to a fallback value instead
@@ -63,7 +63,7 @@ test.describe('goal-date field', () => {
     await expect(goalDateInput).toHaveValue(validValue)
   })
 
-  test('ignores a goal date earlier than the minimum (next month)', async ({ page }) => {
+  test('ignores a goal date earlier than the minimum (next month), and says so', async ({ page }) => {
     await goToPlan(page)
     await page.getByRole('button', { name: 'I have a goal date' }).click()
 
@@ -74,7 +74,41 @@ test.describe('goal-date field', () => {
     await goalDateInput.fill('01-2020')
     await expect(goalDateInput).toHaveValue('01-2020') // draft still shows what was typed
 
+    // #287: it used to be dropped in silence, which fails WCAG 2.2 SC 3.3.1
+    // Error Identification — the page showed one date and calculated with
+    // another, and nothing said so.
+    const message = page.getByRole('status').filter({ hasText: /Pick a month from/ })
+    await expect(message).toBeVisible()
+    await expect(goalDateInput).toHaveAttribute('aria-invalid', 'true')
+    // The message is the field's own description, so it is read with it.
+    await expect(goalDateInput).toHaveAccessibleDescription(/Pick a month from/)
+
     await page.keyboard.press('Tab') // blur snaps back since it never committed
     await expect(goalDateInput).toHaveValue(validValue)
+    // The snap-back restores a valid date, so the message goes with it.
+    await expect(page.getByText(/Pick a month from/)).toHaveCount(0)
+    expect(await goalDateInput.getAttribute('aria-invalid')).toBeNull()
+  })
+
+  test('a corrected date clears the message and the result follows the new date', async ({ page }) => {
+    await goToPlan(page)
+    await page.getByRole('button', { name: 'I have a goal date' }).click()
+
+    const goalDateInput = page.getByPlaceholder('MM-YYYY')
+
+    // Month 13 doesn't exist: a different message from the range one.
+    await goalDateInput.fill('13-2030')
+    await expect(page.getByRole('status').filter({ hasText: 'Enter a month between 01 and 12.' })).toBeVisible()
+    await expect(goalDateInput).toHaveAttribute('aria-invalid', 'true')
+
+    // Correcting it clears the message and commits.
+    await goalDateInput.fill('12-2030')
+    await expect(page.getByText(/Enter a month between/)).toHaveCount(0)
+    await expect(page.getByText(/Pick a month from/)).toHaveCount(0)
+    expect(await goalDateInput.getAttribute('aria-invalid')).toBeNull()
+
+    // And the result is worked out from the date that is actually on screen.
+    await goToResult(page)
+    await expect(page.getByText(/December 2030/).first()).toBeVisible()
   })
 })

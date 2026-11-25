@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
-import { screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { screen, cleanup, fireEvent, act, within } from '@testing-library/react'
 import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
 import { DetailsStep } from './DetailsStep'
 import { OUTGOING_FIELD_KEYS, OUTGOING_FIELD_LABELS } from '../../lib/budget'
@@ -354,9 +354,37 @@ describe('DetailsStep standard-goal path', () => {
       expect(calculator().state.mode).toBe('save')
     })
 
+    it.each([
+      ['save', 'save'],
+      ['finance', 'monthly'],
+    ] as const)('exposes a group named by the visible question in %s mode (#282)', (_case, mode) => {
+      renderStandardDetails('big')
+      if (mode === 'monthly') fireEvent.click(screen.getByRole('button', { name: 'Pay monthly' }))
+
+      const group = screen.getByRole('group', { name: 'How do you plan to pay?' })
+      // The name holds whichever option is selected.
+      expect(
+        within(group)
+          .getByRole('button', { name: mode === 'save' ? 'Save up for it' : 'Pay monthly' })
+          .getAttribute('aria-pressed'),
+      ).toBe('true')
+    })
+
     it('is hidden for the Vehicle goal, whose purchase step asks the same question', () => {
       renderStandardDetails('car')
       expect(screen.queryByText('How do you plan to pay?')).toBeNull()
+    })
+
+    it('renders no unnamed group on the emergency fund, which hides the toggle', () => {
+      // The one goal with no ModeToggle. Every group on the step must still
+      // have a name — an unnamed one is the bug #282 fixed.
+      renderWithCalculator(<DetailsStep index={STEP_INDEX} panelRef={noop} wrapperRef={noop} scrollToIndex={noop} />)
+      act(() => calculator().setField('goalId', 'emergency'))
+
+      expect(screen.queryByRole('group', { name: 'How do you plan to pay?' })).toBeNull()
+      for (const group of screen.queryAllByRole('group')) {
+        expect(group.hasAttribute('aria-label') || group.hasAttribute('aria-labelledby')).toBe(true)
+      }
     })
 
     it('is hidden for the emergency fund', () => {

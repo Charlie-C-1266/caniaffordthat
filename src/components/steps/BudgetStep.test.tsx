@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { screen, cleanup, fireEvent } from '@testing-library/react'
 import { renderWithCalculator, calculator } from '../../test/renderWithCalculator'
-import { BudgetStep } from './BudgetStep'
+import { BudgetStep, DEDUCTIONS_TAKE_ALL_PAY_NOTE } from './BudgetStep'
 import { monthlyTakeHomeFromGross } from '../../lib/salary'
 import { fmtPence } from '../../lib/calculations'
 import { payProfileOf } from '../../lib/payProfile'
@@ -78,6 +78,9 @@ const openAboutYourPay = () => fireEvent.click(screen.getByRole('button', { name
  * left behind.
  */
 const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
+/** The live region the "deductions take all your pay" note lives in, mounted for all of salary mode. */
+const liveRegion = () => document.querySelector('[role="status"]')
 
 describe('BudgetStep', () => {
   afterEach(() => {
@@ -619,6 +622,101 @@ describe('the regular-saving field', () => {
     fireEvent.change(input, { target: { value: '0' } })
     fireEvent.keyDown(input, { key: 'Enter' })
     expect(advanced).toEqual([STEP_INDEX + 1])
+  })
+  // #282: the toggle had no name of its own, and the FieldLabel below it names
+  // the *input*, not the choice between take-home and salary.
+  describe('the income-mode group (#282)', () => {
+    it.each([
+      ['take-home', 'takehome', 'Take-home pay / month'],
+      ['salary', 'salary', 'Annual salary (before tax)'],
+    ] as const)('names the group in %s mode', (_case, takeHomeMode, pressedFieldLabel) => {
+      renderBudgetStep({ goalId: 'holiday', takeHomeMode })
+
+      const group = screen.getByRole('group', { name: "How you'll enter your income" })
+      expect(group.querySelectorAll('button')).toHaveLength(2)
+      // The field below changes with the mode; the group's name does not.
+      expect(screen.getByLabelText(pressedFieldLabel)).toBeTruthy()
+    })
+  })
+})
+
+describe('when the deductions take all of the pay (#317)', () => {
+  afterEach(() => {
+    cleanup()
+    advanced.length = 0
+  })
+
+  /** Salary mode on £20,000 with a £3,000-a-month net pay pension: the payslip has nothing left. */
+  const TAKES_EVERYTHING = {
+    goalId: 'holiday',
+    itemPrice: '4000',
+    takeHomeMode: 'salary',
+    grossSalary: '20000',
+    studentPlan: 'plan1',
+    pensionArrangement: 'netpay',
+    pensionMode: 'amount',
+    pensionMonthlyAmount: '3000',
+  } as const satisfies Partial<CalculatorState>
+
+  it('says so under the payslip, so the step is not a silent dead end', () => {
+    renderBudgetStep({ ...TAKES_EVERYTHING, takeHome: takeHomeUnder(20000, TAKES_EVERYTHING) })
+
+    expect(screen.getByText(DEDUCTIONS_TAKE_ALL_PAY_NOTE)).toBeTruthy()
+    // The payslip above it is still shown, with nothing left at the bottom.
+    expect(screen.getByText('TAKE-HOME')).toBeTruthy()
+    expect(screen.getByText('£0.00')).toBeTruthy()
+  })
+
+  it('puts the note in a live region, so it is heard and not only seen', () => {
+    renderBudgetStep({ ...TAKES_EVERYTHING, takeHome: takeHomeUnder(20000, TAKES_EVERYTHING) })
+
+    const region = liveRegion()
+    expect(region).not.toBeNull()
+    expect(region?.textContent).toBe(DEDUCTIONS_TAKE_ALL_PAY_NOTE)
+  })
+
+  it('mounts the empty live region before it has anything to say', () => {
+    // A region inserted at the same moment its text appears is not reliably
+    // announced, so it has to already be in the DOM while the salary still
+    // leaves take-home to plan with.
+    renderBudgetStep({ goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '35000', takeHome: '2234.52' })
+
+    expect(liveRegion()).not.toBeNull()
+    expect(liveRegion()?.textContent).toBe('')
+    expect(screen.queryByText(DEDUCTIONS_TAKE_ALL_PAY_NOTE)).toBeNull()
+  })
+
+  it('still refuses to advance on Enter, as the take-home is zero', () => {
+    renderBudgetStep({ ...TAKES_EVERYTHING, savingsMonthly: '0', takeHome: takeHomeUnder(20000, TAKES_EVERYTHING) })
+
+    fireEvent.keyDown(screen.getByLabelText<HTMLInputElement>('Annual salary (before tax)'), { key: 'Enter' })
+    expect(advanced).toEqual([])
+  })
+
+  // Everything that leaves the payslip something, so the note stays quiet.
+  const LEAVES_SOMETHING: readonly { case: string; state: Partial<CalculatorState> }[] = [
+    { case: 'no deductions at all', state: { goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '35000' } },
+    { case: 'a pension the payslip can afford', state: { ...TAKES_EVERYTHING, pensionMonthlyAmount: '150' } },
+    {
+      case: "a percentage pension at the slider's 50% maximum",
+      state: { ...TAKES_EVERYTHING, pensionMode: 'percent', pensionPercent: 50 },
+    },
+    {
+      // Loans are a share of pay above a threshold, so they can never take it all.
+      case: 'both loans and no pension',
+      state: { goalId: 'holiday', takeHomeMode: 'salary', grossSalary: '35000', studentPlan: 'plan2', postgradLoan: true },
+    },
+    { case: 'no salary to take anything from', state: { ...TAKES_EVERYTHING, grossSalary: '' } },
+  ]
+
+  it.each(LEAVES_SOMETHING)('stays quiet with $case', ({ state }) => {
+    renderBudgetStep(state)
+    expect(screen.queryByText(DEDUCTIONS_TAKE_ALL_PAY_NOTE)).toBeNull()
+  })
+
+  it('does not say it in take-home mode, where the figure typed is already net', () => {
+    renderBudgetStep({ ...TAKES_EVERYTHING, takeHomeMode: 'takehome', takeHome: '' })
+    expect(screen.queryByText(DEDUCTIONS_TAKE_ALL_PAY_NOTE)).toBeNull()
   })
 })
 

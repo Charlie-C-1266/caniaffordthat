@@ -131,9 +131,10 @@ export function SalaryMethodologyPage() {
           essential outgoings you entered and minus any regular saving you already do. So the take-home a plan needs is everything already
           committed plus enough spare cash to cover the commitment:
         </P>
-        <Formula>{`required take-home = essentials + regular saving + required spare cash`}</Formula>
+        <Formula label="the take-home a plan needs">{`required take-home = essentials + regular saving + required spare cash`}</Formula>
         <P>Exactly what “required spare cash” means depends on how the plan is judged:</P>
         <DataTable
+          label="What each plan type's salary has to cover"
           head={['Plan type', 'What the salary has to cover']}
           rows={[
             [
@@ -167,6 +168,7 @@ export function SalaryMethodologyPage() {
           of {fmt(TY.personalAllowance)}; income above it is taxed in bands:
         </P>
         <DataTable
+          label="Income tax bands and rates"
           head={['Band', 'Rate', 'On income']}
           rows={[
             ['Personal allowance', '0%', <>Up to {fmt(TY.personalAllowance)} (see the taper below)</>],
@@ -193,6 +195,7 @@ export function SalaryMethodologyPage() {
           charged on gross pay, not on income after the allowance:
         </P>
         <DataTable
+          label="National Insurance bands and rates"
           head={['Band', 'Rate', 'On gross pay']}
           rows={[
             [
@@ -206,7 +209,7 @@ export function SalaryMethodologyPage() {
           ]}
         />
 
-        <Formula>{`take-home = gross − income tax − National Insurance − student loans − pension`}</Formula>
+        <Formula label="take-home from a gross salary">{`take-home = gross − income tax − National Insurance − student loans − pension`}</Formula>
         <P>
           So a <Strong>{fmt(FORWARD.gross)}</Strong> salary with no student loan or pension pays <Num>{fmt(FORWARD.tax)}</Num> income tax
           and <Num>{fmt(FORWARD.ni)}</Num> NI, leaving <Strong>{fmt(FORWARD.net)}</Strong> take-home a year. The next two sections cover the
@@ -220,6 +223,7 @@ export function SalaryMethodologyPage() {
           your pay over a yearly threshold, which depends on your plan:
         </P>
         <DataTable
+          label="Student loan plans, repayment rates and thresholds"
           head={['Plan', 'Repaid', 'On pay over']}
           rows={[
             ...STUDENT_LOAN_PLANS.map((plan) => [
@@ -251,6 +255,7 @@ export function SalaryMethodologyPage() {
           income tax:
         </P>
         <DataTable
+          label="Workplace pension arrangements and what each one lowers"
           head={['Arrangement', 'How it is taken', 'Lowers income tax', 'Lowers NI and student loan']}
           rows={[
             [

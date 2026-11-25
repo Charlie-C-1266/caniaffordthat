@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   fmt,
   fmtPence,
+  fmtPenceIfAny,
   num,
   monthsToSave,
   contributionForGoal,
@@ -47,6 +48,42 @@ describe('fmtPence', () => {
 
   it('treats falsy input as £0.00', () => {
     expect(fmtPence(Number('not-a-number'))).toBe('£0.00')
+  })
+})
+
+describe('fmtPenceIfAny', () => {
+  it('shows the pence when there are any', () => {
+    expect(fmtPenceIfAny(150.5)).toBe('£150.50')
+    expect(fmtPenceIfAny(99.5)).toBe('£99.50')
+    expect(fmtPenceIfAny(0.4)).toBe('£0.40')
+    expect(fmtPenceIfAny(0.01)).toBe('£0.01')
+  })
+
+  it('keeps the thousands separator', () => {
+    expect(fmtPenceIfAny(1234.56)).toBe('£1,234.56')
+    expect(fmtPenceIfAny(1200)).toBe('£1,200')
+  })
+
+  it("drops a whole-pound amount's .00, so it reads exactly as fmt would", () => {
+    for (const whole of [0, 1, 150, 1200, 123456]) {
+      expect(fmtPenceIfAny(whole)).toBe(fmt(whole))
+    }
+    // Written with explicit pence, the same figure still reads as whole pounds.
+    expect(fmtPenceIfAny(150.0)).toBe('£150')
+  })
+
+  it('agrees with fmtPence to the penny for every amount', () => {
+    // The guarantee the formatter exists for (#318): the digits come from
+    // fmtPence itself, so a caption can never name a different figure from
+    // the payslip line beside it. Only a trailing ".00" may differ.
+    for (const amount of [0, 0.004, 0.01, 0.4, 99.5, 150, 150.5, 150.505, 150.995, 1234.56, 99999.99]) {
+      expect(`${fmtPenceIfAny(amount)}.00`.replace(/(\.\d\d)\.00$/, '$1'), `£${amount}`).toBe(fmtPence(amount))
+    }
+  })
+
+  it('treats falsy input as £0', () => {
+    expect(fmtPenceIfAny(Number('not-a-number'))).toBe('£0')
+    expect(fmtPenceIfAny(0)).toBe('£0')
   })
 })
 

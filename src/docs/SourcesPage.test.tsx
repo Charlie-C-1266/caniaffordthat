@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup, within } from '@testing-library/react'
 import type { HelpfulLink, Source } from '../lib/sources'
+import { installResizeObserver } from '../test/resizeObserver'
 
 // SourcesPage reads SOURCE_LIST/HELPFUL_LINKS at render time, so the registry
 // is mocked behind getters that normally pass the real data straight through.
@@ -29,6 +30,11 @@ vi.mock('../lib/sources', async (importOriginal) => {
 
 const { SourcesPage } = await import('./SourcesPage')
 const { SOURCE_LIST, HELPFUL_LINKS } = await import('../lib/sources')
+
+// This page renders the docs' scroll containers, which observe their own width
+// to decide whether they currently overflow (#314). jsdom has no
+// ResizeObserver, so it is stubbed before anything renders.
+beforeEach(installResizeObserver)
 
 afterEach(() => {
   overrides.sourceList = null
@@ -58,7 +64,6 @@ function methodologyHubHrefs() {
   if (!list) throw new Error('the methodology section rendered no list')
   return [...list.querySelectorAll('a')].map((anchor) => anchor.getAttribute('href'))
 }
-
 describe('SourcesPage', () => {
   it('renders its top-level heading and the page intro', () => {
     render(<SourcesPage />)
@@ -181,5 +186,40 @@ describe('SourcesPage', () => {
     render(<SourcesPage />)
     expect(screen.getByText('← Back to the calculator')).toBeDefined()
     expect(screen.getByText(/early alpha/)).toBeDefined()
+  })
+
+  it('names every body row of every table', () => {
+    // The docs tables are all DataTable, whose first column is the row's name
+    // — since #285 marked up as `<th scope="row">` rather than a styled
+    // `<td>`, so a screen reader reads a row's name alongside each of its
+    // values (WCAG 1.3.1). Asserted per table, so one table losing its row
+    // headers can't hide behind the others.
+    render(<SourcesPage />)
+    const tables = screen.getAllByRole('table')
+    expect(tables.length).toBeGreaterThanOrEqual(3)
+
+    for (const table of tables) {
+      const scope = within(table)
+      const bodyRows = Array.from(table.querySelectorAll('tbody tr'))
+      expect(bodyRows.length, 'the table has body rows to name').toBeGreaterThan(0)
+
+      const rowHeaders = scope.getAllByRole('rowheader')
+      expect(rowHeaders).toHaveLength(bodyRows.length)
+      for (const rowHeader of rowHeaders) {
+        expect(rowHeader.getAttribute('scope')).toBe('row')
+        expect(rowHeader.textContent?.trim()).not.toBe('')
+      }
+
+      for (const columnHeader of scope.getAllByRole('columnheader')) {
+        expect(columnHeader.getAttribute('scope')).toBe('col')
+      }
+    }
+  })
+
+  it('exposes each source label as its row header, so a citation reads with its row', () => {
+    render(<SourcesPage />)
+    for (const source of SOURCE_LIST) {
+      expect(screen.getByRole('rowheader', { name: source.label }), `missing row header for "${source.label}"`).toBeDefined()
+    }
   })
 })

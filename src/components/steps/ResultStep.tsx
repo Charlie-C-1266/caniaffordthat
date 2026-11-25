@@ -8,6 +8,8 @@ import { useCalculator } from '../../state/calculatorContext'
 import { deriveResult } from '../../lib/derive'
 import { deriveVehicleResult } from '../../lib/vehicle'
 import { goalById, presentationFor, type GoalKind } from '../../lib/goals'
+import { flowForGoal } from '../../lib/flow'
+import { deductionsTakeAllPay } from '../../lib/payProfile'
 import type { DivRefCallback } from '../../lib/refs'
 import type { CalculatorState } from '../../state/types'
 
@@ -40,6 +42,44 @@ const RESULT_CARDS: Record<GoalKind, ResultCardBuilder> = {
   },
 }
 
+/**
+ * Why there is no result when "About your pay" has taken the whole salary
+ * (#317). The goal's own `resultFallback` asks for a price and take-home the
+ * user has already given; the real reason is the pension they entered, and
+ * until now the page never said so. Shared by all three goal kinds, because
+ * the dead end is the same whichever engine returned `null`.
+ */
+export const DEDUCTIONS_TAKE_ALL_PAY_RESULT =
+  'Your pension takes all of the salary you entered, so there\u2019s no take-home pay left to plan with. Lower the pension contribution in \u201cAbout your pay\u201d on the Budget step and your result will appear.'
+
+/** The nudge shown in place of the fallback when the pay profile leaves nothing to plan with, with a way straight back to the field that caused it. */
+function DeductionsTakeAllPayNote({ onBackToBudget }: { onBackToBudget: () => void }) {
+  return (
+    <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
+      <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{DEDUCTIONS_TAKE_ALL_PAY_RESULT}</div>
+      <button
+        type="button"
+        onClick={onBackToBudget}
+        style={{
+          marginTop: 20,
+          padding: 14,
+          width: '100%',
+          border: '1.5px solid var(--button-outline-strong)',
+          borderRadius: 'var(--radius-button)',
+          background: 'transparent',
+          color: 'var(--text-primary)',
+          fontSize: 'var(--fs-body)',
+          fontWeight: 700,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        Back to your budget
+      </button>
+    </Tile>
+  )
+}
+
 /** The final step: picks the result card for the active flow (vehicle vs standard), or the "fill these in first" fallback. */
 export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) {
   const { state } = useCalculator()
@@ -47,6 +87,11 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
   // Before a goal is chosen there's nothing to show, so the standard engine's
   // `null` and fallback stand in.
   const card = RESULT_CARDS[goal?.kind ?? 'standard'](state, scrollToIndex)
+  // Which step to send someone back to. Every flow that reaches a result has
+  // a Budget step; the pre-goal flow has neither, so it keeps the fallback
+  // rather than offering a button with nowhere to go.
+  const budgetIndex = flowForGoal(goal).findIndex((step) => step.id === 'budget')
+  const deductionsTakeAll = deductionsTakeAllPay(state) && budgetIndex >= 0
 
   return (
     <StepPanel
@@ -65,11 +110,14 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
         revealed={Boolean(state.revealed[index])}
         style={{ width: '100%', maxWidth: 640, display: 'flex', justifyContent: 'center' }}
       >
-        {card ?? (
-          <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
-            <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{presentationFor(goal).resultFallback}</div>
-          </Tile>
-        )}
+        {card ??
+          (deductionsTakeAll ? (
+            <DeductionsTakeAllPayNote onBackToBudget={() => scrollToIndex(budgetIndex)} />
+          ) : (
+            <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
+              <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{presentationFor(goal).resultFallback}</div>
+            </Tile>
+          ))}
       </RevealTile>
     </StepPanel>
   )
