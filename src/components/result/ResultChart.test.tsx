@@ -176,4 +176,34 @@ describe('ResultChart', () => {
 
     expect(screen.getByText('Balance repaid over time')).toBeTruthy()
   })
+  // #282: the toggle's wrapper had no role and no name, and the title beside
+  // it changes with the view, so there was nothing to tell a screen reader
+  // what the three buttons were for.
+  describe('the view toggle group (#282)', () => {
+    it('names the group, and keeps that name in all three views', () => {
+      render(
+        <ResultChart
+          projection={projection()}
+          budget={BUDGET}
+          chartTitle={CHART_TITLE}
+          newCostLabel={NEW_COST_LABEL}
+          accentColor={ACCENT}
+          months={MONTHS}
+        />,
+      )
+
+      for (const view of ['Budget', 'Table', 'Balance']) {
+        const group = screen.getByRole('group', { name: 'Result view' })
+        expect(group.getAttribute('aria-label')).toBe('Result view')
+        // All three view buttons live in that one group.
+        expect(group.querySelectorAll('button')).toHaveLength(3)
+
+        fireEvent.click(screen.getByRole('button', { name: view }))
+      }
+
+      // Still named after cycling back round, even though the heading beside
+      // it changed each time.
+      expect(screen.getByRole('group', { name: 'Result view' })).toBeTruthy()
+    })
+  })
 })

@@ -31,15 +31,14 @@ describe('ChoiceGroup', () => {
   // is the one component used for both the six-option plan row and the
   // two/three-option choices beside it.
   it('does not let its control wrap unless asked', () => {
-    const { container } = render(<ChoiceGroup label="Postgraduate Loan" options={OPTIONS} value="none" onChange={() => {}} />)
-    const pill = container.querySelector('[role="group"] > div:last-child')
-    expect((pill as HTMLElement).style.flexWrap).toBe('')
+    render(<ChoiceGroup label="Postgraduate Loan" options={OPTIONS} value="none" onChange={() => {}} />)
+    // Since #282 the named group is the pill itself.
+    expect(screen.getByRole('group', { name: 'Postgraduate Loan' }).style.flexWrap).toBe('')
   })
 
   it('passes wrapping through to its control when asked', () => {
-    const { container } = render(<ChoiceGroup label="Student loan plan" options={OPTIONS} value="none" onChange={() => {}} wrap />)
-    const pill = container.querySelector('[role="group"] > div:last-child')
-    expect((pill as HTMLElement).style.flexWrap).toBe('wrap')
+    render(<ChoiceGroup label="Student loan plan" options={OPTIONS} value="none" onChange={() => {}} wrap />)
+    expect(screen.getByRole('group', { name: 'Student loan plan' }).style.flexWrap).toBe('wrap')
   })
 
   it('shows a "?" hint only when given one', () => {

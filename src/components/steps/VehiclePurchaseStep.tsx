@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import { useId, type KeyboardEvent } from 'react'
 import { StepPanel } from '../StepPanel'
 import { RevealTile } from '../RevealTile'
 import { Tile } from '../Tile'
@@ -38,6 +38,11 @@ interface VehiclePurchaseStepProps {
  */
 export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex }: VehiclePurchaseStepProps) {
   const { state, setField, setFields } = useCalculator()
+  // Names the balloon-mode group from its visible heading. The id is on a span
+  // holding only the heading text, so the InfoHint's "?" button — whose
+  // aria-label is the whole hint — stays out of the group's name. Same
+  // approach #201 took for the VED and transport fields (#282).
+  const balloonHeadingId = useId()
   const accent = accentColorFor(state.mode)
   const method = state.vehicleMethod
   const price = num(state.itemPrice)
@@ -154,7 +159,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                       marginBottom: 10,
                     }}
                   >
-                    The final payment (balloon / GMFV)
+                    <span id={balloonHeadingId}>The final payment (balloon / GMFV)</span>
                     <InfoHint text="On a PCP the lender guarantees the car's value at the end of the deal — the GMFV. Pay it to keep the car, or hand the car back and walk away." />
                   </div>
                   <div style={{ marginBottom: 18 }}>
@@ -163,6 +168,7 @@ export function VehiclePurchaseStep({ index, panelRef, wrapperRef, scrollToIndex
                       options={balloonModeOptions}
                       value={state.balloonMode}
                       onChange={(value) => setField('balloonMode', value)}
+                      ariaLabelledBy={balloonHeadingId}
                     />
                   </div>
 

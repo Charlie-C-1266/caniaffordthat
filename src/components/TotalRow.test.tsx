@@ -26,6 +26,28 @@ describe('TotalRow', () => {
     expect(row.style.paddingTop).toBe('9px')
   })
 
+  it('passes wrapValue through to BreakdownRow', () => {
+    // SalaryFlip's bottom line is the one total whose value is prose rather
+    // than a figure ("£1,200 to spare"), so it has to be able to wrap.
+    const wrapping = render(<TotalRow label="YOU CAN COVER IT" value="£1,200 to spare" wrapValue />).container.innerHTML
+    const row = render(<BreakdownRow label="YOU CAN COVER IT" value="£1,200 to spare" total wrapValue />).container.innerHTML
+
+    expect(wrapping).toBe(row)
+
+    const value = render(<TotalRow label="YOU CAN COVER IT" value="£1,200 to spare" wrapValue />).container.querySelectorAll<HTMLElement>(
+      'span',
+    )[1]
+    expect(value.style.whiteSpace).toBe('')
+    expect(value.style.minWidth).toBe('0px')
+  })
+
+  it('holds a figure total to one line by default', () => {
+    const value = render(<TotalRow label="TOTAL / MONTH" value="£389" />).container.querySelectorAll<HTMLElement>('span')[1]
+
+    expect(value.style.whiteSpace).toBe('nowrap')
+    expect(value.style.flexShrink).toBe('0')
+  })
+
   it.each([
     ['an empty label and value', '', ''],
     ['a seven-figure sum', 'TOTAL PAYABLE', '£1,234,567.89'],

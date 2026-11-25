@@ -397,4 +397,53 @@ describe('VehiclePurchaseStep Enter to advance', () => {
 
     expect(advanced).toEqual([])
   })
+  // #282: the "The final payment (balloon / GMFV)" heading was a sibling <div>
+  // with nothing tying it to the two buttons below it. Naming it from that
+  // heading has to leave the InfoHint's "?" out — its aria-label is the whole
+  // hint, which #201 hit for the VED and transport fields.
+  describe('the balloon-mode group (#282)', () => {
+    const GROUP_NAME = 'The final payment (balloon / GMFV)'
+
+    it('names the group from its visible heading, without the hint text', () => {
+      renderStep({ vehicleMethod: 'pcp', term: TERM_RANGES.pcp.min })
+
+      const group = screen.getByRole('group', { name: GROUP_NAME })
+      // Named by reference to the heading, not a duplicated string.
+      expect(group.getAttribute('aria-labelledby')).not.toBeNull()
+      expect(group.hasAttribute('aria-label')).toBe(false)
+      // The exact-name query above already proves the hint isn't in the name;
+      // this pins that the hint is still on the page to have been excluded.
+      expect(screen.getByRole('button', { name: /the lender guarantees the car/ })).toBeTruthy()
+    })
+
+    it.each([
+      ['the estimate', 'estimate'],
+      ['a quote', 'known'],
+    ] as const)('keeps the group name with %s selected', (_case, balloonMode) => {
+      renderStep({ vehicleMethod: 'pcp', term: TERM_RANGES.pcp.min, balloonMode })
+
+      expect(screen.getByRole('group', { name: GROUP_NAME })).toBeTruthy()
+    })
+
+    it('shows the group for PCP only, and names it again after switching away and back', () => {
+      renderStep({ vehicleMethod: 'pcp', term: TERM_RANGES.pcp.min })
+      expect(screen.getByRole('group', { name: GROUP_NAME })).toBeTruthy()
+
+      fireEvent.click(methodChip('Hire purchase'))
+      expect(screen.queryByRole('group', { name: GROUP_NAME })).toBeNull()
+
+      fireEvent.click(methodChip('PCP'))
+      expect(screen.getByRole('group', { name: GROUP_NAME })).toBeTruthy()
+    })
+
+    it('leaves no group on the step unnamed', () => {
+      renderStep({ vehicleMethod: 'pcp', term: TERM_RANGES.pcp.min })
+
+      const groups = screen.getAllByRole('group')
+      expect(groups.length).toBeGreaterThan(0)
+      for (const group of groups) {
+        expect(group.hasAttribute('aria-label') || group.hasAttribute('aria-labelledby')).toBe(true)
+      }
+    })
+  })
 })

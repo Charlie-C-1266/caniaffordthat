@@ -56,7 +56,7 @@ export function VehicleResultCard({ result, scrollToIndex }: VehicleResultCardPr
       </BreakdownBox>
 
       <BreakdownBox heading="The deal">
-        <BreakdownRow label="CAR" value={`${carLabel} — ${fmt(result.price)}`} />
+        <BreakdownRow label="CAR" value={`${carLabel} — ${fmt(result.price)}`} wrapValue />
         <BreakdownRow label="DEPOSIT / PART-EX" value={fmt(result.deposit)} />
         {isCash ? (
           <TotalRow label="DUE UPFRONT" value={fmt(result.upfront)} />

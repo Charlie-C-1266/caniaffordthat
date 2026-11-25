@@ -182,6 +182,22 @@ body {
 }
 
 /*
+ * The docs' sideways-scrolling tables and formulas (#314). They are put in the
+ * tab order only while their content overflows, so the arrow keys can bring
+ * the hidden columns into view — on /methodology/salary/ at 360px that is six
+ * tables of 480px content in a 304px box, and two formulas up to 679px wide.
+ *
+ * The global ring above sits 3px outside the element, where the card's own
+ * rounded edge and the scroller's clipping would cut it off, so it is drawn
+ * just inside instead and follows the same corner radius as the card.
+ */
+.doc-scroller:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+  border-radius: var(--radius-glass-sm);
+}
+
+/*
  * Visually-hidden text: removed from the visual layout but kept in the
  * accessibility tree, for status messages and names that only screen-reader
  * users need. The 1px-with-clip technique rather than `display: none` or

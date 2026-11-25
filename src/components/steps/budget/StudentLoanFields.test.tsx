@@ -16,9 +16,6 @@ function renderFields(state: Partial<CalculatorState> = {}) {
   return onChange
 }
 
-/** The segmented pill inside a labelled choice group — the flex row whose wrapping is under test. */
-const pillOf = (group: HTMLElement) => group.querySelector('div:last-child') as HTMLElement
-
 const planGroup = () => screen.getByRole('group', { name: 'Student loan plan' })
 const postgradGroup = () => screen.getByRole('group', { name: 'Postgraduate Loan' })
 
@@ -43,7 +40,10 @@ describe('StudentLoanFields', () => {
 
   it('explains which plan applies, and links to GOV.UK to check', () => {
     renderFields()
-    expect(within(planGroup()).getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
+    // The "?" hint sits beside the label, outside the group of option buttons
+    // (#282 moved the group onto the segmented control itself). Its accessible
+    // name is the whole hint, which is unique on the page.
+    expect(screen.getByRole('button', { name: /where you applied for funding/ })).toBeTruthy()
     const link = screen.getByRole('link', { name: /Check which plan you/ })
     expect(link.getAttribute('href')).toBe(SOURCES.studentLoanPlans.url)
     expect(link.getAttribute('target')).toBe('_blank')
@@ -52,7 +52,7 @@ describe('StudentLoanFields', () => {
   it('asks about a Postgraduate Loan as a yes or no, with its rate and threshold from the table', () => {
     const onChange = renderFields()
     expect(within(postgradGroup()).getByRole('button', { name: 'No' }).getAttribute('aria-pressed')).toBe('true')
-    expect(within(postgradGroup()).getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /6% of your pay over £21,000/ })).toBeTruthy()
     fireEvent.click(within(postgradGroup()).getByRole('button', { name: 'Yes' }))
     expect(onChange).toHaveBeenCalledWith({ postgradLoan: true })
   })
@@ -71,7 +71,8 @@ describe('StudentLoanFields', () => {
   it('lets the six-option plan row take a second row, but not the Yes/No beside it', () => {
     renderFields()
 
-    expect(pillOf(planGroup()).style.flexWrap).toBe('wrap')
-    expect(pillOf(postgradGroup()).style.flexWrap).toBe('')
+    // Since #282 each named group is the pill itself.
+    expect(planGroup().style.flexWrap).toBe('wrap')
+    expect(postgradGroup().style.flexWrap).toBe('')
   })
 })
