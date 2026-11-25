@@ -70,6 +70,15 @@ const takeHomeUnder = (grossAnnual: number, patch: Partial<CalculatorState>) =>
 
 const openAboutYourPay = () => fireEvent.click(screen.getByRole('button', { name: /^About your pay/ }))
 
+/**
+ * The step tile's padding, as it reaches the DOM. Since #316 each step passes
+ * `var(--tile-padding-*, <today's desktop value>)`: the property is defined
+ * only under the phone media query, so the fallback is what keeps desktop
+ * exactly as it was, and a pixel-only string here would mean a step had been
+ * left behind.
+ */
+const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
 /** The live region the "deductions take all your pay" note lives in, mounted for all of salary mode. */
 const liveRegion = () => document.querySelector('[role="status"]')
 
@@ -709,4 +718,9 @@ describe('when the deductions take all of the pay (#317)', () => {
     renderBudgetStep({ ...TAKES_EVERYTHING, takeHomeMode: 'takehome', takeHome: '' })
     expect(screen.queryByText(DEDUCTIONS_TAKE_ALL_PAY_NOTE)).toBeNull()
   })
+})
+
+it('takes its tile padding from the properties that tighten on a phone (#316)', () => {
+  renderBudgetStep({ goalId: 'holiday' })
+  expect(tilePadding()).toBe('var(--tile-padding-y, 48px) var(--tile-padding-x, 48px)')
 })

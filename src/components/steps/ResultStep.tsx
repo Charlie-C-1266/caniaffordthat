@@ -55,7 +55,7 @@ export const DEDUCTIONS_TAKE_ALL_PAY_RESULT =
 /** The nudge shown in place of the fallback when the pay profile leaves nothing to plan with, with a way straight back to the field that caused it. */
 function DeductionsTakeAllPayNote({ onBackToBudget }: { onBackToBudget: () => void }) {
   return (
-    <Tile maxWidth={640} padding="40px 44px">
+    <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
       <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{DEDUCTIONS_TAKE_ALL_PAY_RESULT}</div>
       <button
         type="button"
@@ -98,7 +98,12 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
       index={index}
       isFinal
       panelRef={panelRef}
-      panelStyle={{ background: 'var(--bg-dark-1)', padding: '80px 40px 56px' }}
+      // Its own vertical padding, but the same gutters as every other step so
+      // the result tile gets the phone width back too (#316).
+      panelStyle={{
+        background: 'var(--bg-dark-1)',
+        padding: '80px var(--step-gutter-x-end) 56px var(--step-gutter-x-start)',
+      }}
       panelTestId="result-panel"
     >
       <RevealTile
@@ -109,7 +114,7 @@ export function ResultStep({ index, panelRef, scrollToIndex }: ResultStepProps) 
           (deductionsTakeAll ? (
             <DeductionsTakeAllPayNote onBackToBudget={() => scrollToIndex(budgetIndex)} />
           ) : (
-            <Tile maxWidth={640} padding="40px 44px">
+            <Tile maxWidth={640} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)">
               <div style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 500 }}>{presentationFor(goal).resultFallback}</div>
             </Tile>
           ))}

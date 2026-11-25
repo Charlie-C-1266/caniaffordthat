@@ -78,6 +78,15 @@ const slider = (name: string) => screen.getByRole<HTMLInputElement>('slider', { 
 // goal picker's landing question (#168).
 const heading = () => screen.getByRole('heading', { level: 2 })
 
+/**
+ * The step tile's padding, as it reaches the DOM. Since #316 each step passes
+ * `var(--tile-padding-*, <today's desktop value>)`: the property is defined
+ * only under the phone media query, so the fallback is what keeps desktop
+ * exactly as it was, and a pixel-only string here would mean a step had been
+ * left behind.
+ */
+const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
 describe('PlanStep fixed-amount seeding', () => {
   afterEach(() => {
     cleanup()
@@ -366,4 +375,9 @@ describe('PlanStep finance mode', () => {
     }
     expect(screen.getByRole('group', { name: "How you'll set the amount you save" })).toBeTruthy()
   })
+})
+
+it('takes its tile padding from the properties that tighten on a phone (#316)', () => {
+  renderPlanStep({ mode: 'save', saveFlavor: 'duration' })
+  expect(tilePadding()).toBe('var(--tile-padding-y, 48px) var(--tile-padding-x, 48px)')
 })

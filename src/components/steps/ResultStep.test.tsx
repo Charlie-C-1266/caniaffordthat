@@ -118,6 +118,26 @@ describe('ResultStep routing', () => {
   })
 })
 
+// #316: the result panel set its own `80px 40px 56px`, so it kept the desktop
+// gutters at every width while every other step's tightened. It keeps its own
+// vertical padding and takes the shared gutters.
+describe('the result panel at a narrow viewport', () => {
+  afterEach(cleanup)
+
+  it('takes the shared gutters while keeping its own vertical padding', () => {
+    renderResultStep({ goalId: 'holiday', itemPrice: '4000', takeHome: '2600' })
+    const panel = screen.getByTestId('result-panel')
+    expect(panel.style.padding).toBe('80px var(--step-gutter-x-end) 56px var(--step-gutter-x-start)')
+    expect(panel.getAttribute('style')).not.toContain('80px 40px 56px')
+  })
+
+  it('gives its fallback tile the padding properties too', () => {
+    renderResultStep({ goalId: 'holiday', itemPrice: '', takeHome: '' })
+    const tile = document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')
+    expect(tile?.style.padding).toBe('var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)')
+  })
+})
+
 describe('when the deductions take all of the pay (#317)', () => {
   afterEach(() => {
     cleanup()
@@ -187,6 +207,12 @@ describe('when the deductions take all of the pay (#317)', () => {
     expect(screen.getByText(GENERIC_FALLBACK)).toBeTruthy()
     expect(screen.queryByText(DEDUCTIONS_TAKE_ALL_PAY_RESULT)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Back to your budget' })).toBeNull()
+  })
+
+  it('gives its tile the phone padding properties, like the fallback (#316)', () => {
+    renderResultStep({ goalId: 'holiday', itemPrice: '4000', ...TAKES_EVERYTHING })
+    const tile = screen.getByText(DEDUCTIONS_TAKE_ALL_PAY_RESULT).closest<HTMLElement>('[style*="--tile-padding-x"]')
+    expect(tile?.style.padding).toBe('var(--tile-padding-y, 40px) var(--tile-padding-x, 44px)')
   })
 
   it('shows the real card again once the pension is lowered', () => {

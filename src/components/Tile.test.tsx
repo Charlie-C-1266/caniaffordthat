@@ -79,6 +79,19 @@ describe('Tile', () => {
     expect(el.getAttribute('style')).toContain('var(--tile-border)')
   })
 
+  it('passes a property-based padding through unchanged, fallback and all', () => {
+    // How every step passes its padding since #316: the property is defined
+    // only under the phone media query, so the pixel fallback is what keeps
+    // desktop exactly as it was. Tile must not touch either half.
+    const padding = 'var(--tile-padding-y, 48px) var(--tile-padding-x, 44px)'
+    const { container } = render(
+      <Tile maxWidth={640} padding={padding}>
+        content
+      </Tile>,
+    )
+    expect(tile(container).style.padding).toBe(padding)
+  })
+
   it('renders with an empty style object and empty children', () => {
     const { container } = render(
       <Tile maxWidth={200} padding="0" style={{}}>

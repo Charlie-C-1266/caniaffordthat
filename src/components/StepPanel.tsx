@@ -27,7 +27,10 @@ const basePanelStyle: CSSProperties = {
   flexDirection: 'column',
   justifyContent: 'center',
   alignItems: 'center',
-  padding: '120px 40px',
+  // Four-value shorthand so the two horizontal gutters can differ: the right
+  // one has to leave room for the fixed ProgressRail, the left one doesn't
+  // (see index.css). Both are 40px on desktop, exactly as before.
+  padding: '120px var(--step-gutter-x-end) 120px var(--step-gutter-x-start)',
 }
 
 /**

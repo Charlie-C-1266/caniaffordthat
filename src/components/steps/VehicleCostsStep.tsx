@@ -63,7 +63,7 @@ export function VehicleCostsStep({ index, panelRef, wrapperRef, scrollToIndex }:
       panelStyle={{ background: 'var(--bg-dark-2)' }}
     >
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={680} padding="40px 48px">
+        <Tile maxWidth={680} padding="var(--tile-padding-y, 40px) var(--tile-padding-x, 48px)">
           <Eyebrow color={accent}>Step {index} — Running costs</Eyebrow>
           <h2
             style={{

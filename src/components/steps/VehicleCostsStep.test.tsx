@@ -49,6 +49,15 @@ function accessibleDescription(element: HTMLElement): string {
     .trim()
 }
 
+/**
+ * The step tile's padding, as it reaches the DOM. Since #316 each step passes
+ * `var(--tile-padding-*, <today's desktop value>)`: the property is defined
+ * only under the phone media query, so the fallback is what keeps desktop
+ * exactly as it was, and a pixel-only string here would mean a step had been
+ * left behind.
+ */
+const tilePadding = () => document.querySelector<HTMLElement>('[style*="--tile-padding-x"]')?.style.padding ?? ''
+
 describe('VehicleCostsStep', () => {
   afterEach(() => {
     cleanup()
@@ -232,4 +241,9 @@ describe('VehicleCostsStep', () => {
       expect(hintButton?.closest('label')).toBeTruthy()
     })
   })
+})
+
+it('takes its tile padding from the properties that tighten on a phone (#316)', () => {
+  renderCostsStep()
+  expect(tilePadding()).toBe('var(--tile-padding-y, 40px) var(--tile-padding-x, 48px)')
 })

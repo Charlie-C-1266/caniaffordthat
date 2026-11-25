@@ -168,7 +168,7 @@ export function BudgetStep({ index, panelRef, wrapperRef, scrollToIndex }: Budge
       panelStyle={{ background: 'var(--bg-dark-1)' }}
     >
       <RevealTile revealed={Boolean(state.revealed[index])} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <Tile maxWidth={680} padding="48px 48px">
+        <Tile maxWidth={680} padding="var(--tile-padding-y, 48px) var(--tile-padding-x, 48px)">
           <Eyebrow color={accent} marginBottom={16}>
             Step {index} — Your budget
           </Eyebrow>

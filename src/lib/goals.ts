@@ -202,7 +202,7 @@ const REGULAR_SAVING_HINT =
   'Money you put away each month — savings pots, ISAs, investments. Leave out anything already taken off your payslip, like a workplace pension — that goes under “About your pay”.'
 
 const STANDARD_PRESENTATION: KindPresentation = {
-  details: { heading: null, hint: null, tilePadding: '46px 44px', wrapperHeightVh: 160 },
+  details: { heading: null, hint: null, tilePadding: 'var(--tile-padding-y, 46px) var(--tile-padding-x, 44px)', wrapperHeightVh: 160 },
   budget: {
     // U+2028 is a mandatory line break (Unicode line-breaking class BK), so the
     // heading always breaks after "in,", as other step headings do with <br />.
@@ -225,7 +225,7 @@ export const KIND_PRESENTATION: Record<GoalKind, KindPresentation> = {
     details: {
       heading: 'How big a cushion?',
       hint: 'A common rule of thumb is 3–6 months of essential spending set aside.',
-      tilePadding: '34px 44px',
+      tilePadding: 'var(--tile-padding-y, 34px) var(--tile-padding-x, 44px)',
       wrapperHeightVh: 150,
     },
     budget: {

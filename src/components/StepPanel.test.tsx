@@ -140,6 +140,50 @@ describe('StepPanel', () => {
     expect(panel().style.minHeight).toBe('100vh')
   })
 
+  // #316: the panel padded every step `120px 40px` at every width, which with
+  // the tile's own 44-48px a side left the form a 140px column at 320px. The
+  // gutters are properties now, tightened under a media query — and
+  // asymmetric, because ProgressRail is fixed on the right edge and the room
+  // it needs can't be shared with the tile.
+  describe('the horizontal gutters', () => {
+    // `top right bottom left`, with the two gutters as separate properties so
+    // the rail-side one can differ. Asserted on the shorthand because jsdom
+    // doesn't expand a shorthand containing var() into longhands.
+    const GUTTERS = '120px var(--step-gutter-x-end) 120px var(--step-gutter-x-start)'
+
+    it('takes both gutters from their own properties, so a phone can tighten them', () => {
+      render(
+        <StepPanel index={0} panelRef={() => {}} panelTestId={PANEL_ID}>
+          content
+        </StepPanel>,
+      )
+      expect(panel().style.padding).toBe(GUTTERS)
+      // No pixel gutter left hard-coded, and the vertical padding is
+      // unchanged — the issue leaves that alone.
+      expect(panel().getAttribute('style')).not.toContain('120px 40px')
+    })
+
+    it('uses them on the final step too, which has its own panel branch', () => {
+      render(
+        <StepPanel index={4} isFinal panelRef={() => {}} panelTestId={PANEL_ID}>
+          content
+        </StepPanel>,
+      )
+      expect(panel().style.padding).toBe(GUTTERS)
+    })
+
+    it('names a different property on each side, so they can differ', () => {
+      render(
+        <StepPanel index={0} panelRef={() => {}} panelTestId={PANEL_ID}>
+          content
+        </StepPanel>,
+      )
+      const [, right, , left] = panel().style.padding.split(' ')
+      expect(right).not.toBe(left)
+      expect([right, left]).toEqual(['var(--step-gutter-x-end)', 'var(--step-gutter-x-start)'])
+    })
+  })
+
   it('renders its children inside the panel', () => {
     render(
       <StepPanel index={0} panelRef={() => {}} panelTestId={PANEL_ID}>
