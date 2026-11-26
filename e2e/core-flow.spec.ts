@@ -158,4 +158,15 @@ test.describe('core flow', () => {
     await expect(page.getByText('Savings balance over time')).toBeVisible()
     await expect(page.getByText('Now', { exact: true })).toBeVisible()
   })
+
+  test('savings that already cover the price say so, with no saving plan (#343)', async ({ page }) => {
+    // A shared link carries the savings, so the test needn't fill the Budget step.
+    await page.goto('/?goalId=big&mode=save&saveFlavor=duration&itemPrice=1000&savings=1500&takeHome=2000')
+    await goToResult(page)
+
+    await expect(page.getByRole('heading', { name: 'You can afford it now' })).toBeVisible()
+    await expect(page.getByText("You've already saved £1,500 — enough to cover the £1,000 price.")).toBeVisible()
+    await expect(page.getByText(/Yes — it's within reach/)).toBeVisible()
+    await expect(page.getByText(/Saving £[\d,]+\/month/)).toHaveCount(0)
+  })
 })

@@ -25,6 +25,8 @@ interface CopyContext {
   contribution: number
   target: number
   grossTarget: number
+  /** What the user has already put towards the goal — quoted when it covers the whole target. */
+  savings: number
   spareCash: number
   essentialSpend: number
   /** What the user already saves each month — the reversible headroom behind the pause hints. */
@@ -110,6 +112,11 @@ function fitsVerdictSub(c: CopyContext): string {
 }
 
 export function resultCopy(kind: ResultKind, c: CopyContext): ResultCopy {
+  // Savings that already cover the price leave nothing to save or borrow, so
+  // no saving plan, goal-date amount or finance quote applies: every
+  // non-emergency kind answers the same way. The emergency fund keeps its own
+  // cushion wording for this case inside emergencyCopy.
+  if (kind !== 'emergency' && c.target === 0) return alreadyCoveredCopy(c)
   switch (kind) {
     case 'emergency':
       return emergencyCopy(c)
@@ -119,6 +126,25 @@ export function resultCopy(kind: ResultKind, c: CopyContext): ResultCopy {
       return financeCopy(c)
     case 'duration':
       return durationCopy(c)
+  }
+}
+
+/** The sentence that closes any already-covered result: there is no monthly commitment to judge. */
+const NOTHING_LEFT_SUB = "There's nothing left to save or borrow, so it needs nothing from your monthly budget."
+
+/**
+ * Savings meet or beat the price (#343). Without this, the duration flow said
+ * "You can afford it now" and then "Saving £200/month…", and the goal-date
+ * and finance flows quoted "£0/mo" with copy about saving or financing £0.
+ */
+function alreadyCoveredCopy(c: CopyContext): ResultCopy {
+  return {
+    isAffordable: true,
+    headline: 'You can afford it now',
+    subheadline: `You've already saved ${fmt(c.savings)} — enough to cover the ${fmt(c.grossTarget)} price.`,
+    verdictSub: NOTHING_LEFT_SUB,
+    verdictText: withinReachVerdict(true),
+    resultEyebrow: 'Already within reach',
   }
 }
 
@@ -141,7 +167,12 @@ function emergencyCopy(c: CopyContext): ResultCopy {
 
   let isAffordable: boolean
   let verdictSub: string
-  if (c.isGoal) {
+  if (c.target === 0) {
+    // Already covered: neither the goal-date band nor "Saving £X/month…"
+    // applies when nothing is left to put aside.
+    isAffordable = true
+    verdictSub = "There's nothing left to put aside — your cushion is already in place."
+  } else if (c.isGoal) {
     // Goal-date path: the date is fixed, so affordability is whether the
     // required monthly saving fits the user's spare cash — exactly the
     // question `commitmentFitSub` answers for goal-date saving and finance.
@@ -206,7 +237,9 @@ function durationCopy(c: CopyContext): ResultCopy {
   const isAffordable = c.isFeasible && c.months <= AFFORDABILITY_MONTHS_CAP
   return {
     isAffordable,
-    headline: !c.isFeasible ? '' : c.months === 0 ? 'You can afford it now' : `${monthsLabel(c.months)} — ${addMonths(c.months)}`,
+    // A met target never reaches here (alreadyCoveredCopy answers it), so a
+    // feasible plan always has at least one month to name.
+    headline: c.isFeasible ? `${monthsLabel(c.months)} — ${addMonths(c.months)}` : '',
     subheadline: c.isFeasible ? `Saving ${fmt(c.contribution)}/month, you'll reach ${fmt(c.grossTarget)} by then.` : '',
     verdictSub: !c.isFeasible
       ? 'Increase how much you save each month, or lower the price.'
