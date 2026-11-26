@@ -666,6 +666,81 @@ describe('deriveResult — infeasible and boundary plans', () => {
     expect(result?.projection).toBeNull()
   })
 
+  describe('when savings already cover the price (#343)', () => {
+    const covered = { goalId: 'holiday', itemPrice: '1000', takeHome: '2000' } as const
+    // Every non-emergency plan kind, so the shared "already covered" copy is
+    // checked wherever a saving or finance quote used to leak through.
+    const plans: [string, Partial<CalculatorState>][] = [
+      ['duration, fixed amount', { mode: 'save', saveFlavor: 'duration', rateMode: 'amount', monthlyAmount: '200' }],
+      ['duration, share of spare cash', { mode: 'save', saveFlavor: 'duration', rateMode: 'percent', rate: 25 }],
+      ['goal date', { mode: 'save', saveFlavor: 'goal', goalMonths: 8 }],
+      ['finance at 0% APR', { mode: 'monthly', term: 12, growth: 0 }],
+      ['finance at 9.9% APR', { mode: 'monthly', term: 12, growth: 9.9 }],
+    ]
+    const savingsLevels: [string, string][] = [
+      ['equal to the price', '1000'],
+      ['above the price', '1500'],
+    ]
+
+    describe.each(savingsLevels)('with savings %s', (_label, savings) => {
+      it.each(plans)('%s: says it is affordable now, with no saving or finance plan', (_plan, overrides) => {
+        const result = deriveResult(makeState({ ...covered, ...overrides, savings }))!
+        const copy = [result.headline, result.subheadline, result.verdictText, result.verdictSub].join(' ')
+
+        expect(result.target).toBe(0)
+        expect(result.isAffordable).toBe(true)
+        expect(result.verdictText).toBe("Yes — it's within reach.")
+        expect(result.headline).toBe('You can afford it now')
+        expect(result.subheadline).toBe(
+          `You've already saved £${Number(savings).toLocaleString('en-GB')} — enough to cover the £1,000 price.`,
+        )
+        expect(result.verdictSub).toBe("There's nothing left to save or borrow, so it needs nothing from your monthly budget.")
+        expect(copy).not.toMatch(/Saving £[\d,]+\/month/)
+        expect(copy).not.toMatch(/save this much each month/)
+        expect(copy).not.toMatch(/Financing £0/)
+        expect(copy).not.toMatch(/£0\/mo/)
+        expect(result.contribution).toBe(0)
+        expect(result.projection).toBeNull()
+        // The budget donut has no slice for the item when nothing is needed.
+        expect(result.budget.newCost).toBe(0)
+        expect(result.budget.leftover).toBe(result.spareCash)
+      })
+    })
+
+    it('keeps the normal duration copy when savings are £1 short of the price', () => {
+      const result = deriveResult(
+        makeState({ ...covered, mode: 'save', saveFlavor: 'duration', rateMode: 'amount', monthlyAmount: '200', savings: '999' }),
+      )!
+      expect(result.target).toBe(1)
+      expect(result.contribution).toBe(200)
+      expect(result.headline).toBe('1 month — August 2026')
+      expect(result.subheadline).toBe("Saving £200/month, you'll reach £1,000 by then.")
+    })
+
+    it('keeps the normal goal-date and finance copy when savings are £1 short of the price', () => {
+      const goal = deriveResult(makeState({ ...covered, mode: 'save', saveFlavor: 'goal', goalMonths: 8, savings: '999', growth: 0 }))!
+      expect(goal.headline).toBe('£0/mo') // £1 over 8 months rounds to £0 — the existing whole-pound display
+      expect(goal.subheadline).toMatch(/you'd need to save this much each month/)
+
+      const finance = deriveResult(makeState({ ...covered, mode: 'monthly', term: 12, growth: 9.9, savings: '999' }))!
+      expect(finance.subheadline).toBe('Financing £1 at 9.9% APR over 12 months.')
+    })
+
+    it.each([
+      ['duration', 'duration'],
+      ['goal date', 'goal'],
+    ] as const)('leaves the emergency fund on its own cushion wording (%s)', (_label, saveFlavor) => {
+      const result = deriveResult(
+        makeState({ goalId: 'emergency', mode: 'save', saveFlavor, takeHome: '3000', housing: '1000', coverMonths: 6, savings: '7500' }),
+      )!
+      expect(result.headline).toBe("You're already covered")
+      expect(result.subheadline).toBe("You've already set aside your 6-month cushion (£6,000). Keep it in an easy-access savings account.")
+      expect(result.verdictText).toBe('Yes — you can build this.')
+      expect(result.verdictSub).toBe("There's nothing left to put aside — your cushion is already in place.")
+      expect(result.contribution).toBe(0)
+    })
+  })
+
   it('survives a very large price without producing NaN or Infinity copy', () => {
     const result = deriveResult(
       makeState({

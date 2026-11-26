@@ -91,7 +91,9 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
   if (isDuration) {
     // The monthly saving is either a share of spare cash or a fixed amount the
     // user typed — both feed the same "how long to reach the target" maths.
-    contribution = state.rateMode === 'amount' ? num(state.monthlyAmount) : spareCash * (state.rate / 100)
+    // Nothing left to save means nothing to put aside each month (#343), so
+    // the breakdown row and budget donut don't claim money the plan doesn't need.
+    contribution = target === 0 ? 0 : state.rateMode === 'amount' ? num(state.monthlyAmount) : spareCash * (state.rate / 100)
     months = monthsToSave(target, contribution, state.growth)
     isFeasible = months !== Infinity
   } else if (isGoal) {
@@ -148,6 +150,7 @@ export function deriveResult(state: CalculatorState): DerivedResult | null {
     contribution,
     target,
     grossTarget,
+    savings,
     spareCash,
     essentialSpend,
     regularSaving,

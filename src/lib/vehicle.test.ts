@@ -233,6 +233,21 @@ describe('deriveVehicleResult', () => {
     })
   })
 
+  describe('when savings cover the price (#343)', () => {
+    it('still quotes the running costs, not the standard flow\'s "already covered" copy', () => {
+      // Savings buy the car outright, but tax, insurance and upkeep remain, so
+      // the vehicle result keeps a monthly figure and never says it is free.
+      const result = deriveVehicleResult(
+        makeCarState({ vehicleMethod: 'cash', itemPrice: '10000', savings: '12000', maintenanceMonthly: '60' }),
+      )!
+      expect(result.upfront).toBe(0)
+      expect(result.totalMonthly).toBe(60)
+      expect(result.headline).toBe('£60/mo')
+      expect(result.headline).not.toBe('You can afford it now')
+      expect(result.subheadline).not.toMatch(/already saved/)
+    })
+  })
+
   describe('hire purchase and personal loan', () => {
     it('amortises the balance after the deposit over the term', () => {
       const result = deriveVehicleResult(makeCarState({ vehicleMethod: 'hp', itemPrice: '12000', savings: '0', term: 48, growth: 0 }))!
