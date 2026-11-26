@@ -17,6 +17,12 @@
   --text-tertiary-dim: rgba(245, 243, 255, 0.35);
   --text-disabled: rgba(245, 243, 255, 0.45);
 
+  /* Keyboard focus ring (#346). The ring sits outside the control, on the
+     page or card behind it, so it takes the page's own text colour rather
+     than the control's: a filled button's text is picked to contrast its
+     fill, and on several it matched the page and the ring vanished. */
+  --focus-ring: var(--text-primary);
+
   /* Colours — accent (v2 goal-based re-theme). Green is
      the primary/brand + "saving up" accent; violet is "paying monthly". The
      result screen now paints its background the active mode's accent, so the
@@ -216,6 +222,9 @@
   --text-tertiary: rgba(27, 22, 51, 0.4);
   --text-tertiary-dim: rgba(27, 22, 51, 0.35);
   --text-disabled: rgba(27, 22, 51, 0.4);
+
+  /* Keyboard focus ring: the light theme's primary text, for the same reason. */
+  --focus-ring: var(--text-primary);
 
   /* --accent-save (#2ed573) is only 1.84:1 on the light background — fine as
      an icon fill/button/tint, fails as text. This darker green clears AA

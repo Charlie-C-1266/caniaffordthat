@@ -215,14 +215,25 @@ body {
 
 /*
  * Keyboard focus indicator. Many controls are custom-styled buttons that
- * otherwise show only the (inconsistent, sometimes invisible) UA ring, and a
- * few inputs set `outline: none`. `currentColor` ties the ring to each
- * element's own text colour, which is already picked to contrast its
- * background — so it stays visible on both the dark steps and the bright
- * result panel. `:focus-visible` keeps it to keyboard use, not mouse clicks.
+ * otherwise show only the (inconsistent, sometimes invisible) UA ring.
+ *
+ * The ring is drawn 3px outside the control, on whatever is behind it, so its
+ * colour has to contrast that background (WCAG 1.4.11, 3:1), not the
+ * control's own fill. It used to be `currentColor`, which failed both ways
+ * (#346): a filled button's text matches the page ("Get started", "Pick
+ * another goal", the active segmented option), and a button with no colour
+ * set falls back to the browser's black (progress-rail steps, carousel dots).
+ * `--focus-ring` follows the theme's primary text, which contrasts every
+ * page and card background in both themes.
+ *
+ * The money, underline, unit and month-year inputs set `outline: none`
+ * inline, which beats this rule, so they show no ring: their focus cue is
+ * the underline's colour change and the caret.
+ *
+ * `:focus-visible` keeps it to keyboard use, not mouse clicks.
  */
 :focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -237,7 +248,7 @@ body {
  * just inside instead and follows the same corner radius as the card.
  */
 .doc-scroller:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
   border-radius: var(--radius-glass-sm);
 }
